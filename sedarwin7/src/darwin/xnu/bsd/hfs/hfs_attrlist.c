@@ -20,7 +20,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
- * NOTICE: This file was modified by McAfee Research in 2004 to introduce
+ * NOTICE: This file was modified by SPARTA, Inc. in 2006 to introduce
  * support for mandatory and extensible security protections.  This notice
  * is included in support of clause 2.2 (b) of the Apple Public License,
  * Version 2.0.
@@ -35,7 +35,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/mac.h>
 #include <sys/malloc.h>
 #include <sys/attr.h>
 #include <sys/stat.h>
@@ -662,7 +661,6 @@ hfs_readdirattr(ap)
 	struct cat_desc prevdesc;
 	char * prevnamebuf = NULL;
 	struct cat_entrylist *ce_list = NULL;
-	int no_vnode_count = 0;
 
 	dir_entries = dcp->c_entries;
 	if (dcp->c_attr.ca_fileid == kHFSRootFolderID && hfsmp->jnl) {
@@ -671,6 +669,11 @@ hfs_readdirattr(ap)
 
 	*(ap->a_actualcount) = 0;
 	*(ap->a_eofflag) = 0;
+
+#ifdef MAC
+	printf("WARNING: hfs_vnop_readdirattr is not supported with a MAC-enabled kernel\n");
+	return (ENOTSUP);
+#endif
 	
 	if (ap->a_cookies != NULL) {
 		printf("readdirattr: no cookies!\n");
@@ -771,8 +774,6 @@ hfs_readdirattr(ap)
 			struct cat_attr * cattrp;
 			struct cat_fork c_datafork = {0};
 			struct cat_fork c_rsrcfork = {0};
-			struct cat_attr cattrtmp;
-			int mperm;
 
 			cdescp = &ce_list->entry[i].ce_desc;
 			cattrp = &ce_list->entry[i].ce_attr;
@@ -783,34 +784,8 @@ hfs_readdirattr(ap)
 			/*
 			 * Get in memory cnode data (if any).
 			 */
-			mperm = 0;
-#ifdef MAC
-			/*-
-			 * Normally, HFS+ will not generate catalog entries
-			 * when performing VOP_READDIRATTR() so as to avoid
-			 * the overhead.  However, we perform MAC checks
-			 * using vnode labels, so we must force vnodes to be
-			 * instantiated.
-			 *
-			 * XXXMAC: We should probably generate an assertion
-			 * failure if we're unable to instantiate a vnode
-			 * for an entry.
-			 */
-			if (1) {
-				error = hfs_getcnode(hfsmp, cattrp->ca_fileid, NULL, 0, NULL, NULL, &vp);
-				if (error) {
-					printf("hfs_readdirattr(): warning got %d\n", error);
-					cp = hfs_chashget(dcp->c_dev, cattrp->ca_fileid, 0, &vp, &rvp);
-				} else {
-					mperm = mac_check_vnode_stat(current_proc()->p_ucred, ap->a_cred, vp);
-
-					cp = vp->v_data;
-					rvp = NULL;
-				}
-#else
 			if (!(ap->a_options & FSOPT_NOINMEMUPDATE)) {
 				cp = hfs_chashget(dcp->c_dev, cattrp->ca_fileid, 0, &vp, &rvp);
-#endif
 				if (cp != NULL) {
 					/* Only use cnode's decriptor for non-hardlinks */
 					if (!(cp->c_flag & C_HARDLINK))
@@ -826,27 +801,6 @@ hfs_readdirattr(ap)
 					}
 				}
 			}
-			/*-
-			 * XXXMAC: In order to return the right number of
-			 * entries in the catalog buffer, we fill in a
-			 * dummy entry in the stack for files that the
-			 * caller is not allowed to retrieve attributes for.
-			 * If we don't return the right number of entries,
-			 * applications (such as Finder) behave badly.
-			 *
-			 * XXXMAC: We leave all fields zero'd except the
-			 * minimum necessary to make Finder behave
-			 * correctly, which includes the fileid, mode,
-			 * and a link count.
-			 */
-			if (mperm) {
-				bzero (&cattrtmp, sizeof (struct cat_attr));
-				cattrtmp.ca_fileid = cattrp->ca_fileid;
-				cattrtmp.ca_mode = cattrp->ca_mode & ~07777;
-				cattrtmp.ca_nlink = 1;
-				cattrp = &cattrtmp;
-			}
-
 			*((u_long *)attrptr)++ = 0; /* move it past length */
 			attrblk.ab_attrlist = alist;
 			attrblk.ab_attrbufpp = &attrptr;
@@ -860,8 +814,6 @@ hfs_readdirattr(ap)
 			currattrbufsize = ((char *)varptr - (char *)attrbufptr);
 		
 			/* All done with cnode. */
-			if (vp == NULL && rvp == NULL)
-				no_vnode_count++;
 			if (vp) {
 				vput(vp);
 				vp = NULL;
@@ -943,9 +895,6 @@ exit:
 	if (prevnamebuf)
 		FREE(prevnamebuf, M_TEMP);
 		
-	if (no_vnode_count != 0)
-		printf("hfs_readdirattr: no_vnode_count of %d\n", no_vnode_count);
-
 	return (error);
 }
 
@@ -1074,36 +1023,6 @@ packnameattr(
 }
 
 /*
- * XXXMAC: Utility function to determine what access rights the subject
- * has to a vnode, as expressed in UNIX file access permissions.  Test
- * each of read, write, and execute using discretionary and mandatatory
- * checks.  Note that this function reveals information about access
- * protections that stat() is normally not permitted to reveal about a
- * file if the access check for stat() fails.  We may need to revisit
- * this if there is a requirement for hiding protection information for
- * objects that can be named but not inspected.
- */
-#ifdef MAC
-static int
-access_all(struct vnode *vp, struct proc *p)
-{
-	int r;
-
-	r = 0;
-	if (VOP_ACCESS(vp, VREAD, p->p_ucred, p) == 0 &&
-	    mac_check_vnode_access(p->p_ucred, vp, VREAD) == 0)
-		r |= R_OK;
-	if (VOP_ACCESS(vp, VWRITE, p->p_ucred, p) == 0 &&
-	    mac_check_vnode_access(p->p_ucred, vp, VWRITE) == 0)
-		r |= W_OK;
-	if (VOP_ACCESS (vp, VEXEC, p->p_ucred, p) == 0 &&
-	    mac_check_vnode_access(p->p_ucred, vp, VEXEC) == 0)
-		r |= X_OK;
-	return r;
-}
-#endif
-
-/*
  * Pack common volume attributes.
  */
 static void
@@ -1229,17 +1148,8 @@ packvolcommonattr(struct attrblock *abp, struct hfsmount *hfsmp, struct vnode *v
 	}
 	if (ATTR_CMN_USERACCESS & attr) {
 		*((u_long *)attrbufptr)++ =
-#ifdef MAC
-		/*
-		 * If we could retrieve a vnode, calculate the permission
-		 * summary based on DAC and MAC checks.
-		 * XXXMAC: Need to handle (vp == NULL) better here,
-		 * probably via an assertion failure.
-		 */
-		vp != NULL ? access_all(vp, current_proc()) :
-#endif
-		DerivePermissionSummary(cp->c_uid, cp->c_gid, cp->c_mode,
-					VTOVFS(vp), current_proc()->p_ucred, current_proc());
+			DerivePermissionSummary(cp->c_uid, cp->c_gid, cp->c_mode,
+				VTOVFS(vp), current_proc()->p_ucred, current_proc());
 	}
 
 	*abp->ab_attrbufpp = attrbufptr;
@@ -1388,7 +1298,13 @@ packvolattr(struct attrblock *abp, struct hfsmount *hfsmp, struct vnode *vp, str
         				VOL_CAP_INT_SEARCHFS |
         				VOL_CAP_INT_ATTRLIST |
         				VOL_CAP_INT_NFSEXPORT |
+/*
+ * We will not support this operation due to complexity and the
+ * run-time costs of accessing vnode labels.
+ */
+#ifndef MAC
         				VOL_CAP_INT_READDIRATTR |
+#endif
         				VOL_CAP_INT_EXCHANGEDATA |
         				VOL_CAP_INT_ALLOCATE |
         				VOL_CAP_INT_VOL_RENAME |
@@ -1413,7 +1329,13 @@ packvolattr(struct attrblock *abp, struct hfsmount *hfsmp, struct vnode *vp, str
         				VOL_CAP_INT_SEARCHFS |
         				VOL_CAP_INT_ATTRLIST |
         				VOL_CAP_INT_NFSEXPORT |
+/*
+ * We will not support this operation due to complexity and the
+ * run-time costs of accessing vnode labels.
+ */
+#ifndef MAC
         				VOL_CAP_INT_READDIRATTR |
+#endif
         				VOL_CAP_INT_EXCHANGEDATA |
         				VOL_CAP_INT_COPYFILE |
         				VOL_CAP_INT_ALLOCATE |
@@ -1577,18 +1499,9 @@ packcommonattr(
 	}
 	if (ATTR_CMN_USERACCESS & attr) {
 		*((u_long *)attrbufptr)++ =
-#ifdef MAC
-		/*
-		 * If we could retrieve a vnode, calculate the permission
-		 * summary based on DAC and MAC checks.
-		 * XXXMAC: Need to handle (vp == NULL) better here,   
-		 * probably via an assertion failure.
-		 */
-		vp != NULL ? access_all(vp, current_proc()) :
-#endif
-		DerivePermissionSummary(cap->ca_uid, cap->ca_gid,
-					  cap->ca_mode, mp, current_proc()->p_ucred,
-					  current_proc());
+			DerivePermissionSummary(cap->ca_uid, cap->ca_gid,
+				cap->ca_mode, mp, current_proc()->p_ucred,
+				current_proc());
 	}
 	
 	*abp->ab_attrbufpp = attrbufptr;
