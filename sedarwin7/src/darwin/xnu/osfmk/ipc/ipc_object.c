@@ -336,6 +336,9 @@ ipc_object_alloc(
 		ipc_port_t port = (ipc_port_t)object;
 
 		bzero((char *)port, sizeof(*port));
+#ifdef MAC
+		mac_init_port_label(&port->ip_label);
+#endif
 	} else if (otype == IOT_PORT_SET) {
 		ipc_pset_t pset = (ipc_pset_t)object;
 
@@ -404,6 +407,9 @@ ipc_object_alloc_name(
 		ipc_port_t port = (ipc_port_t)object;
 
 		bzero((char *)port, sizeof(*port));
+#ifdef MAC
+		mac_init_port_label(&port->ip_label);
+#endif
 	} else if (otype == IOT_PORT_SET) {
 		ipc_pset_t pset = (ipc_pset_t)object;
 
@@ -999,7 +1005,8 @@ ipc_object_rename(
  * User allocated label handles can never be modified.
  */
 
-struct label *io_getlabel (ipc_object_t objp)
+struct label *io_getlabel(
+	ipc_object_t	objp)
 {
 	ipc_port_t port = (ipc_port_t) objp;
 
@@ -1030,10 +1037,8 @@ io_free(
 #endif	/* MACH_ASSERT */
 
 #ifdef MAC
-		/* XXX: This was never getting called before,
-		   and calling it now causes problems. */
-
-		mac_destroy_port_label (&port->ip_label);
+		/* Port label should have been initialized after creation. */
+		mac_destroy_port_label(&port->ip_label);
 #endif	  
 	}
 	zfree(ipc_object_zones[otype], (vm_offset_t) object);
