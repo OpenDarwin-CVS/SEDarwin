@@ -1,0 +1,31 @@
+.\" Copyright (c) 2004, Apple Computer, Inc.  All rights reserved.
+.\"
+.Dd Jan 24, 2004
+.Dt AUDIT_EVENT 5
+.Os "Mac OS X"
+.Sh NAME
+.Nm audit_event
+.Nd contains audit event descriptions
+.Sh DESCRIPTION
+The
+.Nm 
+file contains descriptions of the auditable events on the system.  Each line
+maps an audit event number to a name, a description, and a class.  Entries
+are of the form eventnum:eventname:description:eventclass.  Each eventclass
+should have a corresponding entry in the audit_class file.  See 
+.Xr audit_class 5
+for details.
+.Pp
+Example entries in this file are:
+.Bd -literal -offset indent
+0:AUE_NULL:indir system call:no
+1:AUE_EXIT:exit(2):pc
+2:AUE_FORK:fork(2):pc
+3:AUE_OPEN:open(2):fa
+.Ed
+.Sh FILES
+.Bl -tag -width "/etc/security/audit_event" -compact
+.It Pa /etc/security/audit_event
+.El
+.Sh SEE ALSO
+.Xr audit_class 5

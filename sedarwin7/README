@@ -1,0 +1,365 @@
+Port of TrustedBSD MAC Framework to Darwin 10.3
+
+SPARTA, Inc
+7075 Samuel Morse Drive
+Columbia, MD 21046-3401
+
+
+Introduction
+============
+
+This release includes a port of the TrustedBSD MAC Framework to Apple's
+Darwin 7.3 (Mac OS X 10.3.8) operating system, made up of kernel, library,
+and user space tool extensions to support flexible policy introduction.  
+In addition, several sample policy modules are present:
+
+    - SEDarwin, a port of NSA's FLASK security architecture and
+      Type Enforcement policy language from SELinux.
+    - MLS, a simple implementation of multi-level security.
+    - ipctrace, a facility for collecting information on the use of
+      Mach IPC.
+    - mac_none, an example of a very minimal policy 
+    - mac_stub, an example of a policy that defines all entry points a no-op
+    - mac_test, a debugging tool for ensuring that the framework is
+      managing labels correctly.
+    - stacktrace, a debugging tool to capture stack traces
+
+This release is a development snapshot; not all components are
+appropriate for use in production environments.
+
+The following modifications have been made relative to Apple's Darwin
+10.3.8 release:
+
+    - HFS extended attributes to hold persistent file labels.
+    - Inclusion of a subset of the MAC Framework entry points to
+      provide label support and protection of files, processes, System V 
+      semaphores and shared memory, and labeling and controls for Mach IPC.
+    - A port and enhancement of the mac_test policy module.
+    - The SEDarwin module, a port of the SELinux FLASK and Type
+      Enforcement implementation from FreeBSD.
+    - Ports of the SELinux policy tools for use with SEDarwin.
+    - Ports of the TrustedBSD MAC label management tools and extended
+      attribute tools.
+    - A port of the TrustedBSD MLS policy module.
+    - Modifications to the ls(1) and ps(1) commands to optionally
+      display label information.
+    - Enhancements to the BootX boot loader and XNU kernel extension
+      linker to support the loading of policy KEXTs earlier in the
+      boot sequence.
+    - Modifications to mach_init to help bootstrap the mac_mls policy;
+      this is only a temporary measure until the login modifications
+      are complete.
+
+New Features in the 20050630 release
+====================================
+
+    - Update to newer version of Panther; the vendor source base was
+      updated to Apple's 10.3.8 release.  This brought in a large
+      number of vendor source improvements, including support for
+      newer hardware (G5 and iBooks), as well as improved audit
+      support.
+
+    - New MAC Framework policy entry points were added to implement
+      additional access controls for file and socket operations.
+
+      New file operations:
+          mpo_check_vnode_exchangedata
+          mpo_check_vnode_getattrlist
+          mpo_check_vnode_select
+          mpo_check_vnode_setattrlist
+
+      New socket operations:
+          mpo_check_socket_accept
+          mpo_check_socket_poll
+          mpo_check_socket_select
+          mpo_init_mbuf_failed_label
+
+      For clarity, the following entry point was renamed:
+          mpo_init_unknown_source_label -> mpo_init_mbuf_unknown_source_label
+
+    - Substantial improvements to the audit subsystem.  When policies
+      register interest in a label namespace and implement two new
+      entry points, the audit subsystem will automatically include
+      label information for files and processes.
+
+      New entry points:
+          mpo_externalize_cred_audit_label
+          mpo_externalize_vnode_audit_label
+
+      In order to implement these changes most effectively, the way
+      policies internalize and externalize labels has also been
+      improved.  The mac_policy_conf structure has additional fields
+      to allow policies to register specific label names; this
+      registration information will be used to simplify the label
+      internalize and externalize routines.  As a result, the API for
+      those entry points were modified.
+
+      Modified entry points:
+          mpo_externalize_cred_label
+          mpo_externalize_socket_label
+          mpo_externalize_socket_peer_label
+          mpo_externalize_vnode_label
+          mpo_internalize_cred_label
+          mpo_internalize_vnode_label
+          mpo_internalize_socket_label
+
+    - The audit entry points were renamed to tie them more closely 
+      to the objects that are being protected:
+          mpo_check_audit     -> mpo_check_system_audit
+          mpo_check_auditon   -> mpo_check_system_auditon
+          mpo_check_auditctl  -> mpo_check_system_auditctl
+          mpo_check_getaudit  -> mpo_check_proc_getaudit
+          mpo_check_getauid   -> mpo_check_proc_getauid
+          mpo_check_setauid   -> mpo_check_proc_setauid
+          mpo_check_setaudit  -> mpo_check_proc_setaudit
+
+    - The auditsvc entry point was removed from the framework, with
+      the upgrade to Mac OS X 10.3.8, it was no longer necessary.
+
+    - The System V Semaphore entry points were renamed.  The new names
+      more closely follow the established conventions, are consistent
+      with other Semaphore types, and are once again consistent with
+      the corresponding FreeBSD MAC Framework entry points.  The
+      following entry points were affected:
+          mac_init_sysv_sema -> mac_init_sysv_sem
+          mac_destroy_sysv_sem -> mac_destroy_sysv_sem
+          mac_create_sysv_sema -> mac_create_sysv_sem
+          mac_cleanup_sysv_sema -> mac_cleanup_sysv_sem
+
+    - This release includes the results of the investigation into
+      distributed file systems.  A paper summarizing the results is
+      available as docs/isso-05-0001-DFS.pdf and a prototype
+      implementation (using NFS) is available in the src/nfssuite
+      directory.
+
+    - The kernel was modified to provide support for login contexts; a
+      login context is used to associate both windowed non-graphical
+      applications with a single user-facing session.  In a future
+      release, the graphical login process will manage login contexts
+      so that a security policy module can set initial labels based on
+      an authenticated user login session.
+
+    - The build infrastructure was enhanced to provide the ability to
+      build installation packages and disk images.  These packages may
+      be installed with the standard Apple software installation GUI
+      tools.  While this functionality is still considered
+      experimental, it has proven to be quite useful.  After
+      completing a top-level build and install, the disk image can be
+      build by the 'dmg' target in the Makefile.  The resultant disk
+      image contains a single software installation package with the
+      MAC framework and related components.  See the
+      src/dsep-install-gui.txt document for additional information on
+      using the graphical install tool.
+
+      For example:
+        % make
+	% make install
+	% make dmg
+
+    - The various sample policies have been updated to support the
+      recent changes to the Framework: mac_mls, mactest, mac_none,
+      mac_stub.  Note that the SEDarwin policy module is no longer
+      being maintained by this project.  Other developers have made
+      substantial improvements to the SEDarwin policy, and those
+      changes will be integrated when they are complete.
+
+New Features in the 20050331 release
+====================================
+
+    - Support labelling and access control for Posix IPC (semaphores
+      and shared memory). This includes support for Posix IPC in mls and
+      stub policies.
+
+    - Modifications to the Darwin kernel to assign labels to
+      sockets and other supporting IPv4 data structures, and the
+      addition of access control checks to socket-related operations.
+      Extensions to the MAC Framework to permit policy modules to
+      implement these entry points.
+
+    - Build improvements to convert all remaining BSD Makefiles to GNU
+      Makefiles.  The build is further isolated; it no longer builds
+      and installs BootX tools in the user's home directory.  The
+      mach_init program was added to the installation.
+
+    - Modified Darwin kernel with additional experimental labeling and
+      access control for Mach IPC.  Prototype modifications to the MLS
+      policy to control information flow via Mach IPC.
+
+    - Two documents summarizing the results of experimentation with
+      applications making extensive use of Mach IPC describing how
+      Mach IPC is used, and the potential impact on mandatory access
+      control.  The two CMW papers are available in the docs
+      directory, named 'cmw-like-security.pdf' and 'MLS-usage.pdf'.
+
+    - Additional maturing in VFS security; in particular, vn_read,
+      vn_write, and vn_rdwr access controls were changed.
+
+    - Documentation for all supported MAC Framework entry points is
+      available in the docs/Framework/html/ directory.
+
+New Features in Drop 5
+======================
+
+    - Additional maturing in VFS security.  This includes new security
+      controls for mmap operations, better support for file descriptor
+      label system calls, and a bugfix for the link entry point.
+
+    - Improved audit support.  The extended attribute and security
+      system calls may are now audited.  The MLS policy was further
+      extended to provide audit support to log permitted and denied
+      access.
+
+    - Build improvements to move some BSD-style Makefiles to GNU, with
+      the intent that the build system use consistently uses only the
+      GNU format.
+
+    - Additional documentation on the test framework and on CMW-like
+      access controls for Apple OS X is nearly complete and will be
+      separately shipped.
+
+
+New Features in Drop 4
+======================
+
+    - The default module is now the mac_mls module, not the sedarwin
+      module.  By default, all modules will be built, but only the MLS
+      module will be installed.
+
+    - Additional example policies
+      The 'mac_none' policy module implements a sample MAC policy that
+      has no effect on access control in the system.  Unlike
+      'mac_stub', none of the MAC entry points are defined.
+
+      The 'mac_stub' policy module implements a sample MAC policy that
+      has no effect on access control in the system.  Unlike mac_none,
+      each MAC entry point is defined as a no-op, so the policy module
+      will be entered for each event, but no change in system behavior
+      should result.
+
+    - Stacktrace security module
+      The stacktrace security module is provided as an example of a
+      policy module useful for debugging.  Loading the policy module
+      and then performing normal operations will cause the stacktrace
+      module's functions to be invoked at each MAC check.  When each
+      function is invoked, it walks backward up the call stack and
+      saves a trace of how the function was called into a wired trace
+      buffer in the kernel.
+
+      An example of the output generated by this module is provided in
+      examples/stacktrace.
+
+    - Add the 'top' package to the build, it directly references
+      kernel objects that were modified by the MAC framework, so it
+      must be recompiled.
+
+    - The System V IPC entry points were renamed from *ipc* to *sysv* to
+      help distinguish System V IPC entry points from other IPC
+      objects (Posix, Mach).
+
+    - Audit prototype
+      This release includes a prototype of the integration of audit
+      support into the Darwin MAC framework.  This prototype introduces
+      controls on kernel audit functions and provides interfaces so
+      that security policies may add information to the audit log.
+
+    - There have been other miscellaneous improvements to the build
+      infrastructure, the test framework, and the entry point coverage
+      and accuracy.
+
+
+New Features in Drop 3
+======================
+
+    - Mach IPC tracing facility - The 'ipctrace' policy module causes
+      the system to store a log of how IPC is used in Darwin. More
+      information on ipctrace can be found in docs/ipctrace.txt.
+      Some example results are also included in examples/ipctrace.
+
+    - System V IPC controls and labelling - Darwin's implementation of
+      System V shared memory and semaphore arrays was extended to
+      include security labels and security framework hooks for policy
+      modules to implement controls on SysV IPC. (Darwin does not
+      support System V message queues.)
+
+    - Updates to SEDarwin - The SEDarwin policy module was extended to
+      support System V IPC security.  The supplied policy permits IPC
+      only between programs running in the same domain.  More
+      information on the sedarwin module is available in docs/sedarwin.txt.
+
+    - MLS (Multi-Level Security) policy module - We have ported the
+      TrustedBSD MLS policy module to the Darwin security
+      framework.  More information on the macmls module is available
+      in docs/macmls.txt.
+
+    - Updates to the mactest policy module - We have made improvements
+      to the mactest module so that it now supports additional entry
+      points and has improved tracking of label states.
+
+    - A prototype test suite for the Darwin MAC Framework was added.
+      More information on installing and running the test suite is
+      available in testbed/README.
+
+    - Updates to framework to match recent changes in the FreeBSD
+      implementation. Most notably, the way security labels are allocated
+      has been made simpler.
+
+
+New Features in Drop 2
+======================
+
+    - Tree and build system rearrangement.  The source tree has been
+      rearranged to better reflect system packaging and development.
+      Modifications to Apple's Darwin operating system are now in the
+      darwin/ sub-tree, and policy modules and policy-related tools
+      are in their own directories.  The consistent of the build
+      system has been improved, and the build is now stand-alone (the
+      additional /usr/local tarball is no longer required.)
+
+    - Policies may now be loaded as kernel extensions.  We have
+      modified the kernel linker to allow policy modules to be loaded
+      sufficiently early that policies must no longer be linked
+      directly to the kernel, permitting them to be distributed
+      separately from XNU.  This required reordering some events in
+      the boot sequence, and introducing additional linker code to use
+      loader-allocated memory.
+
+    - The mac_test module has been updated and enhanced.  The mac_test
+      policy module performs a series of assertions to verify correct
+      behavior of a number of aspects of the TrustedBSD MAC Framework.
+      The module has been ported to Darwin, and enhanced to detect
+      additional failure modes.
+
+    - In addition, a large number of bug fixes and minor enhancements
+      have been made to improve the isolation of policy-independent
+      and policy-specific components.
+
+
+Build Instructions
+==================
+
+Instructions for building this system may be found in the
+docs/build-instructions.txt file included with the release.  The build
+instructions include references to specific versions of Apple-provided
+operating system software and tools; this release is unlikely to work
+correctly with any other revisions of Apple's software, and may behave
+incorrectly, resulting in system failure and/or data loss.  The
+preferred system setup procedures are documented in
+docs/system-setup.txt.
+
+
+Policy Module Support
+=====================
+
+We now support loading and running more than one security policy
+module.  However, running two "enforcement" modules (currently
+SEDarwin and MLS) may not function well together; one module may deny
+operations that the other module didn't expect to fail.  It is safe to
+follow the build and install instructions for both SEDarwin and MLS,
+and it is safe to run all four modules simultaneously, but the system
+will be more usable with only one enforcement module loaded.
+
+To install a security module, move its KEXT bundle into the
+/System/Library/Extensions directory and reboot.  Likewise, to
+uninstall a security module, remove the bundle from this directory and
+reboot.
+

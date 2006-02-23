@@ -1,0 +1,17 @@
+/.*		system_u:object_r:file_t
+/bin/.*		system_u:object_r:bin_t
+/bin/.*sh	system_u:object_r:shell_exec_t
+/usr/bin/.*	system_u:object_r:bin_t
+/usr/local/bin/.* system_u:object_r:bin_t
+/sbin/.*	system_u:object_r:bin_t
+/usr/sbin/.*	system_u:object_r:bin_t
+/usr/sbin/lookupd				system_u:object_r:lookupd_exec_t
+/Applications/.*				system_u:object_r:appl_t
+/sbin/SystemStarter				system_u:object_r:systemstarter_exec_t
+/System/Library/CoreServices/coreservicesd	system_u:object_r:coreservices_exec_t
+/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow	system_u:object_r:loginwindow_exec_t
+/System/Library/CoreServices/pbs		system_u:object_r:pbs_exec_t
+/System/Library/CoreServices/RealWindowServer	system_u:object_r:windowserver_exec_t
+/System/Library/CoreServices/WindowServer	system_u:object_r:windowserver_exec_t
+/System/Library/CoreServices/SecurityServer	system_u:object_r:securityserver_exec_t
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/Support/coreservicesd	system_u:object_r:coreservices_exec_t

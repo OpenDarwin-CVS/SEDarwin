@@ -1,0 +1,315 @@
+\section{The Darwin Mach Subsystem}
+
+\subsection{Introduction}
+
+In securing the Mach operating system, there are three major areas
+to be covered: traps, messages and servers.
+
+The entry point for Mach kernel services from user space is the
+trap, or system call. Mach provides very few traps. Most services
+are implemented as Mach servers and accessed via Mach messages (all
+of which use the same trap).  Darwin contains a small number of
+traps for performance-sensitive operations, such as operating on
+semaphores or reading timers.  However, those services are unlikely
+to require mediation by a policy, and are not mediated in our current
+implementation. The remaining services are accessed via messaging,
+and as such can be treated the same as user space services for
+security purposes.
+
+The IPC mechanism provided by Mach is message passing: a task sends
+a message to a port, which may be received by another task, including
+the kernel. A port is the Mach name for a message receipt queue.
+Mach messages are structured, they can contain several types of
+data specially interpreted by the kernel in addition to raw data.
+Messages can send port rights, allowing another task to have access
+to a port. Either a send right, a send-once right, or a receive
+right can be transferred in this way. Address spaces can also be
+shared via messaging. The receiving task gets a mapping for the
+memory and can access it directly, without requiring extra copies
+as in unstructured IPC systems.
+
+The Mach operating system provides other services, such as device
+abstraction, virtual memory, scheduling, etc., but those services are
+accessed via messages sent to kernel ports. So, the other services
+provided by the Mach kernel can be treated as user space servers for
+security purposes.
+
+Mach messages contain a variable number of elements, each of which may be
+raw data, port names, or memory ranges. The kernel processes the port name and
+memory range sections specially, allowing the port names to be used by the
+receiving task.
+
+\subsubsection{Mach Interface Generator (MiG)}
+
+The Mach Interface Generator (MiG) is similar to rpcgen on UNIX
+systems. MiG reads a specification of data types and method prototypes
+and generates client and server stubs which copy the arguments and a
+method ID into a buffer and send it as a Mach message.  The caller
+must provide the name of a port that will receive the message.  Since
+Mach ports are uni-directional, the return value and any reference
+parameters must be sent to the client in a separate Mach message. The
+MiG-generated stubs handle this interaction--the client is not
+concerned with the actual semantics of message passing or port rights
+and may simply make library calls to perform IPC/RPC tasks.
+
+Certain ``special'' kinds of message contents are also supported by
+MiG. Port rights and shared memory can be passed as both calling
+parameters and return values and large arrays are automatically
+passed as copy-on-write shared memory. Full information about
+standard MiG types supported in Darwin can be found in the {\tt
+/usr/include/mach/std\_types.defs} and {\tt
+/usr/include/mach/mach\_types.defs} definition files.
+
+The model of ``one object, one port'' works well with MiG. The
+first argument specifies the destination port for the message that
+the function call produces. This port represents the object on which
+the function operates.  For example, a window server may contain a
+method to resize a window:
+
+\begin{verbatim}
+    routine window_resize(window : mach_port_t;
+                          width  : int;
+                          height : int);
+\end{verbatim}
+
+In this example the message is sent to the port specified as the
+first argument.  When the window server receives the message, the
+MiG stub can convert the port into an implementation-specific pointer
+through a translation type. MiG removes the need for application
+developers to implement wire protocols in most cases.
+
+A collection of routines that will all be sent to the same type of
+port (e.g. port for which a window server hold a receive right) are
+called a subsystem. MiG only allows a subsystem to contain up to
+100 methods. New methods can be added to an existing subsystem
+without affecting existing clients as long as the new total number
+of methods remains less than or equal to 100.
+
+User programs linked with client stubs can call the client methods
+which will function ``as if'' the remote method existed in the client
+task's address space. A server task (or part of the kernel)
+implementing a subsystem uses the server stubs to unpack the messages
+containing the method IDs and arguments.
+
+Both kernel and user space services make use of MiG. For example the
+standard Mach subsystems for virtual memory, devices, and task
+management all use MiG-format messages. On Darwin, many user space
+systems, such as the namespace server, notification server, and
+pasteboard server use MiG-formatted messages as well.  Using MiG
+whenever practical greatly reduces the development overhead of
+implementing messaging protocols. This is especially pertinent when
+developing kernel servers since the MiG generated code will handle
+all of the necessary copyin(), copyout(), and basic message validation
+tasks.
+
+
+\subsection{Mach Protection Primitives}
+
+A security policy may want to attach a security label to
+tasks, messages, and ports. DTOS stores a security identifier in
+kernel objects and adds secured versions of Mach messaging routines
+which return or require a security identifier. Our model is similar but,
+because we support multiple policies, we use a policy-agnostic label
+structure instead of a simple security identifier. This label
+structure is added to every port (ipc\_port\_t) and task (task\_t).
+The convention of using a port to represent a single object means
+that labels on ports translate well into labels on objects for
+policy purposes. We do not currently label the messages themselves,
+nor do we currently label virtual memory objects.
+
+The policy-agnostic label structure presents some implementation
+challenges compared to systems that assume a particular (often small
+or at least fixed-size) label format. Because policies differ in
+their label formats, the policy itself must handle label memory
+management.  This means that copying a label is a potentially
+expensive operation compared to copying a security identifier. In
+addition, the MAC Framework does not currently permit policies
+to precompute security decisions for later use as many common
+policies (type enforcement, MLS, capability models, etc) might
+otherwise do.  Policies are free, however, to implement their own
+caching mechanisms to speed up label computations or other operations.
+The access vector cache used by FLASK is one example of this.
+
+\textit{// XXX: This doesn't really belong here...I updated to our text, but
+where should it go?}
+
+Because the Darwin kernel includes a BSD subsystem as well, the
+security additions to both Mach and BSD components will need to
+remain correlated. For example, a BSD process and its underlying
+Mach task should have the same subject label(s). This is accomplished
+by augmenting the routines in the BSD subsystem to update the task
+labels whenever a process label is changed.  Due to locking
+constraints, Mach system calls or message handlers cannot acquire
+BSD-side locks, and so are unable to change the BSD process label.
+In order to ensure that the system does not deadlock due to this,
+no user space interface is provided to directly modify task label
+information.
+
+
+\subsection{Mach Labels}
+
+The additions for the Mach portion of the Darwin kernel all follow a
+similar model to the MAC Framework implementation. Labeling
+operations are inserted into object creation and deallocation
+routines, and access decision calls are inserted into object usage
+routines.
+
+Access control checks have been added to the Darwin Framework for
+message sending and receiving, port right transfers (both send and
+receive) as well as relabel operations for ports and tasks.  The
+full list of access control entry points is:
+
+\begin{center}
+\begin{tabular}{ll}
+mac\_check\_port\_send() & mac\_check\_port\_make\_send() \\
+mac\_check\_port\_copy\_send() & mac\_check\_port\_move\_recieve() \\
+mac\_check\_port\_hold\_send() & mac\_check\_port\_hold\_recieve() \\
+mac\_check\_port\_receive() & mac\_check\_port\_relabel() \\
+\end{tabular}
+\end{center}
+
+\subsection{Changes to the Mach Kernel}
+
+Kernel changes made to support the MAC Framework were fairly
+noninvasive, only affecting a few of the data structures and a small
+number of functions.  Tasks and ports received label storage.
+Creation and deallocation routines call labeling event operations.
+Tasks use label handles because we can use the lock built in to the
+label handle to protect the label instead of the task lock. The task
+lock is at a position in the established lock order that precludes its
+use in security checks (which are usually deeply nested).  Another
+advantage of using a label handle reference to store the task label is
+that when a task requests the labels trailer (described in the next
+section), only a port right copyout is required to store a reference
+to the sending task's label.  Using a new label would require
+allocating storage for the label, making a copy of the sending task's
+label, and a copyout to the caller's task, which is much more
+expensive.
+
+Changes to the Darwin BSD subsystem were also necessary.  Two separate
+labels are required because the Mach part of the kernel cannot acquire
+BSD-side locks.  However, labels for Mach tasks and BSD processes need
+to be kept synchronized, as there really is only one subject (the Mach
+task\_t and the BSD struct proc both include an opaque pointer the
+other).
+
+A task always has an associated task port, used for access control.
+This port also has its own label.  Our system updates the task port
+label whenever the task label itself is changed.  Changes to the
+task port label are not reflected by the task label.  This makes it
+possible for the task label and the task port label to diverge if
+desired (and permitted by the policies).
+
+\subsubsection{Mach security server}
+
+A new kernel-resident Mach server has been added to handle security-specific
+requests.  As with the other user-accessible servers in a Mach
+system, the security server is implemented as a MiG subsystem and
+may be called from either user or kernel space.  The MiG definition
+file for the server may be found in the {\tt osfmk/mach/security.defs}
+file in the SEDarwin kernel sources.  The functions provided by the
+security server fall into two basic categories: label operations
+and access control checks.
+
+\subsubsection{Message trailers}
+
+Darwin has added a trailer component to the traditional Mach message
+that is located after the end of message body.  Message trailers
+are used by the Darwin Mach subsystem to append additional (out of
+line) information about the sender to a message when it is delivered
+if requested by the receiver.  In a stock Darwin system the recipient
+can request three trailer fields: a message sequence number, a
+security token (equivalent to the UNIX uid and gid), and an audit
+token (an opaque object which may be interpreted by the BSM audit
+library).  We have added two additional trailer types: the sender's
+security labels and a policy access decision.
+
+When security labels are requested, a label handle is returned that
+the caller may use to request access decisions from the security
+server.  For example, the bootstrap namespace server could ensure only a
+privleged process can examine the namespace created by a different
+loginwindow process.  Note that the caller is responsible for freeing
+requested label handles.
+
+The policy access decision trailer provides similar functionality
+to the DTOS mach\_msg\_secure() trap without requiring an extra trap
+(and the requisite changes to the standard C library).
+This trailer provides a single access decision as a boolean value
+to the caller, computed by the loaded policies using subject, port,
+subsystem, and routine name arguments  Providing the full subsystem
+vector (as in DTOS) is impractical with our abstract policy framework.
+A complex policy would be required to compute decisions for the
+entire subsystem even though only one decision was useful at that
+time and the results of computation may not be usable for future
+calls.  An alternative is to cache access decisions in the policy
+itself for rapid lookup, as FLASK does.  Our extended trailers may
+be use alone or in combination with any other trailers supported
+by Darwin.
+
+When the extended trailers are requested by a receiving task, calls
+are made to the loaded security policies and the result is copied
+out. Composition of these decisions is performed in the same manner
+as all other access controls managed by the MAC Framework: an
+operation is allowed only if all individual policies allow it.
+Although we only report a single access control decision in a
+trailer, we have not precluded a DTOS-style optimization where
+precomputed access control decisions are cache in the ipc\_entry
+field of the sending task.
+
+\textit{XXX: describe our 2 trailers in detail here}
+
+Unlike the stock Darwin trailer fields, our additional trailers are
+not simply existing data that can be copied.  The kernel must make
+additional calls to the MAC Framework to fill in the trailer data.
+Because of this, the label handles are only placed in the trailer
+when requested by the recipient. Prior to the introduction of label
+handles, we stored a string version of the sending task's label in
+the message trailer.  This solution proved to be unworkable because
+the strings could be of arbitrary length, and repeated conversions
+to and from string representation was prohibitively expensive.
+
+\textit{XXX: Again, not sure where this next bit belongs}
+
+MiG also handles providing trailer contents to the user; method argument definitions can
+have a flag indicating that data will come from the appropriate part of the trailer instead
+of from the client. We extended MiG to handle the labels in the trailer; the flag
+{\tt servermsglabels} on an argument of type {\tt msg\_labels\_t} supplies the labels.
+\begin{samepage}
+As an example the definition of the {\tt bootstrap\_create\_server} method implemented by
+{\tt mach\_init} is shown:
+\begin{verbatim}
+routine bootstrap_create_server(
+                 bootstrap_port : mach_port_t;
+                 server_cmd     : cmd_t;
+                 server_uid     : integer_t;
+                 on_demand      : boolean_t;
+ ServerSecToken  token          : security_token_t;
+ servermsglabels labels         : msg_labels_t;
+ out             server_port    : mach_port_make_send_t);
+\end{verbatim}
+\end{samepage}
+
+The {\tt token} and {\tt labels} arguments come from the message trailer.
+
+\subsection{Application/Server Security Techniques}
+
+The flexibility of Mach IPC and the associated MiG message format provide a number
+of ways for a multiuser server to provide access controls on the data it manages.
+One common model for UNIX server programs consists of a master process and several
+session processes. The master process waits for new connections and forks a session process
+for each. The session process runs in the context of the authenticated user; the master
+process usually has to run as {\tt root} for the privilege of changing user contexts.
+This allows the operating system's normal access control checks to be used by the server;
+the server only needs to handle the authentication.  However, using multiple session processes may
+be inefficient, especially if communication with the master is required.
+
+This model works
+best for servers dealing primarily with file system resources. On systems where threads of the
+same process can have different security contexts, per-session threads could be used instead
+of processes for simpler communication (but more risk). In systems with structured
+communication, such as Mach IPC, the security decisions can be separated from operation,
+but the user's request is still available to the security routines. One way to achieve
+such decoupling is to use a proxy server for security decisions. The proxy server reads
+the same message formats as the application; after decoding the arguments, the proxy
+server checks authorization with the security system. Depending on the result of the
+authorization check, the proxy server calls the application with the user's message.

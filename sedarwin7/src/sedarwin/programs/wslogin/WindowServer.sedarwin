@@ -1,0 +1,4 @@
+#!/bin/sh
+
+DYLD_FORCE_FLAT_NAMESPACE=1 DYLD_INSERT_LIBRARIES=/usr/lib/wslogin.dylib \
+    /System/Library/Frameworks/ApplicationServices.framework/Frameworks/CoreGraphics.framework/Resources/WindowServer.apple

@@ -1,0 +1,180 @@
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+subsystem notify_ipc 78945668;
+serverprefix _;
+
+import <sys/types.h>;
+
+import "notify_ipc_types.h";
+
+type inline_data_t = array [ * : 2048 ] of char;
+
+type notify_name    = ^ array [] of MACH_MSG_TYPE_BYTE
+	ctype : caddr_t;
+
+routine _notify_server_post checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_register_plain checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	task : task_t;
+	out client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_register_check checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	task : task_t;
+	out size : int;
+	out slot : int;
+	out client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_register_signal checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	task : task_t;
+	sig: int;
+	out client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_register_file_descriptor checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	task : task_t;
+	udp_port : int;
+	ntoken : int;
+	out client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_register_mach_port checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	task : task_t;
+	port : mach_port_move_send_t;
+	ntoken : int;
+	out client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_set_owner checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	user : int;
+	group : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_get_owner checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	out user : int;
+	out group : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_set_access checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	mode : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_get_access checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	out mode : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_release_name checkaccess
+(
+	server : mach_port_t;
+	name : notify_name;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_cancel checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_check checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	out check : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_get_state checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	out state : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_set_state checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	state : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_monitor_file checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	path : notify_name;
+	flags : int;
+	out status : int;
+	SecToken token : security_token_t
+);
+
+routine _notify_server_get_event checkaccess
+(
+	server : mach_port_t;
+	client_id : int;
+	out event_type : int;
+	out name : inline_data_t;
+	out status : int;
+	SecToken token : security_token_t
+);

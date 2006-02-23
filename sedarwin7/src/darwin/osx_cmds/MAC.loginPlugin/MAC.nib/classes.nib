@@ -1,0 +1,14 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {abort = id; continue = id; }; 
+            CLASS = MACloginWindowController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {box = NSBox; win = NSBorderlessWindow; }; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {CLASS = NSBorderlessWindow; LANGUAGE = ObjC; SUPERCLASS = NSWindow; }
+    ); 
+    IBVersion = 1; 
+}

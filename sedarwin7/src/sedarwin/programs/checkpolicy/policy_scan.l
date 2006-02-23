@@ -1,0 +1,222 @@
+
+/* 
+ * Author : Stephen Smalley, <sds@epoch.ncsc.mil> 
+ */
+
+/* Updated: David Caplan, <dac@tresys.com>
+ *
+ * 	Added conditional policy language extensions
+ *
+ * Copyright (C) 2003 Tresys Technology, LLC
+ *	This program is free software; you can redistribute it and/or modify
+ *  	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, version 2.
+ */
+
+/* FLASK */
+
+%{
+#include <sys/types.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "y.tab.h"
+
+static char linebuf[2][255];
+static unsigned int lno = 0;
+int yywarn(char *msg);
+
+char source_file[255];
+unsigned long source_lineno = 1;
+
+unsigned long policydb_lineno = 1;
+
+unsigned int policydb_errors = 0;
+%}
+%array
+letter  [A-Za-z]
+digit   [0-9]
+hexval	[0-9A-Fa-f]
+%%
+\n.*				{ strncpy(linebuf[lno], yytext+1, 255);
+                                  linebuf[lno][254] = 0;
+                                  lno = 1 - lno; 
+                                  policydb_lineno++;
+				  source_lineno++;
+                                  yyless(1); }
+CLONE |
+clone				{ return(CLONE); }
+COMMON |
+common				{ return(COMMON); }
+CLASS |
+class				{ return(CLASS); }
+CONSTRAIN |
+constrain			{ return(CONSTRAIN); }
+INHERITS |
+inherits			{ return(INHERITS); }
+SID |
+sid				{ return(SID); }
+ROLE |
+role				{ return(ROLE); }
+ROLES |
+roles				{ return(ROLES); }
+TYPES |
+types				{ return(TYPES); }
+TYPEALIAS |
+typealias			{ return(TYPEALIAS); }
+TYPE |
+type				{ return(TYPE); }
+BOOL |
+bool                            { return(BOOL); }
+IF |
+if                         { return(IF); }
+ELSE |
+else                         { return(ELSE); }
+ALIAS |
+alias				{ return(ALIAS); }
+ATTRIBUTE |
+attribute			{ return(ATTRIBUTE); }
+TYPE_TRANSITION |
+type_transition			{ return(TYPE_TRANSITION); }
+TYPE_MEMBER |
+type_member			{ return(TYPE_MEMBER); }
+TYPE_CHANGE |
+type_change			{ return(TYPE_CHANGE); }
+ROLE_TRANSITION |
+role_transition			{ return(ROLE_TRANSITION); }
+SENSITIVITY |
+sensitivity		{ return(SENSITIVITY); }
+DOMINANCE |
+dominance			{ return(DOMINANCE); }
+CATEGORY |
+category			{ return(CATEGORY); }
+LEVEL |
+level				{ return(LEVEL); }
+RANGES |
+ranges				{ return(RANGES); }
+USER |
+user				{ return(USER); }
+NEVERALLOW |
+neverallow		        { return(NEVERALLOW); }
+ALLOW |
+allow			        { return(ALLOW); }
+AUDITALLOW |
+auditallow		        { return(AUDITALLOW); }
+AUDITDENY |
+auditdeny		        { return(AUDITDENY); }
+DONTAUDIT |
+dontaudit                       { return(DONTAUDIT); }
+SOURCE |
+source			        { return(SOURCE); }
+TARGET |
+target			        { return(TARGET); }
+SAMEUSER |
+sameuser			{ return(SAMEUSER);}
+OR |
+or     			        { return(OR);}
+AND |
+and				{ return(AND);}
+NOT |
+not				{ return(NOT);}
+xor |
+XOR                             { return(XOR); }
+eq |
+EQ				{ return(EQUALS);}
+true |
+TRUE                            { return(CTRUE); } 
+false |
+FALSE                           { return(CFALSE); } 
+dom |
+DOM				{ return(DOM);}
+domby |
+DOMBY				{ return(DOMBY);}
+INCOMP |
+incomp				{ return(INCOMP);}
+fscon |
+FSCON                           { return(FSCON);}
+portcon |
+PORTCON                        { return(PORTCON);}
+netifcon |                     
+NETIFCON                       { return(NETIFCON);}
+nodecon |                     
+NODECON                       { return(NODECON);}
+fs_use_xattr |
+FS_USE_XATTR                     {return(FSUSEXATTR);}
+fs_use_task |
+FS_USE_TASK                     {return(FSUSETASK);}
+fs_use_trans |
+FS_USE_TRANS                    {return(FSUSETRANS);}
+genfscon |
+GENFSCON                        { return(GENFSCON);}
+r1 |
+R1				{ return(R1); }
+r2 |
+R2				{ return(R2); }
+u1 |
+U1				{ return(U1); }
+u2 |
+U2				{ return(U2); }
+t1 |
+T1				{ return(T1); }
+t2 |
+T2				{ return(T2); }
+"/"({letter}|{digit}|_|"."|"-"|"/")*	{ return(PATH); }
+{letter}({letter}|{digit}|_)*	{ return(IDENTIFIER); }
+{letter}({letter}|{digit}|_|"."|"-")*	{ return(USER_IDENTIFIER); }
+{digit}{digit}*                 { return(NUMBER); }
+{hexval}{0,4}":"{hexval}{0,4}":"({hexval}|":"|".")*	{ return(IPV6_ADDR); }
+#line[ ]1[ ]\"[^\n]*\"		{ source_lineno = 1; strncpy(source_file, yytext+9, 255); source_file[strlen(source_file)-1] = '\0'; }
+#line[ ]{digit}{digit}*		{ source_lineno = atoi(yytext+6)-1; }
+#[^\n]*                         { /* delete comments */ }
+[ \t\f]+			{ /* delete whitespace */ }
+"==" 				{ return(EQUALS); }
+"!="				{ return (NOTEQUAL); }
+"&&"				{ return (AND); }
+"||"				{ return (OR); }
+"!"				{ return (NOT); }
+"^"                             { return (XOR); }
+"," |
+":" |
+";" |
+"(" | 
+")" |
+"{" | 
+"}" |
+"[" |
+"-" |
+"." |
+"]" |
+"~" |
+"*"				{ return(yytext[0]); } 
+.                               { yywarn("unrecognized character");}
+%%
+int yyerror(char *msg)
+{
+	if (source_file[0])
+		fprintf(stderr, "%s:%ld:",
+			source_file, source_lineno);
+	else
+		fprintf(stderr, "(unknown source)::");
+	fprintf(stderr, "ERROR '%s' at token '%s' on line %ld:\n%s\n%s\n",
+			msg,
+			yytext,
+			policydb_lineno,
+			linebuf[0], linebuf[1]);
+	policydb_errors++;
+	return -1;
+}
+
+int yywarn(char *msg)
+{
+	if (source_file[0])
+		fprintf(stderr, "%s:%ld:",
+			source_file, source_lineno);
+	else
+		fprintf(stderr, "(unknown source)::");
+	fprintf(stderr, "WARNING '%s' at token '%s' on line %ld:\n%s\n%s\n",
+			msg,
+			yytext,
+			policydb_lineno,
+			linebuf[0], linebuf[1]);
+	return 0;
+}

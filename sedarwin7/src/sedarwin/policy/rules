@@ -1,0 +1,442 @@
+attribute domain;
+attribute domain2;
+attribute file;
+attribute xfile;
+attribute fs;
+attribute names;
+
+include(global_macros.te)
+
+type unlabeled_t, file, fs;
+type file_t, file;
+type bin_t, file;
+type init_exec_t, file;
+type mach_init_exec_t, file;
+type shell_exec_t, file;
+type login_exec_t, file;
+type sshd_exec_t, file;
+type init_d, domain, domain2;
+type mach_init_d, domain, domain2;
+type mach_servers_d, domain, domain2;
+type login_d, domain, domain2;
+type sshd_d, domain, domain2;
+type user_d, domain, domain2;
+type user_secret_d, domain, domain2;
+type protected_d, domain2;
+type sysadm_d, domain, domain2;
+type kernel_d, domain, domain2;
+type security_t;
+type fs_t, fs;
+type devpts_t;
+type user_devpts_t;
+type sysadm_devpts_t;
+type tmpfs_t;
+type device_t;
+type memory_device_t;
+type null_device_t;
+type zero_device_t;
+type console_device_t;
+type random_device_t;
+type secret_t, xfile;
+type readonly_t, xfile;
+type user_port_t;
+type time_port_t;
+
+#type boot_names_t, names;
+#type user_names_t, names;
+#type user_secret_names_t, names;
+
+type root_t, file;
+type appl_t, file;
+type lib_t, file;
+
+type pbs_d, domain, domain2;
+type cron_d, domain, domain2;
+type loginwindow_d, domain, domain2;
+type windowserver_d, domain, domain2;
+type securityserver_d, domain, domain2;
+type coreservices_d, domain, domain2;
+type systemstarter_d, domain, domain2;
+type lookupd_d, domain, domain2;
+type directoryservice_d, domain, domain2;
+type notifyd_d, domain, domain2;
+type mtest_d, domain, domain2;
+type diskarbitrationd_d, domain, domain2;
+type configd_d, domain, domain2;
+
+type pbs_exec_t, file;
+type cron_exec_t, file;
+type loginwindow_exec_t, file;
+type windowserver_exec_t, file;
+type securityserver_exec_t, file;
+type coreservices_exec_t, file;
+type systemstarter_exec_t, file;
+type lookupd_exec_t, file;
+type directoryservice_exec_t, file;
+type notifyd_exec_t, file;
+type mtest_exec_t, file;
+type diskarbitrationd_exec_t, file;
+type configd_exec_t, file;
+
+role system_r types init_d;
+role system_r types mach_init_d;
+role system_r types mach_servers_d;
+role system_r types login_d;
+role system_r types sshd_d;
+role system_r types user_d;
+role system_r types sysadm_d;
+role system_r types pbs_d;
+role system_r types cron_d;
+role system_r types loginwindow_d;
+role system_r types windowserver_d;
+role system_r types securityserver_d;
+role system_r types coreservices_d;
+role system_r types systemstarter_d;
+role system_r types directoryservice_d;
+role system_r types lookupd_d;
+role system_r types notifyd_d;
+role system_r types mtest_d;
+role system_r types diskarbitrationd_d;
+role system_r types configd_d;
+role system_r types security_t;
+role system_r types unlabeled_t;
+role system_r types kernel_d;
+role system_r types boot_names_t;
+#role object_r types file_t;
+#role object_r types bin_t;
+role object_r types init_exec_t;
+role object_r types mach_init_exec_t;
+role object_r types shell_exec_t;
+role object_r types login_exec_t;
+role object_r types unlabeled_t;
+role object_r types user_devpts_t;
+role object_r types sysadm_devpts_t;
+role object_r types secret_t;
+role user_r   types user_d;
+role user_r   types user_port_t;
+role user_r   types protected_d;
+role user_r   types login_d;
+role user_secret_r types user_secret_d;
+role user_secret_r types login_d;
+role user_secret_r types mtest_d;
+role sysadm_r types sysadm_d;
+
+allow system_r user_r;
+allow system_r user_secret_r;
+allow system_r sysadm_r;
+
+allow file fs:filesystem associate;
+allow xfile fs:filesystem associate;
+
+#allow init_d { bin_t shell_exec_t file_t }:dir_file_class_set rw_file_perms;
+#allow init_d bin_t:file execute_no_trans;
+
+# Things executed by mach_init transition to mach_servers_d
+# XXX - awful hack
+domain_exec_trans(mach_init_d,mach_servers_d);
+
+# Transition from init_d -> mach_init_d when mach_init starts
+# and then back to init_d when BSD init is exec'd
+domain_auto_trans(init_d,mach_init_exec_t,mach_init_d);
+domain_auto_trans(mach_init_d,init_exec_t,init_d);
+
+# User transitions for login and sshd
+domain_auto_trans(init_d,login_exec_t,login_d);
+domain_auto_trans(user_d,login_exec_t,login_d);
+domain_auto_trans(user_secret_d,login_exec_t,login_d);
+domain_auto_trans(sysadm_d,login_exec_t,login_d);
+domain_trans(login_d,shell_exec_t,user_d);
+domain_trans(login_d,shell_exec_t,user_secret_d);
+domain_trans(login_d,shell_exec_t,sysadm_d);
+
+domain_auto_trans(systemstarter_d,sshd_exec_t,sshd_d);
+domain_trans(sshd_d,shell_exec_t,user_d);
+domain_trans(sshd_d,shell_exec_t,user_secret_d);
+domain_trans(sshd_d,shell_exec_t,sysadm_d);
+
+# WindowServer runs commands on behalf of the console user
+domain_trans(windowserver_d,shell_exec_t,user_d);
+domain_trans(windowserver_d,shell_exec_t,user_secret_d);
+domain_trans(windowserver_d,shell_exec_t,sysadm_d);
+
+# User transitions for MAC.loginPlugin
+domain_trans(loginwindow_d,shell_exec_t,user_d);
+domain_trans(loginwindow_d,shell_exec_t,user_secret_d);
+domain_trans(loginwindow_d,shell_exec_t,sysadm_d);
+
+
+type_change user_d devpts_t:chr_file user_devpts_t;
+
+allow domain2 self:mach_port { send make_send make_send_once copy_send move_send move_send_once hold_send hold_send_once recv move_recv hold_recv };
+allow domain2 kernel_d:mach_port { send make_send make_send_once copy_send move_send move_send_once hold_send hold_send_once };
+allow domain2 self:mach_task set_special_port;
+allow domain2 self:mi_bootstrap { bootstrap_look_up };
+allow domain2 root_t:dir { search getattr read };
+allow domain2 self:process getsched;
+allow kernel_d domain2:mach_port { send make_send make_send_once copy_send move_send move_send_once hold_send hold_send_once };
+
+allow domain2 file:{file lnk_file sock_file fifo_file} {create_file_perms execute };
+allow domain2 file:file execute_no_trans;
+allow domain2 file:dir { create_dir_perms };
+allow domain2 {null_device_t console_device_t memory_device_t random_device_t zero_device_t device_t}:{file chr_file} create_file_perms;
+allow domain2 device_t:blk_file create_file_perms;
+allow domain2 {devpts_t user_devpts_t sysadm_devpts_t}:chr_file create_file_perms;
+allow domain2 domain:process { signal sigkill setsched getsession sigchld };
+allow domain2 file:{dir file lnk_file sock_file fifo_file} { relabelfrom relabelto };
+allow domain2 readonly_t:{dir file lnk_file sock_file} { relabelfrom relabelto r_file_perms };
+allow domain2 readonly_t:dir r_dir_perms;
+allow protected_d self:process { signal sigkill setsched getsession sigchld };
+
+allow domain2 self:sem create_sem_perms;
+allow domain2 self:shm create_shm_perms;
+
+domain_trans(user_d,shell_exec_t,protected_d);
+allow user_d security_t:security *;
+
+# Transitions for mach servers started by mach_init
+domain_auto_trans(mach_init_d,windowserver_exec_t,windowserver_d);
+domain_auto_trans(mach_init_d,lookupd_exec_t,lookupd_d);
+domain_auto_trans(mach_init_d,notifyd_exec_t,notifyd_d);
+domain_auto_trans(mach_init_d,diskarbitrationd_exec_t,diskarbitrationd_d);
+domain_auto_trans(mach_init_d,configd_exec_t,configd_d);
+
+# Transitions for things started by BSD init
+domain_auto_trans(init_d,systemstarter_exec_t,systemstarter_d);
+domain_auto_trans(init_d,loginwindow_exec_t,loginwindow_d); # via /etc/ttys
+
+# Transitions for mtest
+domain_auto_trans(user_secret_d,mtest_exec_t,mtest_d);
+
+domain_auto_trans(systemstarter_d,windowserver_exec_t,windowserver_d);
+domain_auto_trans(systemstarter_d,securityserver_exec_t,securityserver_d);
+domain_auto_trans(systemstarter_d,coreservices_exec_t,coreservices_d);
+domain_auto_trans(systemstarter_d,cron_exec_t,cron_d);
+domain_auto_trans(loginwindow_d,pbs_exec_t,pbs_d);
+
+allow user_secret_d secret_t:{file lnk_file} create_file_perms;
+allow user_secret_d secret_t:dir { create_file_perms rw_dir_perms };
+allow user_secret_d { secret_t unlabeled_t file_t }:{file dir} { relabelfrom relabelto };
+allow secret_t fs:filesystem associate;
+
+#type_change user_d user_d:mach_port user_port_t;
+
+allow_mach_ipc(init_d,mach_init_d);
+allow_mach_ipc(login_d,mach_init_d);
+allow_mach_ipc(login_d,unlabeled_t);
+allow_mach_ipc(mach_servers_d,mach_init_d);
+allow_mach_ipc(mach_servers_d,init_d);
+
+allow_mach_ipc(securityserver_d,coreservices_d);
+allow_mach_ipc(securityserver_d,loginwindow_d);
+allow_mach_ipc(securityserver_d,windowserver_d);
+allow_notify_ipc(windowserver_d);
+
+allow_mach_ipc(loginwindow_d,windowserver_d);
+allow_mach_ipc(loginwindow_d,unlabeled_t);
+allow_mach_ipc(loginwindow_d,init_d);
+
+allow mach_init_d self:mi_bootstrap { bootstrap_register bootstrap_look_up };
+
+allow kernel_d names:mach_port send;
+
+allow_mach_ipc(mach_init_d,coreservices_d); #???
+mach_bootstrap(mach_init_d,boot_names_t);
+mach_bootstrap_register(mach_init_d,boot_names_t);
+#type_change loginwindow_d loginwindow_d:mach_names user_names_t; #XXX
+allow mach_init_d mach_init_d:mach_port relabelfrom;
+allow mach_init_d boot_names_t:mach_port relabelto;
+allow mach_init_d {loginwindow_d windowserver_d}:mach_port relabelto;
+allow mach_init_d user_names_t:mach_port { copy_send move_send move_send_once hold_send hold_send_once relabelto };
+
+allow_mach_ipc(systemstarter_d,unlabeled_t);
+allow_mach_ipc(systemstarter_d,boot_names_t);
+allow_mach_ipc(systemstarter_d,mach_init_d); # XXX - init_d too?
+allow_mach_ipc(systemstarter_d,mach_servers_d);
+allow_mach_ipc(systemstarter_d,lookupd_d);
+allow_mach_ipc(systemstarter_d,coreservices_d);
+mach_bootstrap(systemstarter_d,boot_names_t);
+mach_bootstrap_register(systemstarter_d,boot_names_t);
+allow_notify_ipc(systemstarter_d);
+
+mach_bootstrap(coreservices_d,boot_names_t);
+mach_bootstrap_register(coreservices_d,boot_names_t);
+
+mach_bootstrap(windowserver_d,boot_names_t);
+allow_mach_ipc(windowserver_d,systemstarter_d);
+allow_mach_ipc(windowserver_d,pbs_d);
+allow_mach_ipc(windowserver_d,lookupd_d);
+allow_mach_ipc(windowserver_d,mach_init_d); # for wsloginui?
+allow_mach_ipc(windowserver_d,mach_servers_d); # for wsloginui
+allow_mach_ipc(windowserver_d,coreservices_d); # for wsloginui
+mach_bootstrap_register(windowserver_d,boot_names_t);
+allow windowserver_d mach_init_d:mi_bootstrap bootstrap_register;
+
+allow_mach_ipc(loginwindow_d,coreservices_d);
+allow_mach_ipc(loginwindow_d,mach_init_d);
+allow_mach_ipc(loginwindow_d,mach_servers_d);
+allow_mach_ipc(loginwindow_d,lookupd_d);
+allow_mach_ipc(loginwindow_d,systemstarter_d);
+allow_notify_ipc(loginwindow_d);
+mach_bootstrap(loginwindow_d,boot_names_t);
+mach_bootstrap_register(loginwindow_d,boot_names_t);
+allow loginwindow_d boot_names_t:mi_bootstrap bootstrap_subset;
+
+mach_bootstrap(securityserver_d,boot_names_t);
+allow_mach_ipc(securityserver_d,mach_init_d); #???
+allow_mach_ipc(securityserver_d,systemstarter_d); #???
+allow_mach_ipc(securityserver_d,lookupd_d);
+allow_mach_ipc(securityserver_d,diskarbitrationd_d);
+allow_mach_ipc(securityserver_d,mach_servers_d); # XXX
+
+allow_mach_ipc(lookupd_d,coreservices_d);
+allow_mach_ipc(lookupd_d,mach_init_d);
+allow_mach_ipc(lookupd_d,mach_servers_d); #DirectoryService?
+allow_mach_ipc(lookupd_d,cron_d);
+allow_notify_ipc(lookupd_d);
+mach_bootstrap(lookupd_d,boot_names_t);
+allow lookupd_d boot_names_t:mi_bootstrap bootstrap_create_server;
+
+# notifyd rules
+mach_bootstrap(notifyd_d,mach_init_d);
+allow_notify_ipc(init_d); # XXX
+allow_notify_ipc(mach_servers_d); # XXX
+
+#mtest rules
+allow_mach_ipc(user_secret_d, mtest_d);
+allow_mach_ipc(mtest_d, unlabeled_t);
+allow_mach_ipc(mtest_d, mach_init_d);
+allow user_secret_d mtest_d:mi_mtest *;
+allow mtest_d user_secret_d:mi_mtest *;
+
+#diskarbitrationd rules
+mach_bootstrap(diskarbitrationd_d,mach_init_d);
+#allow diskarbitrationd_d notifyd_d:mi_notify_ipc { _notify_server_register_check _notify_server_register_mach_port };
+#allow notifyd_d diskarbitrationd_d:mach_port { copy_send move_send move_send_once hold_send hold_send_once };
+#allow diskarbitrationd_d notifyd_d:mach_port { copy_send move_send move_send_once hold_send hold_send_once };
+allow_notify_ipc(diskarbitrationd_d);
+allow_mach_ipc(diskarbitrationd_d,unlabeled_t);
+allow_mach_ipc(diskarbitrationd_d,mach_servers_d);
+allow_mach_ipc(diskarbitrationd_d,loginwindow_d);
+allow_mach_ipc(diskarbitrationd_d,lookupd_d);
+allow_mach_ipc(diskarbitrationd_d,securityserver_d);
+allow_mach_ipc(diskarbitrationd_d,systemstarter_d);
+
+# user_d rules
+allow_notify_ipc(user_d);
+allow_mach_ipc(user_d,diskarbitrationd_d);
+allow_mach_ipc(user_d,mach_servers_d);
+allow_mach_ipc(user_d,init_d);
+
+# user_secret_d rules
+allow_notify_ipc(user_secret_d);
+allow_mach_ipc(user_secret_d,diskarbitrationd_d);
+allow_mach_ipc(user_secret_d,mach_servers_d);
+allow_mach_ipc(user_secret_d,init_d);
+allow_mach_ipc(user_secret_d,login_d);
+
+# user_secret_d rules
+#allow_notify_ipc(user_secret_d);
+#allow_mach_ipc(user_secret_d,diskarbitrationd_d);
+#allow_mach_ipc(user_secret_d,mach_servers_d);
+#allow_mach_ipc(user_secret_d,init_d);
+
+# sysadm_d rules
+allow_notify_ipc(sysadm_d);
+allow_mach_ipc(sysadm_d,diskarbitrationd_d);
+allow_mach_ipc(sysadm_d,mach_servers_d);
+allow_mach_ipc(sysadm_d,init_d);
+
+# sshd_d rules
+allow_notify_ipc(sshd_d);
+allow_mach_ipc(sshd_d,unlabeled_t);
+allow_mach_ipc(sshd_d,mach_init_d);
+allow_mach_ipc(sshd_d,securityserver_d);
+allow_mach_ipc(sshd_d,lookupd_d);
+allow_mach_ipc(sshd_d,user_d);
+
+#logind rules
+allow_notify_ipc(login_d);
+allow_mach_ipc(lookupd_d,login_d);
+
+# test rule to allow talking to unlabeled_t stuff
+allow_notify_ipc(unlabeled_t);
+
+# configd rules
+mach_bootstrap(configd_d,mach_init_d);
+
+mach_bootstrap(cron_d,boot_names_t);
+allow_mach_ipc(cron_d,mach_init_d);
+
+allow pbs_d appl_t:dir { search getattr read };
+allow pbs_d appl_t:file { read getattr };
+allow pbs_d lib_t:dir { search getattr };
+allow pbs_d lib_t:file { read getattr };
+allow_mach_ipc(pbs_d,mach_init_d);
+allow_mach_ipc(pbs_d,lookupd_d);
+allow_mach_ipc(pbs_d,coreservices_d);
+allow_mach_ipc(pbs_d,mach_servers_d);
+mach_bootstrap_register(pbs_d,boot_names_t);
+
+allow_mach_ipc(kernel_d,unlabeled_t);
+allow_mach_ipc(cron_d,unlabeled_t);
+allow_mach_ipc(init_d,unlabeled_t);
+allow_mach_ipc(mach_init_d,unlabeled_t);
+allow_mach_ipc(mach_servers_d,unlabeled_t); # XXX
+allow_mach_ipc(pbs_d,unlabeled_t);
+allow_mach_ipc(user_d,unlabeled_t);
+allow_mach_ipc(user_secret_d,unlabeled_t);
+allow_mach_ipc(sysadm_d,unlabeled_t);
+allow_mach_ipc(protected_d,unlabeled_t);
+allow_mach_ipc(lookupd_d,unlabeled_t);
+allow_mach_ipc(coreservices_d,unlabeled_t);
+allow_mach_ipc(windowserver_d,unlabeled_t);
+allow_mach_ipc(securityserver_d,unlabeled_t);
+
+#
+# Rules for user domains (user_domain, user_namespace_type)
+#
+define(`user_sys_access',`
+
+allow $1 { $1 mach_init_d }:mi_bootstrap { bootstrap_register bootstrap_look_up bootstrap_look_up_array };
+
+mach_bootstrap(mach_init_d,$2);
+
+mach_bootstrap_register(windowserver_d,$2);
+allow_mach_ipc(windowserver_d,$1);
+mach_bootstrap(windowserver_d,$2);
+
+allow_mach_ipc(loginwindow_d,$1);
+mach_bootstrap(loginwindow_d,$2);
+mach_bootstrap_register(loginwindow_d,$2);
+allow loginwindow_d $2:mi_bootstrap bootstrap_create_server;
+
+mach_bootstrap(securityserver_d,$2);
+mach_bootstrap_register(securityserver_d,$2);
+mach_bootstrap_register(securityserver_d,boot_names_t);
+allow_notify_ipc(securityserver_d);
+
+allow_mach_ipc($1,systemstarter_d);
+allow_mach_ipc($1,mach_init_d);
+allow_mach_ipc($1,init_d);
+allow_mach_ipc($1,coreservices_d); #SystemUIServer
+mach_bootstrap($1,$2);
+mach_bootstrap_register($1,$2);
+allow_mach_ipc($1,securityserver_d);
+allow_mach_ipc($1,lookupd_d);
+allow_mach_ipc(pbs_d,$1);
+
+allow pbs_d $1:mach_port { send copy_send move_send move_send_once hold_send hold_send_once };
+mach_bootstrap_register(pbs_d,$2);
+mach_bootstrap(pbs_d,$2);
+
+')
+
+user_sys_access(user_d,user_names_t);
+user_sys_access(sysadm_d,user_names_t);
+user_sys_access(protected_d,user_names_t);
+user_sys_access(user_secret_d,user_names_t); # can't use other names types yet
+
+bool lookups false;
+if (lookups) {
+allow user_d {mach_init_d init_d systemstarter_d loginwindow_d user_d}:mi_bootstrap bootstrap_info;
+}

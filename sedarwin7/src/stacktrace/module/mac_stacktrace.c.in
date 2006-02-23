@@ -1,0 +1,434 @@
+/*-
+ * Copyright (c) 2005 SPARTA, Inc.
+ * Copyright (c) 2004 Networks Associates Technology, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+/*
+ * Stacktrace module that prints a stack trace for all MAC Framework policy
+ * entry points.
+ */
+
+@@@include <sys/types.h>
+@@@include <sys/param.h>
+@@@include <sys/conf.h>
+@@@include <sys/kernel.h>
+@@@include <sys/malloc.h>
+@@@include <sys/mount.h>
+@@@include <sys/proc.h>
+@@@include <sys/systm.h>
+@@@include <sys/vnode.h>
+@@@include <sys/file.h>
+@@@include <sys/socket.h>
+@@@include <sys/socketvar.h>
+@@@include <sys/sysctl.h>
+@@@include <sys/sem.h>
+@@@include <sys/shm.h>
+@@@include <stdarg.h>
+
+@@@include <net/if.h>
+@@@include <net/if_types.h>
+@@@include <net/if_var.h>
+
+@@@include <sys/mac.h>
+@@@include <sys/mac_policy.h>
+
+@@@include <mach/kmod.h>
+@@@include <kern/lock.h>
+@@@include <kern/kalloc.h>
+@@@include "stacktrace_syscalls.h"
+
+@@@if 0
+SYSCTL_DECL(_security_mac);
+
+SYSCTL_NODE(_security_mac, OID_AUTO, stacktrace, CTLFLAG_RW, 0,
+    "mac_stacktrace policy controls");
+
+static int	stacktrace_enabled = 1;
+SYSCTL_INT(_security_mac_stacktrace, OID_AUTO, enabled, CTLFLAG_RW,
+    &stacktrace_enabled, 0, "mac_stacktrace debugging policy");
+@@@endif
+
+@@@define MAC_STACKTRACE_LABEL_NAME_COUNT	1
+@@@define MAC_STACKTRACE_LABEL_NAME	"stacktrace"
+
+static	int stack_slot;	/* allocated by framework */
+
+/*
+ * Define a struct for each function with a unique number and enable flag.
+ */
+struct function_info {
+	short	num;
+	short	onoff;
+};
+
+@@@define	TRACE_DATA(name, num, onoff)	static struct function_info name##_td = { num, onoff }
+
+#include "trace.in"
+/*
+ * Buffer control.
+ */
+static size_t	 bufsize = RBSIZE;	// The current buffer size.
+static char	*buffer_basep = NULL;	// ptr to base of buffer
+static char	*buffer_workp = NULL;	// ptr to current free loc in buffer
+// TODO: allocate buffer dynamically
+static short	 global_fullbuffer_action = FULLBUFF_STOP;	// FULLBUFF_RESET or FULLBUFF_STOP
+static int	 global_resets = 0;	// count of times buffer wrapped
+static int	 global_ncalls = 0;	// count of total stacktraces
+static int	 global_naxdepth = 0;	// highest recursion level
+// TODO add a timestamp for time of last call
+// TODO add a timestamp for time of last reset
+static short	 global_enable = STACKTRACE_OFF;	// STACKTRACE_ON, STACKTRACE_OFF or STACKTRACE_FULL; starts OFF till init_bsd
+
+/*
+ * Initialize buffer pointers.
+ * Sets global: buffer_basep, buffer_workp
+ */
+static void
+initpointers(void)
+{
+	struct stacktrace_buf_head *buffer_headp;
+
+	if (buffer_basep == NULL) {
+		buffer_basep = (char *)kalloc(bufsize);
+		if (buffer_basep == NULL)
+			printf("stacktrace: cannot kalloc %d\n", bufsize);
+		printf("stacktrace: kalloc %d %x\n", bufsize, buffer_basep);
+	}
+	buffer_headp = (struct stacktrace_buf_head *)buffer_basep;
+	buffer_workp = &(buffer_headp->next);
+	printf("stacktrace: buffer reset %x\n", buffer_workp);
+	// TODO add a timestamp for buffer reset
+} // initpointers
+
+#if 0
+/*
+ * Return 1 if a pointer could be a code return address.
+ */
+static int
+validcodeptr(const char *cp)
+{
+
+	if ((cp != 0) && (((vm_address_t)cp & 0x80000000) == 0))
+		return (1);
+	else
+		return (0);
+} // validcodeptr
+#endif
+
+/*
+ * Return 1 if a pointer could be a stack frame pointer.
+ */
+static int
+validstackptr(const char *sp, const char *prevsp)
+{
+
+	if ((sp != 0) && (((vm_address_t)sp & 0xf) == 0) &&
+	    ((vm_address_t)sp < 0xb0000000) && (sp > prevsp))
+		return (1);
+	else
+		return (0);
+} // validstackptr
+
+/*
+ * Internal routine that does the trace, inspired by kernel debug macros and
+ * model_dep code in osfmk/ppc.  This is a PPC only version for now.
+ */
+// Static trace buffers, one per recursion depth
+struct onetracehead {
+	short	function;
+	short	ntracelines;
+};
+
+struct onetraceline {
+	long	stackloc;
+	long	codeloc;
+};
+
+struct onestacktrace {
+	struct onetracehead	tracehead;
+	struct onetraceline	tracelines[10];
+};
+
+@@@define MAXDEPTH 11
+static struct	onestacktrace tempbuff[MAXDEPTH];
+static int	recursion_depth = 0;
+
+// dcls for packing trace into return structure
+struct allocated_traceline {
+	struct onetraceline	t;
+	struct onetraceline	next_traceline; // not real storage, just get addr
+};
+
+struct allocated_tracehead {
+    struct onetracehead h;
+    struct onetraceline first_traceline; // not real storage, just get addr
+};
+
+// byte offsets of items in stack frame, should dcl as struct
+@@@define PPCLROFFSET 8
+@@@define PPCBACKPTROFFSET 0
+
+static void
+trace(struct function_info *trace_argsp)
+{
+	int call_depth;
+	
+	if ((global_enable == STACKTRACE_ON) &&
+	    (trace_argsp->onoff == STACKTRACE_ON) &&
+	    (buffer_basep != NULL)) {
+		call_depth = hw_atomic_add(&recursion_depth, 1);
+		if (call_depth > global_naxdepth)
+			global_naxdepth = call_depth;
+		if (call_depth >= MAXDEPTH)
+			printf("mac_stacktrace: recursion %d", call_depth);
+		else {	// maxdepth ok
+			global_ncalls++;
+			// TODO set timestamp for time of last call
+			// Perform the trace into one of the ten temp buffers.
+			tempbuff[call_depth].tracehead.function = trace_argsp->num;
+			int nlines = 0;
+			int bytesize = sizeof(struct onetracehead);
+			char *mysp;
+			char *prevsp = 0;
+			char *stackframe_return_ptr;
+			__asm__ volatile("mr %0,r1" : "=r" (mysp));	// Get current stack ptr. PPC only.
+			if (validstackptr(mysp, prevsp)) {
+				prevsp = mysp;
+				mysp = (char *)(*((int *)(mysp+PPCBACKPTROFFSET)));	// Skip stack frame of trace.
+				if (validstackptr(mysp, prevsp)) {
+					prevsp = mysp;
+					mysp = (char *)(*((int *)(mysp+PPCBACKPTROFFSET)));	// Skip stack frame of mac_stacktrace.
+					while (validstackptr(mysp, prevsp)) {
+						stackframe_return_ptr = (char *)(*((int *)(mysp+PPCLROFFSET)));	// PPC offset of link reg.
+						tempbuff[call_depth].tracelines[nlines].stackloc = (long)mysp;
+						tempbuff[call_depth].tracelines[nlines].codeloc = (long)stackframe_return_ptr;
+						nlines++;
+						bytesize += sizeof(struct onetraceline);
+						prevsp = mysp;	// to check that sp keeps increasing
+						mysp = (char *)(*((int *)(mysp+PPCBACKPTROFFSET)));	// PPC offset of back ptr.
+					} // while
+				}
+			}
+			// Done with tracing, is there room to add this trace to the buffer?
+			if ((buffer_workp+sizeof(struct stacktrace_buf_head)+bytesize) > (buffer_basep+bufsize)) {
+				if (global_fullbuffer_action == FULLBUFF_RESET) {
+					initpointers();	// Reset the buffer to empty.
+					global_resets++;
+				} else if (global_fullbuffer_action == FULLBUFF_STOP)
+					global_enable = STACKTRACE_FULL;
+					printf("stacktrace: buffer full, tracing disabled\n");
+			}
+			// copy the temp slot into buffer, hopefully no page fault
+			// TODO lock buffer, disable tracing
+			struct allocated_tracehead *thp = (struct allocated_tracehead *)buffer_workp;
+			thp->h.function = tempbuff[call_depth].tracehead.function;	// Put the header in the buffer.
+			struct allocated_traceline *tlp = (struct allocated_traceline *)&(thp->first_traceline);
+			int i;
+
+			for (i = 0; i < nlines; i++) {
+				tlp->t.stackloc = tempbuff[call_depth].tracelines[i].stackloc;
+				tlp->t.codeloc = tempbuff[call_depth].tracelines[i].codeloc;
+				tlp = (struct allocated_traceline *)&(tlp->next_traceline);
+			}
+			thp->h.ntracelines = nlines;
+			buffer_workp = (char *)tlp; // Point to new free space.
+			// TODO enable tracing, unlock buffer
+			hw_atomic_sub(&recursion_depth, 1);
+		} // maxdepth ok
+	} // if global_enable
+} // trace
+
+// ================================================================
+/*
+ * Syscall machinery.
+ */
+static int
+stacktrace_syscall(struct proc *td, int call, void *args, int *retv)
+{
+	struct stacktrace_user_args p;
+	int err = EINVAL;
+
+	switch(call) {
+	case STACKTRACECALL_ORDER:
+		/*
+		 * Command stacktrace module to control tracing.
+		 */
+		if (copyin(args, &p, sizeof(struct stacktrace_user_args)))
+			return (EFAULT);
+		if (p.version != STACKTRACE_INTERFACE_VERSION)
+			return (err);
+
+		switch (p.param) {
+		case STACKTRACE_ON:
+			/*
+			 * If tracing goes from off too on, reset the buffer.
+			 */
+			if (global_enable != STACKTRACE_ON) {
+				initpointers();
+				global_enable = STACKTRACE_ON;
+			}
+			err = 0;
+	    		break;
+
+		case STACKTRACE_OFF:
+#if 0
+			if (global_enable == STACKTRACE_ON) {
+				kfree((vm_offset_t)buffer_basep, bufsize);
+				buffer_basep = NULL;
+	    		}
+#endif
+	    		global_enable = STACKTRACE_OFF;
+			err = 0;
+			break;
+
+		case FULLBUFF_RESET:
+			global_fullbuffer_action = FULLBUFF_RESET;
+			err = 0;
+			break;
+
+		case FULLBUFF_STOP:
+			global_fullbuffer_action = FULLBUFF_STOP;
+			err = 0;
+			break;
+
+		default:
+			err = EINVAL;
+			break;
+		}
+		break;
+
+	case STACKTRACECALL_GETBUF:
+		/*
+		 * deliver the buffer to userland and reset it.
+		 */
+		if (copyin(args, &p, sizeof(struct stacktrace_user_args)))
+			return (EFAULT);
+		if (p.version != STACKTRACE_INTERFACE_VERSION)
+			return (err);
+		if (p.bufmaxsize < 0)
+			return (err);
+		if (buffer_basep == NULL)	/* Early call? */
+			return (err);
+		short prev_global_enable = global_enable;
+		/*
+		 * Disable tracing in case of page faults during copyout().
+		 */
+		global_enable = STACKTRACE_OFF;
+
+		/*
+		 * Calculate number of bytes used in buffer.
+		 */
+		int nbytes = (buffer_workp - buffer_basep);
+		if (p.bufmaxsize < nbytes)
+			nbytes = p.bufmaxsize;	/* Don't overrun user. */
+		struct stacktrace_buf_head *buffer_headp =
+		    (struct stacktrace_buf_head *)buffer_basep;
+		buffer_headp->version = STACKTRACE_INTERFACE_VERSION;
+		buffer_headp->ncalls = global_ncalls;
+		buffer_headp->bufwraps = global_resets;
+		buffer_headp->maxdepth = global_naxdepth;
+
+		/*
+		 * TODO: Return timestamps for the last reset and last call,
+		 * .. also buffersize, global_fullbuffer_action, and
+		 * global_enable.
+		 */
+		printf("stacktrace: copyout %d %d\n", nbytes, global_ncalls);
+		err = copyout(buffer_basep, p.userbuffp, nbytes);
+		initpointers(); // reset buffer to empty
+
+		/*
+		 * Restore master trace setting following copyout() and
+		 * buffer reset.  If we had disabled tracing due to a full
+		 * buffer, enable it now that the buffer has been flushed.
+		 */
+		global_enable = (prev_global_enable == STACKTRACE_FULL) ?
+		    STACKTRACE_ON : prev_global_enable;
+		break;
+
+    	default:
+		err = EINVAL;
+		break;
+	}
+
+	return (err);
+} // stacktrace_syscall
+
+// ================================================================
+
+static void
+stacktrace_init_bsd (struct mac_policy_conf *mpc)
+{
+	/*
+	 * We don't trace anything before this call.  Thus we miss two calls:
+	 * to init and init_task_label (from machine_startup -> setup_main).
+	 */
+	global_enable = STACKTRACE_ON;
+	initpointers();
+	trace(&init_bsd_td);
+}
+#include "stubs.in"
+#include "policy_ops.in"
+
+@@@if 0
+MAC_POLICY_SET(&mac_stacktrace_ops, mac_stacktrace, "MAC/Stacktrace",
+    MPC_LOADTIME_FLAG_UNLOADOK, NULL);
+@@@endif
+
+static char *labelnamespaces[MAC_STACKTRACE_LABEL_NAME_COUNT] =
+	{ MAC_STACKTRACE_LABEL_NAME };
+
+struct mac_policy_conf stacktrace_policy_conf = {
+	.mpc_name		= MAC_STACKTRACE_LABEL_NAME,
+							/* policy name */
+	.mpc_fullname		= POLICY_DESC,		/* full name */
+	.mpc_labelnames		= labelnamespaces,	/* label namespaces */
+	.mpc_labelname_count	= MAC_STACKTRACE_LABEL_NAME_COUNT,
+							/* namespace count */
+	.mpc_ops		= &stacktrace_ops,	/* policy operations */
+	.mpc_loadtime_flags	= 0,			/* loadtime flags*/
+	.mpc_field_off		= &stack_slot,		/* security field */
+	.mpc_runtime_flags	= 0			/* runtime flags */
+};
+
+static kern_return_t
+kmod_start(kmod_info_t *ki, void *xd)
+{
+
+	return (mac_policy_register(&stacktrace_policy_conf));
+}
+static kern_return_t
+kmod_stop(kmod_info_t *ki, void *data)
+{
+
+	return (mac_policy_unregister(&stacktrace_policy_conf));
+}
+
+extern kern_return_t	_start(kmod_info_t *ki, void *data);
+extern kern_return_t	_stop(kmod_info_t *ki, void *data);
+
+KMOD_EXPLICIT_DECL(security.stacktrace, POLICY_VER, _start, _stop);
+kmod_start_func_t	*_realmain = kmod_start;
+kmod_stop_func_t	*_antimain = kmod_stop;
+int			 _kext_apple_cc = __APPLE_CC__;

@@ -1,0 +1,335 @@
+MAC Framework for Darwin 7.3.8
+Installation Document 
+---------------------------------
+
+This document describes how to install and configure the DSEP
+software, including the TrustedBSD MAC Framework on Darwin.
+ 
+Manual build and install procedures
+-----------------------------------
+
+Step 1: Mac OS X Panther 10.3.8
+
+  Install Mac OS X 10.3.8 using the directions found in system-setup.txt.
+
+  Enabling sshd (under "Remote Login" in "Sharing" control panel) will
+  help in recovering systems that boot, but can't login graphically.
+
+
+Step 2: Check out source tree
+
+  In this step, untar the distribution tarball; the modified darwin
+  source code is in the src sub-directory.
+
+  Inside the source root are several high level source drops, each of
+  which contains one or more packages:
+
+    darwin                     Modified Apple Darwin with MAC Framework
+    ipctrace                   Mach IPC Tracing module + tools
+    mactest                    Regression test MAC policy module
+    mac_mls                    Multi-Level Security confidentiality module
+    mac_none                   Example module, the minimum required
+    mac_stub                   Example module, no-op for all entry points
+    sedarwin                   FLASK/TE policy module + tools
+    stacktrace                 Debugging tool to capture stack traces
+
+  In addition, you will see a high level Makefile, Makeconfig.in, and
+  README files as well as a release engineering directory.
+
+  The remaining steps will assume that the current working directory at
+  the start of each step is the root of the source tree.
+
+  All necessary basic development tools to build Darwin should be
+  installed as a result of following the system-setup.txt instructions.
+
+
+Step 3: Configure build environment
+
+  You will need to customize a file named Makeconfig.in in the branch
+  root directory so that the proper set of modules is built and
+  installed.  Edit the two variables to specify the security modules
+  that you would like to build and the modules you would like to
+  install on the system.  The mac_mls module is the default policy,
+  but others are available.
+
+    BUILD_MODULES   ?= sedarwin ipctrace mactest mac_mls mac_none mac_stub \
+			stacktrace
+    INSTALL_MODULES ?= mac_mls
+
+  If modules are built but not installed, you can install them later by
+  extracting the *.kext.tar tarfile from the module source directory
+  into /System/Library/Extensions.
+
+  The top level Makefile will use Makeconfig.in to generate a
+  configuration file, Makeconfig that will be used by the build
+  system.  Two variables will be filled out using the current user
+  account and working directory.  If the build should fail, please
+  verify that correct variables have been entered into the Makeconfig
+  generated file.
+
+  The SOURCE_ROOT variable should point at the source directory.  If
+  this variable isn't correctly set, include files and libaries may be
+  reported as missing (most likely in libextattr, the first sources
+  requiring this variable).
+
+    SOURCE_ROOT=/Users/cvance/src/work/prototype
+
+  In order to override the owner and groups that are set by system
+  installation tools, the EXPORT_OWNER variable must be set to the
+  user name of the person building the system.  If this variable isn't
+  set to a valid user on the build system, the install program will
+  fail.
+
+    EXPORT_OWNER = cvance
+
+
+Step 4: Build build tools, kernel, libraries, commands, policy modules
+
+  A top-level makefile automates the build process.  To build each of the
+  high level distributions (darwin, mactest, sedarwin, mac_mls, ipctrace)
+  including kernel, libraries, program binaries, and policy modules, run
+  the following command from the root of the source tree:
+
+    make
+
+
+Step 5: Prepare distribution directory 
+
+  To install the kernel, libraries, and program binaries into the
+  temporary distribution directory, run the following command from the top
+  level of the source tree:
+     
+    make install
+
+
+Step 6: Create system upgrade tarfile
+
+  To create a tarfile containing all the new libraries and system
+  binaries, run the following command from the top level of the source
+  tree:
+
+    make dist
+
+  This will create a compressed tarfile from the temporary distribution
+  directory.  The file will be called, "macmls.tgz" and it will be
+  created in the root of the source tree.
+
+  This tarfile can be used to install on the current machine, or any other
+  appropriately updated 10.3.8 system.  The following steps presume that
+  you have copied the tar file to the target machine.
+
+
+Step 7: Boot target system
+
+  Boot the installation system using the target partition by selecting the
+  partition in System Preferences -> Startup Disk and then rebooting.  
+  This will verify that the unmodified target system is functional and
+  permit a stable root directory for helper scripts.  Transfer the
+  macmls.tgz tarfile to this system.
+
+  You can verify that you are booted to the correct partition by listing
+  the files in /Volumes; make sure the volume linked to "/"  has the
+  appropriate name.
+
+  If this system contains a previous version of the Darwin framework
+  and old security modules, the old modules should probably be
+  removed; if there have been significant changes to the framework,
+  the older modules will be incompatible.  Remove the appropriate KEXT
+  bundles from /System/Library/Extensions.  For example:
+
+    sudo rm -rf /System/Library/Extensions/sedarwin.kext
+    sudo rm -rf /System/Library/Extensions/mac_test.kext
+
+
+Step 8: Backup files
+
+  If the target partition/machine contains binaries that you do not wish
+  to overwrite, you may wish to back them up first.  In particular, if you
+  do not have a second bootable partition on the machine, you probably
+  want to save the original kernel (and possibly turn on remote login).
+
+
+Step 9: Extract distribution
+  
+  Extract the distribution tarfile from the root of the target machine:
+
+    cd /
+    sudo gnutar xvzf macmls.tgz
+
+  Note, there may be some remaining issues with the way in which the boot
+  loader has been replaced.  To be safe, it is best to run the bless
+  command to make certain the partition will still be bootable:
+
+    sudo bless -folder /System/Library/CoreServices \
+        -bootinfo /usr/standalone/ppc/bootx.bootinfo
+
+  Also note that if bless is being used to mark a partition that is
+  different from the current partition that the appropriate /Volume/<name>
+  path should be prepended each filename in the above command, and the
+  -setBoot option should also be added.
+
+Step 10: Backup and Replace the WindowServer (SEDarwin only)
+
+  The distribution includes a shell script to replace Apple's Login Window
+  application with a wrapper that modifies the login process.  Run the
+  script:
+
+    sudo /etc/sedarwin/install-windowserver.sh
+
+
+Step 11(a): Create Extended Attribute File (SEDarwin only)
+
+  The distribution includes a shell script that creates an extended
+  attribute backing file for the SEDarwin policy module.  Run the script:
+
+     sudo /etc/sedarwin/create-extattr.sh
+
+  This will allocate storage space for MAC labels on the root file system.  
+  You may wish to run similar commands on other file systems, but it is
+  not required at this point.  If you would like to create backing files
+  on other partitions, run the following commands, replacing
+  "/Volumes/Spare" with the root of the appropriate file system:
+
+    sudo mkdir -p /Volumes/Spare/.attribute/system
+    sudo extattrctl initattr -p /Volumes/Spare -i "system_u:object_r:file_t" \
+        256 /Volumes/Spare/.attribute/system/sebsd
+
+
+Step 11(b): Create Extended Attribute File (MLS only)
+
+  Run the following two commands to allocate storage space for MLS
+  labels on the root file system.
+
+    sudo mkdir -p /.attribute/system
+    sudo extattrctl initattr -p / 112 /.attribute/system/mac_mls
+
+
+Step 12: Configure Policy path (SEDarwin only)
+
+  The system boot loader needs to know where the SEDarwin policy file is
+  located; at boot time, it reads the location from the system firmware.  
+  Set the location in the firmware with the following command:
+
+    sudo nvram load_sebsd_policy=policy.16
+
+  Our sample policy file, users, ships with some predefined users.
+  Chances are, you'll want to add entries for your own user accounts
+  based on one of the existing entries.  The policy sources were
+  installed into /etc/sedarwin/policy; make changes there, rebuild,
+  and install the binary policy file:
+
+    cd /etc/sedarwin/policy
+    [edit as root]
+    sudo make
+    sudo make install
+
+
+Step 13: Reboot in Single User Mode (SEDarwin only)
+
+  At this point, you should now have a new Darwin kernel, support
+  libraries, command line tools, and configuration files installed.  
+  Reboot to single-user mode by holding down Command-S during the boot.  
+  Check the file system and mount the root file system writable:
+
+    /sbin/fsck -y
+    /sbin/mount -uw /
+
+  Now set the label on various binaries so they can transition during
+  system startup:
+
+    sudo /etc/sedarwin/sebsd-relabel.sh
+
+  Missing this step will result in the login window failing to start,
+  login attempts failing, or the entire system not working if enforcing
+  mode is enabled.
+
+  The relabel script may print two warnings, it is safe to ignore them:
+
+    Warning: transactions not supported in EA write.
+    setfmac: traversing /usr/local/bin/*: No such file or directory
+
+
+Step 14: Reboot 
+
+  A reboot is required in order for the extended attributes to be
+  recognized by the system.
+
+  If you were in single user mode to set initial file labels, run
+  'reboot' from the console.  Otherwise, restart the machine normally.
+
+
+Step 15: Verify System Functionality
+
+  After booting and logging into the system, verify that you have booted
+  to the correct kernel by running 'uname -a'.
+
+  You can run 'kextstat' to verify that the selected security modules
+  have been loaded:
+    $ kextstat |head
+    Index Refs Address    Size       Wired      Name (Version) <Linked Against>
+	1    1 0x5ec9000  0x19000    0x18000    security.sedarwin (*)
+	2    1 0x5eee000  0xd000     0xc000     security.mac_test (*)
+	3    1 0x610d000  0x213000   0x212000   security.ipctrace (*)
+	4    1 0x0        0x0        0x0        com.apple.kernel (7.3)
+	...
+
+  You may also run some of the new utilities to retrieve process and file
+  labels for any loaded policies.
+
+  If the SEDarwin policy is loaded, you will see something like the following:
+
+    $ getpmac
+    sebsd/cvance:user_r:user_d
+
+
+    $ getfmac /bin/bash 
+    /bin/bash: sebsd/system_u:object_r:shell_exec_t
+
+
+    $ ps -axZ
+    LABEL                              PID  TT  STAT      TIME COMMAND
+    sebsd/system_u:system_r:init_d       1  ??  Ss     0:00.09 /sbin/init 
+    sebsd/system_u:system_r:init_d       2  ??  Ss     1:55.32 /sbin/mach_i
+    sebsd/system_u:system_r:pbs_d      343  ??  Ss     0:00.27 /System/Libr
+    sebsd/cvance:user_r:user_d         349  ??  S      0:00.96 /System/Libr
+      ...
+
+
+    $ ls -Z /bin
+    sebsd/system_u:object_r:bin_t        [
+    sebsd/system_u:object_r:shell_exec_t bash
+    sebsd/system_u:object_r:bin_t        cat
+    sebsd/system_u:object_r:bin_t        chmod
+    sebsd/system_u:object_r:bin_t        cp
+    ...
+
+  If the MLS policy is loaded, you will see something like the following:
+
+    $ getpmac
+    mls/low(low-high)
+
+
+    $ getfmac /bin/bash 
+    /bin/bash: mls/equal
+
+
+    $ ps -axZ
+    LABEL                 PID  TT  STAT      TIME COMMAND
+    mls/low(low-high)       1  ??  Ss     0:00.00 /sbin/init 
+    mls/low(low-high)       2  ??  Ss     0:00.07 /sbin/mach_init
+    mls/low(low-high)      76  ??  Ss     0:00.05 /usr/sbin/syslogd -s -m 0
+    mls/low(low-high)      82  ??  Ss     0:01.67 kextd
+      ...
+
+
+    $ ls -Z /bin
+    mls/equal  [
+    mls/equal  bash
+    mls/equal  cat
+    mls/equal  chmod
+    mls/equal  cp
+    mls/equal  csh
+    ...
+
+  More information on using each of the security policy modules is 
+  available in the docs directory. 

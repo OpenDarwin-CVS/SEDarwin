@@ -1,0 +1,10 @@
+user system_u roles system_r;
+user user_u roles user_r;
+user root roles { user_r sysadm_r };
+user andrew roles { user_r user_secret_r };
+user rwatson roles { user_r user_secret_r };
+user cvance roles { user_r user_secret_r };
+user millert roles { user_r user_secret_r };
+user robdeker roles { user_r user_secret_r };
+user pleblanc roles { user_r user_secret_r };
+user test roles { user_r user_secret_r };

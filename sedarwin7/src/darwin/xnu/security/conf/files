@@ -1,0 +1,19 @@
+# options
+
+# OPTIONS/kdebug                                              optional kdebug
+
+# security
+
+security/mac_audit.c					standard
+security/mac_base.c					standard
+security/mac_label.c					standard
+security/mac_task.c					standard
+security/mac_port.c					standard
+security/mac_process.c					standard
+security/mac_vfs.c					standard
+security/mac_system.c					standard
+security/mac_sysv_sem.c					standard
+security/mac_sysv_shm.c					standard
+security/mac_posix_sem.c				standard
+security/mac_posix_shm.c				standard
+security/mac_socket.c					standard

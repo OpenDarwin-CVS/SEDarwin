@@ -1,0 +1,6 @@
+#!/bin/sh
+for i in `grep dir $1| awk '{print $1" "$3}' | sed s/\"//g | sort -u`; do
+        echo "digraph G {" > $i.dot
+        grep $i $1 >> $i.dot
+        echo "}" >> $i.dot
+done

@@ -1,0 +1,47 @@
+.TH "get_ordered_context_list" "3" "1 January 2004" "russell@coker.com.au" "SE Linux API documentation"
+.SH "NAME"
+get_ordered_context_list, get_default_context, query_user_context \- determine context(s) for user login sessions
+
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.br
+.B #include <selinux/get_context_list.h>
+.sp
+.BI "int get_ordered_context_list(const char *" user ", security_context_t "fromcon ", security_context_t **" list );
+.sp
+.BI "int get_default_context(const char *" user ", security_context_t "fromcon ", security_context_t *" newcon );
+.sp
+.BI "int query_user_context(security_context_t *" list ", security_context_t *" newcon );
+.sp
+.BI "int manual_user_enter_context(const char *" user ", security_context_t *" newcon );
+
+
+.SH "DESCRIPTION"
+.B get_ordered_context_list
+queries the SE Linux policy database in the kernel and some configuration files
+to determine an ordered list of contexts that may be used for login sessions.
+The list must be freed with freeconary. The possible roles and domains will be
+read from
+.B /etc/security/default_contexts
+and
+.B .default_contexts
+in the home directory of the user in question.
+
+.B get_default_context
+is the same as get_ordered_context_list but only returns a single context
+which has to be freed with freecon.
+
+.B query_user_context
+takes a list of contexts, queries the user via stdin/stdout as to which context
+they want, and returns a new context as selected by the user (which has to be
+freed with freecon).
+
+.B manual_user_enter_context
+allows the user to manually enter a context as a fallback if a list of
+authorized contexts could not be obtained. Caller must free via freecon.
+
+.SH "RETURN VALUE"
+0 for success and on error -1 is returned.
+
+.SH "SEE ALSO"
+.BR freeconary "(3), " freecon "(3), " security_compute_av "(3)"

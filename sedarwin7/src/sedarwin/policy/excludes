@@ -1,0 +1,6 @@
+policy/excludes
+policy/Makefile.install
+policy/create-extattr.sh
+policy/sebsd-relabel.sh
+policy/failsafe_context
+policy/flask

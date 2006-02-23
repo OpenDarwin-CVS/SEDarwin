@@ -1,0 +1,44 @@
+SEDarwin - SELinux compatible type enforcement
+----------------------------------------------
+
+Follow the build instructions to yield a system with sedarwin
+installed, and the sample TE policy configured. If you have built the MLS
+module, move it out of the Extensions directory and reboot (MLS will prohibit
+TE domain transitions).
+
+First, enable enforcing mode by running:
+
+    sudo nvram kenv_sebsd_enforce=1
+
+from the shell (by default, the TE module runs in permissive mode, logging
+access control failures but not enforcing them) and set some file labels.
+TE labels are of the form user:role:type. When passed to or from the
+system, labels begin with the name specifically to the policy module (in
+this case, sebsd, which was the precursor to sedarwin).  Objects use the
+object_r "role".
+
+Some sample usage to illustrate protections being enforced:
+
+    $ getpmac
+    sebsd/andrew:user_r:user_d
+    $ touch test_readonly
+    $ setfmac sebsd/andrew:object_r:readonly_t test_readonly
+    $ echo > test_readonly
+    test_readonly: Permission denied
+    $ touch test_secret
+    $ setfmac sebsd/andrew:object_r:secret_t test_secret
+    $ cat test_secret
+    test_secret: Permission denied
+
+In a new shell:
+
+    2$ mexec sebsd/andrew:user_r:protected_d /bin/bash
+    2$ getpmac
+    sebsd/andrew:user_r:protected_d
+    2$ echo $$
+    700
+
+Back in the original shell,
+
+    $ kill 700
+    -bash: kill (700) - Operation not permitted

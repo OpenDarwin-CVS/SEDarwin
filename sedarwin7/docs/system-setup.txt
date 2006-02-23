@@ -1,0 +1,381 @@
+When preparing a system, you will need to install Mac OS X 10.3.3 on
+four partitions, providing a production environment, static build
+environment, and two test environments.  In the first pass through
+these instructions, you will need to set up the disk layout in order
+to create the necessary partitions.  In later passes, you will
+simply select successive partitions to install onto those partitions.
+
+Installing Mac OS X 10.3.3 requires first installing Mac OS X 10.3
+from CDROM, then running the combined Mac OS X 10.3.3 Updater, which
+will add all necessary software updates.  The install instructions
+will ask you to decline any automatic software updates, and disable
+automatic polling for updates.  To install the software update, you
+will first be asked to install the Perforce software so that you
+can check the update out of Perforce.
+
+WARNING: Do not download or install any software updates except as
+instructed in this document, or your build and test environments may
+become out of sync with the source code and binaries found in Perforce.
+This may result in hard-to-predict and difficult-to-diagnose problems
+that will delay your work.
+
+WARNING: The partitioning steps will delete all data from the hard
+disk, including any existing operating system, applications, users,
+etc.
+
+NOTE: During the installation, we assume that your system will be plugged
+directly into an Ethernet routed to/via the McAfee Research Mission
+Network.  If that is not the case, network and Perforce configuration
+steps may not match these instructions.
+
+
+Boot the Install CD-ROM
+-----------------------
+
+Insert the CDROM labeled "Mac OS X Panther Version 10.3 Install Disc 1",
+  and reboot the system.  You may need to hold down "C" during boot to
+  boot from the CDROM instead of the hard disk.
+
+Select "English" for the main language, click "Continue".
+
+
+First Install: Partitioning
+---------------------------
+
+When the "Install Mac OS X" window comes up, go to the "Installer"
+  menu on the menu bar and select "Open Disk Utility...".
+
+When the "Disk Utility" window appears, and it has probed the system
+  configuration, you will see a device and storage tree.  The left-most
+  "devices" are the physical drives; as the tree becomes indented, you
+  see disk slices and partitions, followed by file systems.  Select
+  the physical device for the hard disk you wish to install on.  On
+  my system, the name is "74.5GB Maxtor 4D080H4".
+
+Click the "Partition" tab to go to the partitioning pane for your disk
+  device.  You will see the current partition scheme: for new systems,
+  this is likely a single large partition named "Macintosh HD".  Or,
+  if you've repartitioned the system already, you will see your current
+  partitioning.
+
+Select a the "4 Partitions" option from the pop-up menu named "Volume
+  Scheme", which by default will be set to "Current".  This will split
+  your disk into four evenly sized partitions, each "Mac OS X Extended
+  (Journalled)".  On my system, they are each approximately sized as
+  18.63GB.  Make sure that each partition is at least 8GB.
+
+Select each partition by clicking on the partition in the graphic
+  representing disk layout, and change the name of the partition.  We
+  recommend naming the first partition "Live System", then naming the
+  remaining partitions as "Build System", "Test #1", and "Test #2".
+
+When you are done renaming the partitions and happy with the partition
+  layout, click the "Partition" button to commit the changes.  A
+  confirmation dialog will appear, asking you to confirm that you wish
+  to repartition the disk (destroying any data already present).  Click
+  the "Partition" button in the dialog to continue.
+
+When partitioning is complete, control will be returned to the "Disk
+  Utility" window.  To return to the installer, select "Quit Disk
+  Utility" from the "Disk Utility" pull-down menu on the menu bar.
+
+
+All Installs: the Installation Process
+--------------------------------------
+
+When the "Install Mac OS X" window appears, click the "Continue" button.
+
+An "Important Information" file will appear; you may wish to read this
+  file on the first install to understand the hardware requirements.
+  However, all project hardware should work with this release of Mac OS X.
+  When you are done, click the "Continue" button.
+
+A single use license will appear.  Press the "Continue" button to agree
+  to the license.  A dialog box will appear to confirm the license;
+  click the "Agree" button to continue.
+
+The "Select a Destination" pane will appear, listing all available
+  partitions on which to install.  If this is your first install, select
+  "Live System".  Otherwise, select the partition that you plan to install
+  to next.  When a partition is successfully selected, a green arrow
+  should appear over the highlighted partition.
+
+If you are doing a reinstall of an existing partition, you may wish to
+  press the "Options" button in order to select the installation model.
+  There will be up to three options, depending on whether an existing
+  install is present on the partition.  You may select:
+
+  - "Install Mac OS X"; this option should only be available during a
+    first time install on a blank partition.  Use this option if this
+    is a fresh install.
+
+  - "Archive and Install"; this option will be available when installing
+    to a disk with an existing install, such as an older version of
+    Mac OS X.  You may wish to select this option, but be aware that this
+    option may not completely restore a partition to a working state
+    following corruption of critical data files in the TrustedBSD install
+    that Mac OS X is not aware of.  Use of this option is discouraged.
+
+  - "Erase and Install"; this option will delete all software and data
+    on the target partition and perform a fresh install.  This is the
+    recommended way to replace an existing broken test system, or restore
+    a system to a known state following an accidental update.
+
+  When happy with your selection, press the "OK" button to continue.
+
+Press the "Continue" button when the right partition is selected in the
+  "Select a Destination" pane.
+
+The "Easy Install on <partition name>" pane will appear, denoting that
+  the default installation parameters will be used.  Press the "Install"
+  button to continue.  Customization is generally not necessary.
+
+The installation process will begin with a check of the installation
+  media in the "Install Software" pane.  This may take several minutes
+  to complete.
+
+Once the installation media check is complete, the installation will
+  proceed in the "Install Software" pane.  The installation may take
+  several minutes to complete.
+
+Once the installation is complete, you can click the "Restart" button,
+  or Mac OS X will automatically restart after 30 seconds to complete
+  the install.
+
+Following the reboot, Mac OS X will boot off of the hard disk and
+  request the CDROM named "Mac OS X Panther Version 10.3 Install Disc 2"
+  via an "Installer" dialog box.  Remove the first CD, and insert the
+  second installation CD.  More installation will occur, and may take
+  several minutes to complete.
+
+Once the second CDROM has installed, the CD will be ejected, and you
+  will be prompted to press the "Quit" button to move onto registration
+  and configuration.  You will also get a song.  Click the "Quit"
+  button (if you don't press it within 30 seconds, the install will
+  continue to registration anyway).
+
+
+Installer Configuration
+-----------------------
+
+The Installer will present a "Welcome" window, and ask you to identify
+  your country or region.  Select "United States" and click the "Continue"
+  button.
+
+The Installer will present a "Personalize Your Settings" window.  Select
+  "US" and then click the "Continue" button.
+
+The Installer will present a "Your Apple ID" window.  Select "Don't
+  create an Apple ID for me".  Click the "Continue" button.
+
+The Installer will present a "Registration Information" window.  Enter
+  your first and last name, street address of your office, city,
+  state, zip code, and office phone number.  Then click the "Continue"
+  button.
+
+The Installer will present an "A Few More Questions" window.  Select
+  "Large Business" as the location of primary use.  Select "Engineering/
+  Scientist/Researcher" as the description.  Select "No" to avoid
+  receiving marketing e-mail from Apple.  Click the "Continue" button.
+
+The Installer will present a "Thank You" window.  Click the "Continue"
+  button.
+
+The Installer will present a "Create Your Account" window.  We suggest
+  selecting the same username that you use for nailabs.com account and
+  Perforce account.  Enter your full name, account name, login password
+  (twice), and if you feel moved, select a picture.  Click the "Continue"
+  button.  The Installer will create your account.
+
+The Installer will present a "Get Internet Ready" window.  Select the
+  "I'll use my existing Internet service" option.  Click the "Continue"
+  button.
+
+The Installer will present a "How Do You Connect?" window.  Select the
+  "Local network (Ethernet)" option.  Click the "Continue" button.
+
+The Installer will present a "Your Local Area Network" window, with
+  options depending on whether your system is connected to the network.
+  If your system is connected to a network providing DHCP service (as
+  found on the McAfee Research Mission Network), you will be asked
+  whether you wish to use DHCP-obtained network configuration.  Select
+  "Yes" and click the "Continue" button.  Otherwise, you will need to
+  customize this configuration locally.
+
+The Installer will present a "Get .Mac" window.  Select "I'll set up
+  a .Mac membership later."  Click the "Continue" button.
+
+The Installer will present a "Now You're Ready to Connect" window.
+  Click the "Continue" button.  The Installer will submit your product
+  registration to Apple electronically and then proceed.
+
+The Installer will present a "Set Up Mail" window.  Press the "Continue"
+  button.
+
+The Installer will present a "Select Time Zone" window.  Select an
+  appropriate time zone.  Click the "Continue" button.
+
+The Installer will present a "Thank You" window.  Click the "Go" button.
+
+
+Post-Install Configuration
+--------------------------
+
+The system will now log in as your user and present the desktop.  You will
+first skip the automatic software update attempt, and disable future
+automatic software updates to prevent your system from becoming out of
+sync with our development and testing environment.  You will then add
+the Terminal application to the Dock so that it is easily accessible, as
+the Terminal will be used frequently in this work.
+
+NOTE: The Mac OS X Dock is the row of icons present along the bottom of the
+  screen, and may be used to launch new applications, as well as to
+  monitor the set of running applications.
+
+Mac OS X will immediately poll for available updates via the Software
+  Update tool.  DO NOT INSTALL ANY SOFTWARE UPDATES.  Due to our
+  requirement for reproduceable builds and testing, you may only install
+  approved software packages and updates.  Press the "Quit" button to
+  abort the Software Update.
+
+Click the System Preferences icon on the Dock; this icon will contain
+  a light switch and Apple logo.
+
+Once the System Preferences application loads, click the Software Update
+  icon from the System row.  Uncheck the "Check for updates" check-box
+  in the Update Software tab.  This will disable attempts to automatically
+  update the operating system and applications.  Close System Preferences.
+
+Click on the Applications icon in the left Pane of the Finder window
+  that was present when you completed the install.  If you have closed
+  the Finder window, re-open it by clicking the Finder icon on the Dock.
+
+Scroll the Finder window down and double click the Utilities icon.
+
+Scroll the Finder window down and drag the Terminal icon to the right of
+  the System Preferences icon on the Dock.  You will now be able to
+  click the Terminal icon in the Dock to launch the Terminal application.
+
+Close the Finder window.
+
+
+Installing XCode
+----------------
+
+You will now install the XCode development environment, which includes
+online documentation, compiler suites, and various tools to assist in
+the development process.
+
+Insert the CDROM named "Mac OS X Xcode Tools version 1.0".  A CDROM icon
+  will appear on the Desktop, and a Finder window named "Xcode Tools"
+  should appear.  If it doesn't, double-click the "Xcode Tools" CDROM
+  icon on the Desktop.
+
+Double click the "Developer.mpkg" file icon in the "Xcode Tools" Finder
+  window.
+
+An "Install Xcode Tools" window will appear, followed by a dialog
+  asking for permission to run a program on behalf of the installer.
+  Click the "Continue" button.
+
+A "Welcome to the Xcode Tools Installer" pane will appear.  Click the
+  "Continue" button.
+
+A "Software License Agreement" pane will appear.  Click the "Continue"
+  button.  A license confirmation dialog will appear; click the "Agree"
+  button.
+
+A "Select a Destination" pane will appear.  Select the partition that
+  you are currently installing to, if it is not already selected.  A green
+  arrow will appear over the highlighted target partition.  Click the
+  "Continue" button.
+
+An "Easy Install on <partition name>" pane will appear.  Click the
+  "Install" button.
+
+An "Authenticate" dialog will appear requesting your username and password.
+  Enter your password and click the "OK" button.
+
+An "Install Software" pane will appear, and the installation will begin.
+  It may take several minutes to complete.
+
+Once the installation has completed, click the "Close" button.
+
+A dialog will pop up requesting confirmation to restart the computer.
+  Click the "Restart" button, or the system will restart automatically
+  after 120 seconds.
+
+
+Installing Perforce
+-------------------
+
+You will now install the Perforce revision control software to permit
+you to pull down software updates, documentation, source code, and
+tools for our development environment.  We recommend using the 'p4'
+command line tool rather than the 'p4v' GUI tool.  Please refer to the
+Perforce setup instruction guide for instructions on downloading the
+binary, configuring your workspace, and checking out the 
+project tree.
+
+
+Updating to Mac OS X 10.3.3
+---------------------------
+
+You will now install the Mac OS X 10.3.3 Combined Software Update
+synchronized to your workstation using Perforce, or loaded from another
+system using the local area network.
+
+NOTE: DO NOT INSTALL ANY SOFTWARE UPDATES OF UNKNOWN ORIGIN, OR DOWNLOADED
+  DIRECTLY FROM APPLE'S WEB SITE.  YOU MAY ONLY INSTALL THE SOFTWARE
+  UPDATES KNOWN TO INTEROPERATE CORRECTLY WITH OUR BUILD AND TEST
+  ENVIRONMENT.
+
+To start the Software Update, double click the "MacOSXUpdateCombi10.3.3.dmg"
+  icon for the update, which will cause the software image to be extracted
+  and mounted as a virtual file system.  A dialog will appear while the
+  disk image is extracted, verified, and mounted.  A virtual disk named
+  "Mac OS X 10.3.3 Combined Update" will appear on the Desktop, and a
+  Finder window should open for the virtual disk, containing the file
+  "MacOSXUpdateCombo10.3.3.pkg".  If the Finder window does not open,
+  double click the virtual disk on the Desktop.
+
+Double click the file named "MacOSXUpdateCombo10.3.3.pkg".
+
+A window named "Install Mac OS X Update Combined" will appear, along
+  with a dialog box asking you to allow the Updater to run a program.
+  Click the "Continue" button in the dialog box.
+
+A "Welcome to the Mac OS X Update Combined Installer" pane will appear.
+  Click the "Continue" button.
+
+An "Important Information" pane will appear.  You may wish to read this
+  to learn about the differences between Mac OS X 10.3 and Mac OS X
+  10.3.3.  When you are read, click the "Continue" button.
+
+A "Software License Agreement" pane will appear.  Click the "Continue"
+  button to accept the license agreement.  A confirmation dialog will
+  appear.  Click the "Agree" button.
+
+A "Select a Destination" pane will appear.  Select the partition that
+  you have most recently installed; a green arrow should appear on the
+  highlighted partition.  Click the "Continue" button.
+
+An "Easy Install on <partition name>" pane will appear.  Click the "Install"
+  button.  An "Authenticate" dialog will appear prompting for your
+  password.  Enter your password and click the "OK" button.  A
+  confirmation dialog will appear that indicates the system will require
+  restarting.  Click the "Continue Installation" button.
+
+A "Install Software" pane will appear, and the update will begin; it may
+  take several minutes to complete.  When the update has completed,
+  you will be prompted to restart.  Click the "Restart" button.
+
+
+Repeat Until Cooked
+-------------------
+
+Repeat the additional installations, one per partition, until all partitions
+have Mac OS X 10.3.3 installed.
+
+
+

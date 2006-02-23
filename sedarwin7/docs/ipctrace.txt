@@ -1,0 +1,52 @@
+Mach IPC Tracing
+----------------
+
+We have developed a Mach IPC tracing facility on top of the security
+framework. It records communication between applications, including
+capability transfers. The output is not a communication log, but a set
+of the communication paths that occurred during the tracing period.
+
+To install, place the ipctrace.kext directory in /System/Library/Extensions
+and create a file /System/Library/Extensions/ipctrace.kext/LoadEarly
+(This is the same installation procedure for any security module).
+Tracing is automatically enabled. By default, the buffer size is 8192
+distinct events (a normal MacOSX system startup will use about 4000).
+To capture the buffer, run the included dumptrace program. It must be
+run as root, and you may want to save the output as dumptrace also
+clears the in-kernel buffer.
+
+The output of 'dumptrace' will contain many lines like the following:
+send      /Users/andrew/client | /Users/andrew/server : 12    4
+move_recv /Users/andrew/client | /Users/andrew/client : 12    1
+send      /Users/andrew/client | /Users/andrew/client : 12    1
+
+The columns are:
+	* event type (send, copy_send, or move_recv)
+	* executable performing the event
+	* port involved (written as creating-executable:number)
+	* event count
+
+If the port involved is from the kernel, the kind of kernel object it
+represents is also mentioned. For example a task port is indicated by
+mach_kernel:task (This designation is not always meaningful, as it does
+not line up with the kernel subsystems as found in /usr/include/mach/*.defs).
+
+The 3 lines from the example show the client sending a message to the server,
+then the client moving the receive right for a (newly created) port to the
+server, and then sending a message to that port. Although client:12 was
+given to the server, it retains the label from the task that created it.
+Currently, receives (messages or capabilities), are not tracked.
+
+A graphical view of the trace can be produced with the tr2dot tool,
+and GraphViz (not included, refer to http://www.graphviz.org/). Run
+tr2dot on any number of trace files produced by 'dumptrace', then
+'dot' (from GraphViz) on the result from tr2dot. If you use the MacOSX
+package of GraphViz, you can open .dot files directly with the Finder
+or the 'open' command.  tr2dot can also be passed options files
+controlling the output.  Currently, two options are supported:
+
+option ignore <regex>:         Leave matching tasks or ports out of the graph
+option color <color> <regex>:  Color edges for matching tasks or ports
+
+To use an options file, include it on the 'tr2dot' command line before
+any traces.

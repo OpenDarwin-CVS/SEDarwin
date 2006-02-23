@@ -1,0 +1,25 @@
+POLICY= policy.16
+POLICYDIR= /
+
+all: $(POLICY)
+
+INPUTS = flask/security_classes mig_classes initial_sids \
+	flask/access_vectors mig_access_vectors rules.m4 users initial_sid_contexts fs_use \
+	devfs
+
+policy.conf: $(INPUTS)
+	cat $(INPUTS) > policy.conf
+
+$(POLICY): policy.conf
+	checkpolicy -c 17 -o $(POLICY) policy.conf
+
+rules.m4: rules
+	m4 -Imacros -s rules > rules.m4
+
+clean:
+	rm -f bininclude $(POLICY) policy.conf  policy.h rules.m4 fc.out \
+	    genfs
+
+install:
+	cp policy.16 sebsd_migscs $(POLICYDIR)
+

@@ -1,0 +1,126 @@
+.\" Copyright (c) 2005 SPARTA, Inc.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd September 20, 2005
+.Dt MAC_EXECVE 3
+.Os
+.Sh NAME
+.Nm mac_execve
+.Nd execute a file with new MAC Label
+.Sh LIBRARY
+The MAC Framework Library (libmac, -lmac)
+.Sh SYNOPSIS
+.In sys/mac.h
+.Ft int
+.Fn mac_execve "const char *path" "char *const argv[]" "char *const envp[]" "mac_t label"
+.Sh DESCRIPTION
+The
+.Fn mac_execve
+function operates just as 
+.Xr execve 2
+does, except the user must supply a MAC 
+.Fa label
+(which must first be allocated by
+.Xr mac_prepare 3 )
+with which to apply to run process started from the file referenced by 
+.Fa path .
+Note that all enabled MAC security policies must permit the operation; 
+if permitted, the operation is atomic (the process will be labeled prior to
+execution).  Using 
+.Xr execve 2
+followed by a call to
+.Xr mac_set 3
+does provide the same safety.
+.Sh RETURN VALUES
+As the
+.Fn mac_execve
+function overlays the current process image
+with a new process image the successful call
+has no process to return to.
+If
+.Fn mac_execve 
+does return to the calling process an error has occurred; the
+return value will be -1 and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+.Fn mac_execve
+will fail and return to the calling process if:
+.Bl -tag -width Er
+.It Bq Er EACCES
+A component of
+.Fa path
+is not searchable,
+or MAC read access to the file
+is denied.
+.It Bq Er ELOOP
+Too many symbolic links were encountered in translating the pathname.
+.It Bq Er ENAMETOOLONG
+The pathname pointed to by
+.Fa path
+exceeds
+.Dv PATH_MAX ,
+or a component of the pathname exceeds
+.Dv NAME_MAX .
+.It Bq Er ENOENT
+A component of
+.Fa path
+does not exist.
+.It Bq Er ENOEXEC
+The new process file has the appropriate access
+permission, but has an invalid magic number in its header.
+.It Bq Er ENOMEM
+Insufficient memory is available
+to allocate a new MAC label structure.
+.It Bq Er ENOTDIR
+A component of
+.Fa path
+is not a directory.
+.It Bq Er E2BIG
+The number of bytes in the new process's argument list
+is larger than the system-imposed limit.
+This limit is specified by the
+.Xr sysctl 3
+MIB variable
+.Dv KERN_ARGMAX .
+.It Bq Er EFAULT
+The new process file is not as long as indicated by
+the size values in its header.
+.It Bq Er EFAULT
+.Fa Path ,
+.Fa argv ,
+or
+.Fa envp
+point
+to an illegal address.
+.It Bq Er EIO
+An I/O error occurred while reading from the file system.
+.El
+.Sh SEE ALSO
+.Xr execve 2 ,
+.Xr mac_free 3 ,
+.Xr mac_text 3 ,
+.Xr mac_prepare 3 ,
+.Xr mac_set 3 ,
+.Xr mac 4

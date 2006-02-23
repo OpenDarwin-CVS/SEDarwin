@@ -1,0 +1,522 @@
+@IEEEtranBSICTL{IEEEexample:BSTcontrol,
+   CTLdash_repeated_names = "no"
+};
+
+@book{pfleeger-sec,
+AUTHOR  = "Charles P. Pfleeger",
+TITLE   = "Security in Computing",
+Publisher	   = "Prentice Hall PTR",
+Year	= "1996",
+isbn	= "0 13 337486 6",
+edition = "second",
+}
+
+@book{nsaorangebook,
+TITLE = "Trusted Computer System Evaluation Criteria",
+PUBLISHER = "U. S. Department of Defense",
+MONTH = "December",
+YEAR = "1985",
+}
+
+@book{posix,
+		author = "IEEE",
+		title = "Portable operating system interface ({POSIX}). Part 1, System application program interface ({API}) : {C} language",
+		publisher = "Institute of Electrical and Electronics Engineers, inc.",
+		year = "1990",
+		month = "December",
+		note = "IEEE Std 1003.1-1990; revision of IEEE Std 1003.1-1988",
+}
+
+@InProceedings{mckusick&ganger99,
+  author =       "Marshall Kirk McKusick and Gregory R. Ganger",
+  title =        "Soft Updates: {A} Technique for Eliminating Most
+                 Synchronous Writes in the Fast Filesystem",
+  booktitle =    "{FREENIX} Track, {USENIX} Annual Technical
+                 Conference",
+  year =         "1999",
+  pages =        "1--17",
+  year =         "1999",
+  annote =       "Soft updates enhance the BSD FFS for safe asynchronous
+                 writing and fast crash recovery. The data and meta-data
+                 is written in such an order that the only inconsistency
+                 on disk can be allocated, but unused blocks or inodes.
+                 Thus the file system can be mounted without being
+                 checked. Soft updates also increase the speed of
+                 updating the file system by requiring fewer writes and
+                 hardly any synchronous writes. The paper gives a pretty
+                 detailed account of the changes in FFS, discusses the
+                 experiences, and provides some empirical results
+                 (showing that soft updates can be quite a bit faster
+                 than FFS's synchronous metadata updates and close to
+                 plain asynchronous updates). The paper also explains
+                 how to do snapshots on a conventional file system: A
+                 snapshot is a sparse file with the size of the file
+                 system; when a block in the file system is written, a
+                 copy of the old contents are written into the snapshot.
+                 Soft updates uses snapshots for running fsck (to
+                 reclaim lost space) and backups while having the file
+                 system mounted and writable.",
+}
+
+@misc{mckusick96bsd,
+	author = "M. McKusick and K. Bostic and M. Karels and J. Quarterman",
+	title = "Design and Implementation of the {4.4BSD} Operating System",
+	text = "M. K. McKusick, K. Bostic, M. J. Karels, and J. S. Quarterman. The Design
+	  and Implementation of the {4.4BSD} Operating System. Addison-Wesley Publishing
+	  Company, 1996.",
+	year = "1996"
+}
+
+@InProceedings{Abrams90a,
+  author =       "M. D. Abrams and K. W. Eggers and L. J. La Padula and
+                 I. M. Olson",
+  year =         "1990",
+  title =        "A Generalized Framework for Access Control: An
+                 Informal Description",
+  booktitle =    "Proc. 13th {NIST}-{NCSC} National Computer Security
+                 Conference",
+  pages =        "135--143",
+  abstract =     "This paper introduces a framework for studying and
+                 constructing access control policies for automated
+                 information systems. This framework provies a view of
+                 access control policies as rules specified in terms of
+                 access control information and context by authorities.
+                 Access Control Information (ACI) -- Characteristics or
+                 properties of subjects and objects. Their names are
+                 used in specifying the rules of the system; their
+                 values are used by the access control rules. Access
+                 Control Context (ACC) -- Additional information, such
+                 as time of day, used in access control decision making.
+                 Access Control Authorities (ACA) -- Agents who specify
+                 ACI, ACC, and rules. Access Control Rules (ACR) -- The
+                 set of formal expressions of policy for adjudicating
+                 requests by subjects for access to objects. These four
+                 factors cover the key choices and constraints for the
+                 designer of a sytem. All of the potential policies we
+                 have examined can be expressed in their terms.",
+}
+
+@InProceedings{Badger:1996:DTE,
+  author =       "Lee Badger and Daniel F. Sterne and David L. Sherman
+                 and Kenneth M. Walker",
+  title =        "A Domain and Type Enforcement {UNIX} Prototype",
+  booktitle =    "Computing Systems, Winter, 1996.",
+  publisher =    "USENIX",
+  address =      "Berkeley, CA, USA",
+  month =        "Winter",
+  year =         "1996",
+  volume =       "9",
+  number =       "1",
+  institution =  "Trusted Information Systems, Inc.",
+  month =        "Winter",
+  year =         "1996",
+  bibdate =      "Wed Aug 13 10:48:45 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+@InProceedings{Walsh:1985:OSN,
+  author =       "Dan Walsh and Bob Lyon and Gary Sager and J. M. Chang
+                 and D. Goldberg and S. Kleiman and T. Lyon and R.
+                 Sandberg and P. Weiss",
+  title =        "Overview of the {Sun} Network File System",
+  booktitle =    "Proceedings: {USENIX} Association Winter Conference,
+                 January 23--25, 1985, Dallas, Texas, {USA}",
+  publisher =    "USENIX",
+  year =         "1985",
+  pages =        "117--124",
+  month =        "Winter",
+  bibdate =      "Fri Oct 18 07:24:24 MDT 1996",
+  acknowledgement = ack-nhfb,
+  affiliation =  "Sun Microsystems, Inc.",
+}
+
+@inproceedings{sane2000jail,
+	author = "Poul-Henning Kemp and Robert N. M. Watson",
+	title = "Jails: Confining the Omnipotent Root",
+	crossref = "sane2000"
+}
+
+@proceedings{sane2000,
+	title = "Proceedings, SANE 2000 Conference",
+	booktitle = "Proceedings, SANE 2000 Conference",
+	year = "2000",
+	organization = "NLUUG",
+	location = "Maasstricht",
+}
+
+@InProceedings{Fraser00,
+  author =       "Timothy Fraser",
+  title =        "{LOMAC}: Low Water-Mark Integrity Protection for
+                 {COTS} Environments",
+  booktitle =    "RSP: 21th IEEE Computer Society Symposium on Research
+                 in Security and Privacy",
+  year =         "2000",
+}
+
+@InProceedings{SSLHAL99,
+  author =       "Ray Spencer and Stephen Smalley and Peter Loscocco and
+                 Mike Hibler and David Andersen and Jay Lepreau",
+  title =        "{The Flask Security Architecture: System Support for
+                 Diverse Security Policies}",
+  annote =       "Separate policy and mechanisms derived from DTOS and
+                 somewhat consistant with GFAC. Not so suitable:
+                 Capability systems (difficulty to control propagation)
+                 and interception systesm (e.g., L4 Clan/Chief, problem
+                 of exposure of all abstractions). Fluke (\& flask)
+                 homepage:
+                 \url{http://www.cs.utah.edu/flux/fluke/html/flask.html}",
+  pages =        "123--139",
+  abstract =     "Operating systems must be flexible in their support
+                 for security policies, providing sufficient mechanisms
+                 for supporting the wide variety of real-world security
+                 policies. Such flexibility requires controlling the
+                 propagation of access rights, enforcing fine-grained
+                 access rights and supporting the revocation of
+                 previously granted access rights. Previous systems are
+                 lacking in at least one of these areas. In this paper
+                 we present an operating system security architecture
+                 that solves these problems. Control over propagation is
+                 provided by ensuring that the security policy is
+                 consulted for every security decision. This control is
+                 achieved without significant performance degradation
+                 through the use of a security decision caching
+                 mechanism that ensures a consistent view of policy
+                 decisions. Both fine-grained access rights and
+                 revocation support are provided by mechanisms that are
+                 directly integrated into the service-providing
+                 components of the system. The architecture is described
+                 through its prototype implementation in the Flask
+                 microkernel-based operating system, and the policy
+                 flexibility of the prototype is evaluated. We present
+                 initial evidence that the architecture's impact on both
+                 performance and code complexity is modest. Moreover,
+                 our architecture is applicable to many other types of
+                 operating systems and environments.",
+  booktitle =    "8th {USENIX} Security Symposium",
+  year =         "1999",
+  organization = "USENIX",
+  month =        aug,
+  address =      "Washington, D.C., USA",
+}
+
+@InProceedings{bsdcon2000trustedbsd,
+  author = "Robert Watson",
+  title = "{Introducing Supporting Infrastructure for Trusted Operating
+           System Support in FreeBSD}",
+  booktitle = "BSD Conference",
+  year = "2000",
+  address = "Monterey, CA, USA",
+  month = "October"
+}
+@TechReport{LosSma2000,
+  author =       "Peter Loscocco and Stephen Smalley",
+  title =        "Integrating Flexible Support for Security Policies
+                 into the {Linux} Operating System",
+  added-by =     "sti",
+  annote =       "Info on the Secure Linux project
+                 (\url{http://www.nsa.gov/selinux/}) which is available
+                 as open source! Applies Flask architecture to Linux.
+                 Implements Type Enforcement (TE), role-based access
+                 control (RBAC), and optionally multi-level security
+                 (MLS). See \cite{SmaFra2000} for a corresponding
+                 example security policy. See also
+                 \cite{SSLHAL99,LSMTTF98}.",
+  year =         "2000",
+  institution =  "U.S. National Security Agency",
+  month =        oct,
+  added-at =     "Sat Dec 23 12:00:33 2000",
+  abstract =     "The protection mechanisms of current mainstream
+                 operating systems are inadequate to support
+                 confidentiality and integrity requirements for end
+                 systems. To address this problem, the National Security
+                 Agency (NSA) worked with Secure Computing Corporation
+                 (SCC) to develop a strong, flexible mandatory access
+                 control architecture based on Type Enforcement. The
+                 architecture, now called Flask, was prototyped in the
+                 Mach and Fluke research operating systems. The NSA is
+                 now integrating the Flask architecture into the Linux
+                 operating system to transfer the technology to a larger
+                 developer and user community. NAI Labs, SCC, and MITRE
+                 are assisting the NSA in this integration. This paper
+                 presents the design and implementation for integrating
+                 the security mechanisms of the Flask architecture into
+                 the Linux kernel.",
+}
+@TechReport{Smalley2002,
+  author =       "Stephen Smalley",
+  title =        "Configuring the SELinux Policy",
+  year =         "2002",
+  institution =  "NAI Labs",
+  month =        february,
+}
+
+@TechReport{BellLap,
+  author =       "D. E. Bell and L. J. LaPadula",
+  title =        "Secure Computer Systems: Mathematical Foundations and
+                 Model",
+  year =         "1973",
+  institution =  "The MITRE Corp.",
+  number =       "M74-244",
+  month =        may,
+  address =      "Bedford MA",
+  keywords =     "tranquility, label, labeling, write-down, read-up,
+                 simple security, *-property, star property, MAC,
+                 lattice",
+}
+
+@TechReport{Biba,
+  author =       "K. Biba",
+  title =        "Integrity Considerations for Secure Computer Systems",
+  added-by =     "Glenn S Benson (benson\@python)",
+  year =         "1977",
+  institution =  "Mitre",
+  number =       "TR-3153",
+  month =        apr,
+  address =      "Bedford, MA",
+  timestamp =    "24-Feb-89, 5:08pm",
+}
+
+@misc{ bershad95extensibility,
+    author = "B. Bershad",
+    title = "Extensibility, Safety, and Performance in the Spin Operating System",
+    text = "B. Bershad, Extensibility, Safety, and Performance in the Spin Operating
+      System, in Proceedings of the 15 th ACM SOSP, pp. 267--284, 1995.",
+    year = "1995"
+}
+
+@misc{ project98common,
+    author = "C. Project",
+    title = "Common Criteria for Information Technology Security Evaluation",
+    text = "Common Criteria Project. Common Criteria for Information Technology Security
+      Evaluation. NIST, USA, http://csrc.nist.gov/cc/, January 2000.",
+    year = "2000"
+}
+
+@misc{ commoncriteratwodotone,
+	author = "{NIST} Common Criteria Implementation Board",
+	title = "Common Criteria Version 2.1 ({ISO} {IS} 15408)",
+	year = "2000",
+}
+
+@misc{lspp,
+	title = "Labeled Security Protection Profile version 1.b",
+	author = "Information Systems Security Organization, National Security Agency",
+	month = "October",
+	year = "1999"
+}
+@misc{capp,
+	title = "Controlled Access Protection Profile version 1.d",
+	author = "Information Systems Security Organization, National Security Agency",
+	month = "October",
+	year = "1999"
+}
+
+@misc{posix1e,
+                author = "IEEE",
+                title = "Portable Operating System Interface ({POSIX})--Part 1: System Application Program Interface ({API}): Protection, Audit and Control Interfaces: {C} language",
+                publisher = "Institute of Electrical and Electronics Engineers, inc.",
+                year = "1997",
+                month = "October",
+		note = "PSSG/D17, POSIX.1e"
+}
+
+@misc{hpfs,
+		author = "Roy Duncan",
+		title = "Design goals and implementation of the new High Performance File System",
+		journal = "Microsoft Systems Journal",
+		volume = 4,
+		number = 5,
+		year = 1989
+}
+
+@misc{linuxbug,
+		title="Linux Capabilities Vulnerability",
+		organization="{SecurityFocus}",
+		note="{http://www.securityfocus.com/bid/1322}",
+		month = June,
+		year = 2000
+}
+
+@misc{freebsd,
+		title="{FreeBSD} Home Page",
+		organization="{FreeBSD} Project",
+		note="{http://www.FreeBSD.org/}"
+}
+
+@misc{lsm,
+		title="{Linux Security Modules} Home Page",
+		organization="{LSM} Project",
+		note="{http://lsm.immunix.org/}"
+}
+
+@misc{trustedbsd,
+		title="{TrustedBSD} Home Page",
+		author="{TrustedBSD Project}",
+		note="{http://www.TrustedBSD.org/}"
+}
+
+@misc{tmach,
+	title="{Trusted Mach Security Architecture}",
+	organization="Trusted Information Systems, Inc.",
+	key="TIS",
+	note="{TIS TMACH Edoc-0001-97A}",
+	note="{ftp://ftp.tis.com/pub/TMACH/arch/tmach_arch.ps}",
+	date="March 19, 1997"
+}
+
+@misc{ob1,
+	title="B1 Sample Source Code",
+	author="SGI",
+	note="{http://oss.sgi.com/projects/ob1/}"
+}
+
+@misc{linux-acl,
+	title="Extended Attributes and Access Control Lists for Linux",
+	author="Andreas Grunbacher",
+	note="{http://acl.betbits.at/}"
+}
+
+@misc{linux-privs,
+	title="Privileges for Linux",
+	author="Andrew Morgan",
+	note="http://www.kernel.org/pub /linux/libs/security/linux-privs/"
+}
+
+@misc{linux-rsbac,
+	title="Rule Set Based Access Control {(RSBAC)} for Linux",
+	key = "RSBAC",
+	note="{http://www.rsbac.org/}"
+}
+
+@misc{posix1e-list,
+	title="POSIX.1e Mailing List",
+	note="{http://www.guug.de/\~{}winni/posix.1e/}"
+}
+
+@misc{pitbull,
+	title="Argus Products Overview: PitBull",
+	organization="Argus Systems",
+	key="Argus Systems",
+	note="{http://www.argussystems.com/product/overview/pitbull/}"
+}
+
+@INPROCEEDINGS{loscocco01,
+AUTHOR = {Loscocco, Peter A. and Stephen D. Smalley},
+TITLE = "{Integrating Flexible Support for Security Policies into the
+Linux Operating System}",
+BOOKTITLE = {Proceedings of the USENIX Annual Technical Conference},
+MONTH = {June},
+YEAR = {2001}
+}
+
+@INPROCEEDINGS{watson01,
+AUTHOR = {Robert Watson},
+TITLE = "{TrustedBSD: Adding Trusted Operating System Features to
+FreeBSD}",
+BOOKTITLE = {Proceedings of the USENIX Annual Technical Conference},
+MONTH = {June},
+YEAR = {2001}
+}
+
+@InProceedings{fraser01,
+    author = "Timothy Fraser",
+    title = "{LOMAC}: {MAC} You Can Live With",
+    booktitle = "Proceedings of the {USENIX} Annual Technical Conference",
+    year = "2001",
+}
+
+@inproceedings{ fraser99hardening,
+    author = "Timothy Fraser and Lee Badger and Mark Feldman",
+    title = "Hardening {COTS} Software with Generic Software Wrappers",
+    booktitle = "{IEEE} Symposium on Security and Privacy",
+    pages = "2-16",
+    year = "1999",
+}
+
+@InProceedings{watson03,
+  author = "Robert Watson and Wayne Morrison and Chris Vance and Brian Feldman",
+  title = "{The TrustedBSD MAC Framework: Extensible Kernel Access Control for
+           FreeBSD}",
+  booktitle = "Usenix Annual Technical Conference",
+  year = "2003",
+  address = "San Antonio, TX, USA",
+  month = "June"
+}
+
+@InProceedings{discex3,
+  author = "Robert Watson and Brian Feldman and Adam Migus and Chris Vance",
+  title = "{Design and Implementation of the TrustedBSD MAC Framework}",
+  booktitle = "DISCEX III",
+  year = "2003",
+  address = "Washington, DC, USA",
+  month = "April"
+}
+
+@TechReport{sebsd,
+  author =       "Chris Vance and Robert Watson",
+  title =        "{Security Enhanced BSD}",
+  year =         "2003",
+  institution =  "NAI Labs",
+  month =        "July",
+  day = 	 9
+}
+
+@misc{macosx,
+		title="{Apple Developer Connection: Mac OS X}",
+		organization="{Apple Computer, Inc.}",
+		note="{http://developer.apple.com/macosx/}"
+}
+
+@misc{osxoverview,
+		title="{Mac OS X: An Overview for Developers}",
+		organization="{Apple Computer, Inc.}"
+}
+
+@InProceedings{dtos95,
+  author =       "Spencer E. Minear",
+  title =        "Providing Policy Control Over Object  Operations 
+		 in a Mach Based System",
+  booktitle =    "Proceedings of the Fifth {USENIX} {UNIX} Security Symposium",
+  month =        "June",
+  year =         "1995",
+  pages =        "141--156",
+}
+
+@InProceedings{dtos96,
+  author =       "Duane Olawsky and Todd Fine and Edward Schneider
+                  and Ray Spencer",
+  title =        "Developing and Using a Policy Neutral Access Control Policy",
+  booktitle =    "Proceedings of the New Security Paradigms Workshop",
+  month =        "September",
+  year =         "1996",
+}
+
+@misc{helander94unix,
+    author = "J. Helander",
+    title = "Unix under Mach: The Lites Server",
+    text = "J.Helander, Unix under Mach: The Lites Server, Helsinki University of Technology, Master's Thesis, 1994.",
+    year = "1994",
+    url = "citeseer.ist.psu.edu/helander94unix.html"
+}
+
+@inproceedings{ford96microkernels,
+    author = "Bryan Ford and Mike Hibler and Jay Lepreau and Patrick Tullmann and Godmar Back and Stephen Clawson",
+    title = "Microkernels Meet Recursive Virtual Machines",
+    booktitle = "Operating Systems Design and Implementation",
+    pages = "137-151",
+    year = "1996",
+    url = "citeseer.ist.psu.edu/ford96microkernel.html"
+}
+
+@misc{wright02linux,
+  author = "C. Wright and C. Cowan and J. Morris and S. Smalley and G. KroahHartman",
+  title = "Linux Security Modules: General Security Support for the Linux Kernel",
+  year = "2002",
+  url = "citeseer.ist.psu.edu/wright02linux.html"
+}
+
+@misc{securitycontext,
+		title="{Technical Note TN2083: Daemons and Agents}",
+		organization="{Apple Computer, Inc.}",
+		note="{http://developer.apple.com/technotes/tn2005/tn2083.html}"
+}

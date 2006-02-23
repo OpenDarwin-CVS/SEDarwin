@@ -1,0 +1,42 @@
+.TH "getexeccon" "3" "1 January 2004" "russell@coker.com.au" "SE Linux API documentation"
+.SH "NAME"
+getexeccon, setexeccon \- get or set the SE Linux security context used for executing a new process.
+
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.sp
+.BI "int getexeccon(security_context_t *" context );
+.br 
+.BI "int setexeccon(security_context_t "context );
+
+.SH "DESCRIPTION"
+.B getexeccon
+retrieves the context used for executing a new process.
+This returned context should be freed with freecon if non-NULL.  
+getexeccon sets *con to NULL if no exec context has been explicitly 
+set by the program (i.e. using the default policy behavior).
+
+.B setexeccon
+sets the context used for the next execve call.  
+NULL can be passed to
+setexeccon to reset to the default policy behavior.  
+The exec context is automatically reset after the next execve, so a
+program doesn't need to explicitly sanitize it upon startup.  
+.br
+
+setexeccon can be applied prior to library
+functions that internally perform an execve, e.g. execl*, execv*, popen,
+in order to set an exec context for that operation.  
+.br
+
+Note: Signal handlers that perform an execve must take care to
+save, reset, and restore the exec context to avoid unexpected behaviors.
+.SH "RETURN VALUE"
+On error -1 is returned.
+
+On success getexeccon and setexeccon returns 0.
+
+.SH "SEE ALSO"
+.BR freecon "(3), " getcon "(3)"
+
+

@@ -1,0 +1,255 @@
+\section{Application Interfaces}
+
+\subsection{MAC Framework APIs}
+
+The MAC Framework on Darwin provides a number of system calls and system
+controls (sysctls) to improve the functionality of security-aware
+applications, including label management tools and the login routines.
+These routines generally operate in a policy-agnostic manner, allowing
+applications to deal with labels and elements in an abstract manner.
+
+\subsubsection{Extended Attribute APIs}
+
+A prototype implementation of extended attributes was developed for
+use with file security labels. The extended attribute support is
+also available to user programs, through an interface compatible
+with FreeBSD 5. \footnote{Mac OS X 10.4 (Tiger) includes an
+independently-developed extended attribute implementation that uses
+a different API.} A file may have multiple extended attributes,
+each identified by a namespace and a name. There are only two
+namespaces, system and user.  An unprivileged user process may not
+examine or change system extended attributes, but any user with
+permission on the file may change the user attributes.  Since the
+MAC Framework supports multiple simultaneous policies, each with
+their own file label formats, multiple attributes per file may be
+required. Because the file labels stored in extended attributes can
+be changed with the extended attribute manipulation calls as well
+as the normal label manipulation calls, all security labels should
+use the ``system'' attribute namespace to prevent unprivileged users
+from changing the labels directly.  We have implemented system calls
+for reading, writing, deleting and listing extended attributes.
+However, the system calls to delete and list extended attributes
+have not yet been implemented for the HFS+ filesystem.  Any use of
+the system attribute namespace requires that the caller be privileged.
+Since security policies may have their own privilege requirements,
+this is not the same as ``root''. The user attribute data is protected
+according to the normal discretionary and mandatory protections
+associated with the file or directory.
+
+\begin{longtable}{|p{1.5in}|p{3in}|}
+\hline
+{\bf System Call} & {\bf Purpose} \\
+\hline
+\hline
+\endfirsthead
+\hline
+{\bf System Call} & {\bf Purpose} \\
+\hline
+\hline
+\endhead
+\hline
+\endfoot
+extattr\_set\_file, extattr\_set\_fd, extattr\_set\_link & Set the value of an extended attribute. \\[3mm]
+\hline
+extattr\_get\_file, extattr\_get\_fd, extattr\_get\_link & Retrieve the value of an extended attribute. \\[3mm]
+\hline
+extattr\_delete\_file, extattr\_delete\_fd, extattr\_delete\_link & Remove an extented attribute; currently unimplemented \\[3mm]
+\hline
+extattr\_list\_file, extattr\_list\_fd, extattr\_list\_link & List the extented attributes for a file; currently unimplemented \\[3mm]
+\hline
+extattrctl & Manage extended attributes; currently unimplemented \\
+\end{longtable}
+
+\subsubsection{Label Management}
+Many security policies that use persistent object labels (such as type
+enforcement or MLS) require a system administrator or security officer to
+set or change labels. Label manipulation tools must use the new
+MAC Framework interfaces for reading or writing
+labels from user processes. This interface understands that there may be
+multiple security policies in use, and that each policy may have different
+internal and external formats. Currently, the external (user space) format
+for labels must be in the form of a text string. In a typical read label
+call, the user provides a reference to the object (such as a file descriptor),
+and the names of policies to retrieve the associated labels.
+
+\begin{longtable}{|p{1.5in}|p{3in}|}
+\hline
+{\bf System Call} & {\bf Purpose} \\
+\hline
+\hline
+\endfirsthead
+\hline
+{\bf System Call} & {\bf Purpose} \\
+\hline
+\hline
+\endhead
+\hline
+\endfoot
+mac\_set\_file(), mac\_set\_fd(), mac\_set\_link() & Change the label associated with a file. \\[3mm]
+\hline
+mac()\_get\_file(), mac\_get\_fd(), mac\_get\_link() & Retrieve the label associated with a file. \\[3mm]
+\hline
+mac\_set\_proc() & Change the label of the current process. \\[3mm]
+\hline
+mac\_get\_pid(), mac\_get\_proc() & Retrieve the label on a process. \\[3mm]
+\hline
+mach\_get\_label\_text() & Retrieve the label on a port or label handle. \\[3mm]
+\hline
+mach\_set\_port\_label() & Change the label on a port. \\[3mm]
+\hline
+mach\_get\_task\_label\_text() & Retrieve the label on a task. \\[3mm]
+\hline
+mac\_label\_new() & Create a new label handle. \\\\[3mm]
+\hline
+mac\_request\_label() & Compute a new label based on subject, object, service name. \\
+\end{longtable}
+
+\subsubsection{Secure Program Execution}
+Security-aware programs may require a mechanism for executing a
+program with an arbitrary label.  This functionality is also useful
+for testing new security policies.  We provide the {\tt mac\_execve()}
+system call for this purpose. It extends the standard UNIX {\tt
+execve()} system call with an additional argument, the label to use
+when the new program is executed.  By using this new API, the caller
+is assured that the label change will be atomic with respect to
+program execution.  With a normal {\tt execve()} call followed by
+a label change, this may not be the case.
+
+\subsubsection{Extensible Policy Interfaces}
+Large user space services (such as window systems) may serve multiple
+users or security domains from one process. Because of this, the
+kernel alone cannot be responsible for securing such a process. The
+kernel can assist a multiuser service in controlling access by
+providing policy entry points that allow a user space program to store
+its own labels, and request access decisions from the kernel when
+necessary. For example, a window system could maintain a label for
+each connection and for each window. The Framework entry point we have
+chosen to implement in our prototype simply passes a subject, an
+object, a service name, and a permission name, to each configured
+security policy, and returns a decision (composed in the same way
+as an internal access check). The subject and object provided to
+the kernel may be label handles, allowing the program to store
+labels internally. With the SEDarwin policy module, the policy can
+define new service and permission names for use by user space programs.
+Continuing the window system example, each attempt by a connection
+to read the contents of a window could be controlled by a call
+similar to the following:
+
+\begin{verbatim}
+mac_check_port_access(connection_label, window_label,
+    "window", read")
+\end{verbatim}
+
+Policies may also need unstructured interfaces to user space for
+management, configuration, or auditing purposes. We provide the
+{\tt mac\_syscall()} interface for this.  The caller provides the
+Framework policy name and a block of arbitrary data. Only the named
+policy receives the call.
+
+\subsection{User Space Components}
+
+A small number of Darwin binaries were modified to increase security
+and to improve the user exeperience.  Two programs were modified
+to be label-aware ({\tt ls} and {\tt ps}) and several more were
+added to help users manage labels ({\tt getfmac}, {\tt getpmac},
+{\tt setfsmac}, {\tt setpmac}).  In addition, the {\tt lcs} command
+was added to provide a way to show login context information.  Other
+Darwin programs were modified to help the MAC Framework manage
+policies and increase system security: {\tt mach\_init}, {\tt MiG},
+and {\tt loginwindow}).
+
+\subsubsection{Mach Namespace}
+
+The {\tt mach\_init} program was our testbsd for user space Mach
+security work. {\tt mach\_init} was chosen because it is open source,
+provides a service that needs to be secured (the Mach port namespace),
+and is relatively simple.  Unlike in a traditional Mach system, in
+Darwin the bootstrap namespace is used during the entire system
+operation and is not replaced by a different server after the system
+boots. The namespace service is accessed by MiG calls to a namespace
+port, one of which is stored in every task's list of registered
+ports (a child task inherits the set of registered ports from its
+parent). {\tt mach\_init} sets the bootstrap port to one it created
+to handle namespace requests, so all new processes share the same
+namespace (unless overridden by the process or one of its ancestors).
+User programs can register server ports in the namespace, look up
+existing registered ports, and create new namespaces. A new namespace
+inherits the contents of the processes' old namespace, but further
+changes to it do not affect the original. When a new namespace is
+created, the caller can overwrite the old namespace port with the
+new one, so that child processes will inherit the new namespace.
+In a Mac OS X system, the {\tt loginwindow} process creates a new
+namespace for the user's login session.  {\tt loginwindow} also
+arranges for processes created for the user's login session to have
+the new namespace port registered instead of the original one.  Some
+policies may use different labels for login session namespaces and
+the system namespace for additional protection.
+
+{\tt mach\_init} was rebuilt with our security-enhanced MiG to
+enforce permission checks in the bootstrap namespace(s). This
+mechanism uses the "access decision" trailer. The sender's label
+may also be used for computing labels on new namespaces or other
+objects but this is not currently done.
+
+However, in implementing the use of additional message trailers on
+Darwin 7.8 (Mac OS X 10.3.8), unexpected behaviors were observed
+when attempting to request extended-length message trailers early
+on in the system boot process. The system would seemingly deadlock
+when trailers over a certain length were requested from the kernel.
+After much debugging and conversation with Apple personnel, it was
+determined that our use of extended trailers in mach\_init had
+uncovered a bug in the vendor provided sources. We were informed
+by Apple that this behavior was not present in Mac OS X 10.4 (Tiger),
+and advised to use 10.4 instead.  No fix has been provided for Mac
+OS X 10.3 (Panther) and we were unable to discern the fix due to
+the large number of changes between 10.3 and 10.4.
+
+We plan to secure launchd (which replaces functionality previously
+provided by both mach\_init and the BSD init) once we move forward
+with porting the SEDarwin codebase to 10.4.  We have independently
+verified that adding extended trailers to launchd on a stock 10.4
+system does work as expected.
+
+\subsubsection{Login}
+The Mac OS X {\tt loginwindow} process is responsible for displaying
+the login window at system startup, which reads user names and
+passwords.  {\tt loginwindow} works in conjunction with the {\tt
+WindowServer} process; login operations are divided between the two
+in order to support fast user switching.  {\tt loginwindow} supports
+a plug-in interface that can be used to implement multi-stage user
+authentication.  We have implemented a loginwindow plug-in for use
+with the MAC Framework that runs after the user has authenticated
+but before any processes are run on behalf of the user.  Our plug-in
+supports policy-specific modules via its own plug-in framework.
+
+The SEDarwin MAC login plug-in queries the running FLASK security
+policy and, if the policy specifies one or more roles for the user,
+presents the user with a list of available roles.  The plug-in then
+updates the label of the processes specified in the {\tt
+/etc/MAClogin.conf} file (by default {\tt WindowServer} and {\tt
+ATServer}) to match the selected role.  If no role exists for the
+user, they will be unable to log in.  Upon logout, the labels on
+the affected processes are restored.
+
+For network and non-graphical console logins, a PAM module is used
+to create the login context.  A separate policy-specific PAM module
+is then called to store the the actual label.  This module may also
+be used to present the user with a choice of roles if the policy
+lists more than one role for that user.
+
+In the default Mac OS X configuration, the system will auto-login
+a particular user on the console without displaying the login window.
+This is clearly unacceptable for SEDarwin and as such, auto-login
+is disabled as part of the installation process.  Fast user switching
+is also disabled during installation.
+
+\subsubsection{Label Commands}
+The basic commands for listing files and processes, {\tt ps} and {\tt ls},
+were augmented to display security labels. As on FreeBSD and SELinux, the {\tt -Z} option
+to either program causes it to display security labels for the policies listed
+in {\tt /etc/mac.conf}. As the MAC Framework uses ASCII text strings for
+label input and output from user space, there is no need for any display
+conversion.
+
+SELinux, SEBSD, and now SEDarwin use a similar file labeling tool, which
+uses regular expressions matching file names for user convenience. 

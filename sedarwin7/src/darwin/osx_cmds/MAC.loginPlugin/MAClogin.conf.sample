@@ -1,0 +1,15 @@
+# $Id$
+#
+# /etc/MAClogin.conf
+#
+#	Plugin to be used must be specified with
+#		'plugin = <Name>'
+#
+#	List, one per line of applications that should be delegated 
+#	to the user on login.  Leading and trailing whitespace will
+#	be stripped.  The '#' char and anything following up to EOL
+#	will be ignored.
+#
+plugin = SEDarwin
+WindowServer
+ATSServer

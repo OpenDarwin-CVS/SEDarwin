@@ -1,0 +1,14 @@
+\section{Test Module}
+
+In addtion to the SEDarwin policy module, the ``mac\_test'' module
+was also ported from FreeBSD to Darwin.  This simple module is used
+to test the basic functionality of the Framework and verify that
+the entry points are correctly implementated.  The test module
+registers itself and requests label storage.  Labels are initialized
+to a pseudo-random value so that they may be re-examined each time
+the object is visible within the scope of the Framework, testing
+for corruption.  The module exports object counts via the sysctl
+mechanism so that the number of in-flight kernel objects can be
+queried from user space.  In tracking label allocations and
+deallocations, the module verifies that labels are always deallocated
+and that no label is allocated or freed twice.

@@ -1,0 +1,78 @@
+Port of TrustedBSD MAC Framework to Darwin 10.3.3
+
+McAfee Research
+15204 Omega Drive, Suite 300
+Rockville, MD 20850
+
+The following known issues are present in this release:
+
+  3: Some mount structures do not get labelled - Some mount structures
+     are created in unusual ways by the kernel and aren't currently
+     labelled.  Policy modules should check for null labels until this
+     is resolved.
+
+ 10: kextd doesn't like that security.sedarwin has no version - The
+     security modules do not currently contain versioning information,
+     so when kextd runs warnings are printed, "can't parse version *
+     of module security.sedarwin;"
+
+ 28: Kernel trap in IOKit when using wireless networking - When using
+     prototype and using the Airport device for network access on a
+     PowerBook G4, I see a kernel trap involving IOKit modules within
+     15 minutes.
+
+ 47: Setpmac-spawned processes hang on exit.  The MLS policy does not
+     permit a lower-priority shell to wait(2) on the child process.
+
+ 52: The fdsec (filesystem) should have labels - The fdesc file system
+     provides /dev/fd entries on darwin instead of implementing this
+     within devfs.
+
+ 66: Panic with a zalloc: the ipctrace seems to be leaking memory with
+     port labels and the system will panic after a running for a while.
+
+ 76: If a filesystem makes symbolic links from a partition that is
+     using extended attributes into a file system that is not using
+     extended attributes, the system will eventually deadlock.
+
+ 91: Users who create and attach new disk images cannot then access them.
+
+ 98: HFS+ ignores mac_associate_vnode_extattr() failure.  HFS+
+     currently ignores failures in mac_associate_vnode_extattr(), so a
+     failure to load critical extended attributes by a policy might
+     leave the vnode accessible.  This may currently be required for
+     our system to bootstrap due to our extended attribute
+     implementation.  Policies can work around it by setting the label
+     to a value that prevents any access if they need to fail closed.
+
+109: Commands 'ls -Z' and 'ps -Z' fail when no mac config file
+     present.  If there is no MAC config file present (no
+     /etc/mac.conf, and $MAC_CONFFILE not set), using the '-Z' flag on
+     the ls or ps command results in 'Bus error'
+
+117: The mpo_check_port_relabel entry point does not hold the task
+     label lock.  Policies implmenting this entry point should
+     exercise caution.
+
+130: The Mach error returns from the framework don't always map
+     well. Most framework entry points return bsd errno values, which
+     are not usable as returns from mach calls.  Ideally, the
+     framework would return its own private error codes, which could
+     be converted to either type by lookup tables.
+
+135: No MAC access control checks in the fsctl() system call.  Darwin
+     contains a syscall called fsctl() for doing IOCTL-style
+     operations on a filesystem object via a supplied path.  A similar
+     syscall does not exist in FreeBSD.  A generic MAC entry point is
+     likely needed for this.
+
+136: The hfs_ioctl interface allows unchecked ability to modify the
+     filesystem.  hfs_ioctl() allows IOCTL-style commands to be
+     performed on an HFS filesystem via the fsctl() syscall and
+     VOP_IOCTL vector.  A MAC Framework access control check needs to
+     be inserted here.
+
+147: Panic with a bad v_usecount for a vnode during vnreclaim().  This
+     occurs under a heavy load of combined auditing and file
+     operations.  The stack trace always reflects a problem in the
+     lstat() system call.  It's possible that this is a vendor defect.

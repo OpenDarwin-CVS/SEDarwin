@@ -1,0 +1,176 @@
+Abstract
+--------
+
+This document will provide the steps required to create a new "blank" MAC
+policy plugin that will be built along with the MAC.loginPlugin. 
+
+Stand-alone plugins are possible but are not covered in this document. 
+
+Requirements
+------------
+
+XCode 1.5
+
+Introduction
+------------
+
+Creating a new MAC policy plugin involves two separate steps.
+
+1. Creating the NIB, and source file stubs.
+2. Adding the plugin to the XCode project.
+
+Once these are accomplished development may proceed as with any other
+Cocoa application/bundle. 
+
+Conventions
+-----------
+
+TOP refers to the top level of the MAC.loginPlugin/ directory hierarchy.
+
+<name> refers to the name selected for the new MAC policy plugin.
+
+<name> will be used as the name of the plugin, the principal class in the
+plugin, and the name of the NIB within the plugin.  While each of these is
+independent this is the convention that will be used and is recommended. 
+
+XCode and Interface Builder provide context menus available by selecing them
+with the mouse while holding down the 'Ctrl' key.
+
+Step One - Creating the NIB, and source file stubs.
+---------------------------------------------------
+
+Create a new directory, TOP/plugins/<name>.  This will be the location of
+all files related to the new plugin. 
+
+Launch Interface Builder and when the "Starting Point" dialog is shown
+highlight "Cocoa | Empty" and select the "New" button. 
+
+A MAC policy plugin requires two elements; a "view", which contains all
+graphical elements to be displayed in the MAC login dialog, and an object
+that implements the MACpolicyPlugin protocol.  The view and object will
+also contain elements and code specific to the implementation. 
+
+Create the "view" by selecting the Cocoa Containers from the palette
+dialog and dragging a "Custom View" to the Instances tab of the new NIB. 
+This object is an NSView instance and will provide the canvas for all
+implementation specific elements.  <insert discussion of sizing, and
+geometry>
+
+To create the MACpolicyPlugin object use the Classes tab and select the
+NSObject item (far left browser pane).  Use Ctrl-Click to bring up the
+context menu and select "Subclass NSObject".  Name the new class <name>. 
+Ctrl-Click on the new object and select "Add outlet to ...".  Add an outlet
+named 'view' of type 'NSView'.
+
+Instantiate the object and connect the outlet to the view object in the
+Instances pane.  (Ctrl-click & hold, and draw a line to the "View" object. 
+Select "Connect" for the outlet named "view".)
+
+In the "Classes" tab, highlight the object and Ctrl-click to bring up the
+context menu.  Select "Create files for ..."  Save the files in the
+directory TOP/plugins/<name>.  Save the NIB file (File | Save) in the same
+directory.
+
+At this point there should be three items in the TOP/plugins/<name>/
+directory; <name>.m, <name>.h and <name>.nib.
+
+Edit <name>.h and make the class subscribe to the MACpolicyPlugin protocol.
+
+ie:
+	#import <Cocoa/Cocoa.h>
+	#import "MACpolicyPlugin.h"
+
+	@interface <name> : NSObject <MACpolicyPlugin>
+	{
+		IBOutlet NSView *view;
+	}
+	@end
+
+Edit <name>.m and add stubs for the protocol selectors:
+
+ie:
+	#import "<name>.h"
+
+	@implementation <name>
+	- (MACstatus) policyCanLogin { return (MAC_LOGIN_OK); }
+	- (void) policyWillLogin { return; }
+	- (void) policyWillLogout { return; }
+	- (void) sessionAdoptPID: (pid_t)pid Name: (const char *)name {return;}	
+	- (void) sessionOrphanPID: (pid_t)pid Name: (const char *)name {return;}
+	@end
+
+Step Two - Adding the plugin to the XCode project.
+==================================================
+
+Launch XCode and open the MAC.loginPlugin project.
+
+Adding a new target.
+--------------------
+
+Select "New Target" from the "Targets" context menu.  Choose 
+"Loadable Bundle" from the Cocoa section.  Select "Next" and use <name> for
+the "Target Name:" field.  The "Add To Project:" field should be set to
+"MAC.loginPlugin".  Select Finish.  The "Target <name> Info" dialog should
+appear.
+
+Under the "Build" tab search for "Info.plist File" setting and change
+its value to "plugins/<name>/Info.plist".
+
+Under the "Properties" tab, use the following values:
+
+	     Executable: <name>
+ 	     Identifier: com.sparta.MACpolicyPlugin.<name>
+	Principal Class: <name>
+	  Main Nib File: <name>
+
+Close the "Target <name> Info" dialog.
+
+...
+
+Reorder the list of targets so that the "MAC" target is listed last.  This
+may be accomplished by dragging individual targets and "dropping" them
+on the "Target" group.
+
+Select "Add | New Build Phase | New Headers Build Phase" from the new
+target's context menu.
+
+Drag (to copy) "MACpolicyPlugin.h" from the "MAC.loginPlugin | Headers"
+group to "Targets | <name> | Headers".
+
+Drag (to copy) "Cocoa.framework" from the
+"MAC.loginPlugin | External Frameworks and Libraries" group to
+"Targets | <name> | Frameworks & Libraries".
+
+Add <name>.bundle to "Targets | MAC | Copy Files" by dragging it
+from "MAC.loginPlugin | Products | <name>.bundle"
+
+Adding the new plugin.
+----------------------
+
+Select "Add | New Group" from the "MAC.loginPlugin | plugins" group context
+menu.  Rename the new group to <name>.
+
+Select "Get Info" from the <name> plugin context menu.  Under the "General"
+tabe use the 'Choose...' button to set the path to "TOP/plugins/name".
+Make sure that the Path Type is set to 'Relative to Enclosing Group'.
+
+Select "Add | Existing Files" from the <name> plugin context menu.  Add
+all files under TOP/plugins/<name>/.  Add to the correct target (<name>).
+
+Quit XCode.
+
+Final manual fixes.
+-------------------
+
+Edit MAC.loginPlugin.xcode/project.pbxproj
+
+- Find 'buildSettings' for new plugin product
+  (search for 'PRODUCT_NAME = <name>')
+
+  - Add 'WRAPPER_EXTENSION = MACpolicyPlugin;' to this section.
+  - Change value of 'INSTALL_PATH' to empty string.
+
+- In section enclosing the above, find 'productSettingsXML' key and delete.
+
+- Search for 'path = <name>.bundle;'
+  Change to 'path = <name>.MACpolicyPlugin;'

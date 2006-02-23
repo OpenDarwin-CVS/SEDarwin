@@ -1,0 +1,6 @@
+We have included sample results from ipctrace. sample.trace was produced
+by running dumptrace right after booting the system. 
+The graphs were produced by running
+'tr2dot sample.color sample.trace > sample.dot' and
+'tr2dot sample.noki sample.trace > sample-less.dot'. Prerendered
+graphs are also included.

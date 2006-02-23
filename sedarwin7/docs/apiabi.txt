@@ -1,0 +1,473 @@
+API and ABI Considerations for SEDarwin
+---------------------------------------
+
+Author and copyright information at the bottom of this document.
+
+  Introduction
+
+The introduction of mandatory access control into an operating system
+necessarily modifies interfaces and services present in the system.  The
+implementations of the TrustedBSD MAC Framework and SEDarwin policy module
+on the Darwin operating system have been designed and implemented to have
+a controlled (and minimized) impact on system interfaces, in order to
+maximize application and system extension compatibility.  This document
+describes API additions and modifications, and documents known ABI impact.  
+
+  Classes of API and ABI Modification
+
+APIs and ABIs of interest exist in several layers of the
+Darwin operating system, and include:
+
+- User application APIs and ABIs for interacting with existing system
+  services.
+
+- User application APIs and ABIs for interacting with enhanced interfaces
+  required for the TrustedBSD MAC Framework and SEDarwin policy module.
+
+- Kernel Extension (KEXT) APIs for TrustedBSD MAC policy modules,
+  permitting policies (such as SEDarwin) to interact with the operating
+  system.
+
+- Modifications to internal kernel APIs and ABIs in order so support the
+  integration of the TrustedBSD MAC Framework into the Darwin XNU kernel.
+
+- Modifications to existing kernel APIs and ABIs for non-MAC kernel
+  extensions, such as file systems, device drivers, and network services.
+
+While API modification is an explicit activity easily identified through
+the generation of difference sets (diffs) between the Apple vendor source
+tree and the modified source tree, ABI impacts are often much subtle and
+difficult to track.  A high level consideration of ABI impact, relating
+to the definition of public function prototypes and data structures has
+been performed, but other ABI changes which impact functionality may not
+have not been identified in this work.
+
+  Classes of Modifications
+
+The Darwin operating system has been modified in the following ways in
+order to support mandatory access control:
+
+- Modifications to the system boot loader to permit early loading of
+  security modules.
+
+- Additional system calls have been introduced to allow the manipulation
+  of labels on objects, interface with security functionality in the
+  kernel, manipulate extended file system meta-data, ... XXX
+
+- New system controls (sysctls) have been introduced to allow management
+  of the MAC Framework and policy modules ... XXX
+
+- Additional system library interfaces have been introduced ... XXX
+
+- New system libraries have been introduced ... XXX
+
+- Additional command line utilities have been introduced ... XXX
+
+- Existing system services have been modified ... XXX
+
+- Existing command line utilities have been modified ... XXX
+
+- A MAC Framework policy kernel interface has been defined, against which
+  security policies embedded in Kernel Extensions (KEXTs) may be defined
+  ... XXX
+
+- A MAC Framework kernel interface has been defined, which existing kernel
+  services invoke in order to implement mandatory data labels and
+  protections.
+
+- Existing kernel components have been modified to introduce labels onto
+  security-relevant object data structures, and to invoke MAC Framework
+  kernel interfaces.
+
+Each of these areas is considered with respect to the impact on interfaces
+and functionality.
+
+  Modified Boot Loader
+
+XXX
+
+  New System Calls
+
+int extattrctl();
+int extattr_set_file();
+int extattr_get_file();
+int extattr_delete_file();
+int extattr_set_fd();
+int extattr_get_fd();
+int extattr_delete_fd();
+int extattr_set_link();
+int extattr_get_link();
+int extattr_delete_link();
+int extattr_list_fd();
+int extattr_list_file();
+int extattr_list_link();
+
+int __mac_execve();
+int __mac_syscall();
+int __mac_get_file();
+int __mac_set_file();
+int __mac_get_link();
+int __mac_set_link();
+int __mac_get_fd();
+int __mac_set_fd();
+int __mac_get_proc();
+int __mac_set_proc();
+int __mac_get_pid();
+
+int getlcid();
+int setlcid();
+int __mac_get_lcid();
+int __mac_get_lctx();
+int __mac_set_lctx();
+
+  New System Controls - MAC Framework
+
+security.
+security.mac.
+security.mac.max_slots
+security.mac.enforce_fs
+security.mac.enforce_process
+security.mac.enforce_system
+security.mac.enforce_vm
+security.mac.mmap_revocation
+security.mac.mmap_revocation_via_cow
+security.mac.debug.
+security.mac.debug.label_fallback
+security.mac.debug.counters.
+security.mac.debug.counters.creds
+security.mac.debug.counters.procs
+security.mac.debug.counters.mounts
+security.mac.debug.counters.temp
+security.mac.debug.counters.vnodes
+security.mac.debug.counters.devfsdirents
+
+security.mac.deferred_mbufs
+security.mac.live_list_size
+security.mac.network_funnel_off
+security.mac.preemption_off
+security.mac.gcd_mbufs
+security.mac.failed_label_count
+security.mac.initpreemptionoff
+
+  New System Controls - SEDarwin
+
+security.mac.sebsd.
+security.mac.sebsd.verbose
+security.mac.sebsd.enforcing
+
+  New System Library Interfaces - libextattr
+
+int extattr_namespace_to_string();
+
+Convert an extended attribute name space identifier to a text string.
+
+int extattr_string_to_namespace();
+
+Convert an extended attribute name space string to a number identifier.
+
+int extattrctl();
+
+Manage extended attributes on a file system.
+
+int extattr_delete_fd();
+
+Delete an extended attribute on a file by file descriptor.
+
+int extattr_delete_file();
+
+Delete an extended attribute on a file by path.
+
+int extattr_delete_link();
+
+Delete an extended attribute on a file by path; do not follow symbolic links.
+
+ssize_t extattr_get_fd();
+
+Retrieve an extended attribute on a file by file descriptor.
+
+ssize_t extattr_get_file();
+
+Retrieve an extended attribute on a file by path.
+
+ssize_t extattr_get_link();
+
+Retrieve an extended attribute on a file by path; do not follow symbolic
+links.
+
+int extattr_set_fd();
+
+Set an extended attribute on a file by file descriptor.
+
+int extattr_set_file();
+
+Set an extended attribute on a file by path.
+
+int extattr_set_link();
+
+Set an extended attribute on a file by path; do not follow symbolic links.
+
+ssize_t extattr_list_file();
+
+List extended attributes on a file by path.
+
+ssize_t extattr_list_link();
+
+List extended attributes on a file by path; do not follow symbolic links.
+
+ssize_t extattr_list_fd();
+
+List extended attributes on a file by file descriptor.
+
+  New System Library Interfaces - libmac
+
+int mac_reload()
+
+Cause the user space MAC Framework to reload its label configuration from
+mac.conf.
+
+int mac_free()
+
+Free a user space MAC label.
+
+int mac_from_text()
+
+Convert a text representation label to a user space MAC label.
+
+int mac_to_text()
+
+Convert a user space MAC label to a text representation.
+
+int mac_prepare()
+
+Prepare storage for a user space MAC label.
+
+int mac_prepare_type()
+
+Prepare storage for a user space MAC label intended for use with a particular
+object type.
+
+int mac_prepare_ifnet_label()
+
+Deprecated: prepare storage for a user space MAC label intended for use with
+network interface.
+
+int mac_prepare_file_label()
+
+Deprecated: prepare storage for a user space MAC label intended for use with
+a file.
+
+int mac_prepare_packet_label()
+
+Deprecated: prepare storage for a user space MAC label intended for use with
+a network packet.
+
+int mac_prepare_process_label()
+
+Deprecated: prepare storage for a user space MAC label intenedd for use with
+a process.
+
+int mac_is_present()
+
+Check with MAC support is loaded, and if so, whether a specified policy is
+present.
+
+int mac_syscall()
+
+Multiplexor MAC policy system call.
+
+int mac_execve()
+
+Execute a file and request a specific MAC label transition as part of
+execution.
+
+int mac_get_fd()
+
+Retrieve the MAC label on a file by file descriptor.
+
+int mac_get_file()
+
+Retrieve the MAC label on a file by file path.
+
+int mac_get_link()
+
+Retrieve the MAC label on a file by file path; do not follow symbolic links.
+
+int mac_get_pid()
+
+Retrieve the MAC label on the current process.
+
+int mac_get_proc()
+
+Retrieve the MAC label on another process.
+
+int mac_get_peer()
+
+Retrieve the MAC label of the remote endpoint of a communications socket.
+
+int mac_set_fd()
+
+Set the MAC label on a file by file descriptor.
+
+int mac_set_file()
+
+Set the MAC label on a file by file path.
+
+int mac_set_link()
+
+Set the MAC label on a file by file path; do not follow symbolic links.
+
+int mac_set_proc()
+
+Set the MAC label on the current process.
+
+  New System Library Interfaces - SEDarwin
+
+XXX
+
+  New Command Line Utilities - extattr_cmds
+
+getextattr(8)
+
+Retrieve extended attributes on a file.
+
+lsextattr(8)
+
+List extended attributes on a file.
+
+rmextattr(8)
+
+Remove extended attributes from a file.
+
+setextattr(8)
+
+Set extended attributes on a file.
+
+  New Command Line Utilities - mac_cmds
+
+getfmac(8)
+
+Retrieve the MAC label of a file.
+
+getpmac(8)
+
+Retrieve the MAC label of the current process.
+
+mexec(8)
+
+Run a program and transition to the requested MAC label.
+
+setfsmac(8)
+
+Set the MAC label of a file, optionally with using a label specification
+database.
+
+setpmac(8)
+
+Set the MAC label of the current process, then execute a command.
+
+  New Command Line Utilities - login contexts
+
+lcs(1)
+
+Show information about existing login contexts.
+
+getlcmac(8)
+
+Print login context related MAC labels.
+
+setlcmac(8)
+
+Change the MAC login context label.
+
+  New Command Line Utilities - SEDarwin
+
+checkpolicy(8)
+
+Check a policy for correctness and convert to binary format.
+
+sebsd_loadpolicy(8)
+
+Loads or reloads the specified binary format policy.
+
+sebsd_newrole(8)
+
+Run a shell with a new role.
+
+  Modifications to Existing System Services
+
+mach_init(8)
+
+  Modifications to Existing Command Line Utilities
+
+ls(1)
+
+File list utility; modified to query MAC labels when -Z is used.
+
+ps(1)
+
+Process list utility; modified to query MAC labels when -Z is used.
+
+  MAC Framework Policy Entry Points
+
+XXX
+
+  MAC Framework Kernel Entry Points
+
+XXX
+
+  Kernel Data Structure and Implementation Modifications
+
+struct bpf_d - BPF Descriptor
+struct ifnet - Network Interface
+struct ipq - IP Fragment Reassembly Queue
+struct socket - Berkeley IPC Socket
+struct mount - File System Mountpoint
+struct pseminfo - POSIX Semaphore
+struct pshminfo - POSIX Shared Memory Segment
+struct lctx - Login Context
+struct proc - Process
+struct semid_kernel - System V Semaphore
+struct shmid_kernel - System V Shared Memory Segment
+struct ucred - User Credential
+struct vnode - VFS Node
+struct ipc_kmsg - Mach IPC Message
+struct ipc_port - Mach IPC Port
+
+XXX
+
+  Conclusion
+
+XXX
+
+  Copyright
+
+/*-
+ * Copyright (c) 2005 SPARTA, Inc.
+ * All rights reserved.
+ *
+ * This software was enhanced by SPARTA ISSO under SPAWAR contract
+ * N66001-04-C-6019 ("SEFOS").
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * [id for your version control system, if any]
+ */

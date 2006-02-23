@@ -1,0 +1,2 @@
+option ignore mach_kernel
+option ignore mach_init

@@ -1,0 +1,498 @@
+// 204541 calls 0 wraps, max depth 1 07/15/04
+
+digraph z {
+ rankdir = LR;
+ edge [dir=back];
+ node [shape=record, style=filled];
+
+associate_vnode_devfs->devfs_dntovn->lookup->namei->vn_open->open_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->devfs_kernel_mount_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getsock->soconnect->connect_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->link_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_lookup->lookup->namei->setattrlist_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_lookup->lookup->namei->undelete_
+associate_vnode_singlelabel->getnewvnode->fdesc_allocvp->fdesc_mount->mount_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->devfs_kernel_mount_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getsock->soconnect->connect_
+associate_vnode_singlelabel->getnewvnode->volfs_mount->mount_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->__mac_execve->execve_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->load_init_program->bsdinit_task_
+check_vnode_create->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+check_vnode_exec->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_link->link_
+check_vnode_lookup->lookup->namei->devfs_kernel_mount_
+check_vnode_lookup->lookup->namei->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+check_vnode_open->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+check_vnode_readlink->namei->chflags_
+check_vnode_readlink->namei->rmdir_
+check_vnode_read->vn_rdwr->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_read->vn_rdwr->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_setmode->setattrlist_
+copy_cred_to_task->bsdinit_task_
+copy_cred_to_task->mac_copy_cred_to_task->mac_update_task_label_
+copy_cred_to_task->procdup->cloneproc->bsd_utaskbootstrap_
+copy_devfs_label->dev_add_node->dev_add_entry->dev_dup_entry->dev_dup_plane->devfs_mount->devfs_kernel_mount_
+create_cred->crcopy->setegid_
+create_cred->crdup->__mac_execve->execve_
+create_cred->crdup->reassignbuf->meta_bread->MacToVFSError->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+create_cred->crdup->reassignbuf->meta_bread->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+create_devfs_device->devfs_make_node_
+create_devfs_device->devfs_make_node->random_init_
+create_mount->vfs_rootmountalloc->hfs_bwrite->vfs_mountroot_
+create_proc0->mac_create_proc0_
+create_proc1->bsdinit_task_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ReplaceBTreeRecord->ReplaceBTreeRecord->ReplaceBTreeRecord->ReplaceBTreeRecord->ReplaceBTreeRecord->ReplaceBTreeRecord->hfs_strategy->hfs_truncate->MacToVFSError->MacToVFSError->rename_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_readdir->MacToVFSError->hfs_quotactl->sync_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->lstat_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+destroy_cred_label->crfree->wait1->hashinit->hashinit_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_quotactl->hfs_bwrite->hfs_bwrite->mount_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->getsock->sobind->bind_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->undelete_
+destroy_vnode_label->getnewvnode->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+execve_will_transition->__mac_execve->execve->load_init_program->bsdinit_task_
+init_bsd->mac_init_bsd_
+init_cred_label->crget->crcopy->setegid_
+init_cred_label->crget->crdup->__mac_execve->execve_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->MacToVFSError->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+init_cred_label->mac_cred_label_alloc->mac_init_cred->crget_
+init_devfsdirent_label->dev_add_node->dev_add_entry->dev_dup_entry->dev_dup_plane->devfs_mount->devfs_kernel_mount_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->random_init_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_sinit->devfs_update->vfsinit_
+init_mount_fs_label->vfs_rootmountalloc->hfs_bwrite->vfs_mountroot_
+init_mount_label->vfs_rootmountalloc->hfs_bwrite->vfs_mountroot_
+init_proc_label->forkproc->cloneproc->bsd_utaskbootstrap_
+init_task_label->task_create_internal->procdup->cloneproc->bsd_utaskbootstrap_
+init_vnode_label->getnewvnode->bdevvp->hfs_bwrite->vfs_mountroot_
+init_vnode_label->getnewvnode->devfs_dntovn->lookup->namei->vn_open->open_
+init_vnode_label->getnewvnode->fdesc_allocvp->fdesc_mount->mount_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->vn_open->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->devfs_kernel_mount_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getsock->soconnect->connect_
+init_vnode_label->getnewvnode->volfs_mount->mount_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->chmod_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->chown_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->chroot->chdir_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve->load_init_program->bsdinit_task_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->prepare_profile_database->setuid_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_readdir->MacToVFSError->symlink_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve->load_init_program->bsdinit_task_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->prepare_profile_database->setuid_
+check_vnode_lookup->lookup->namei->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_read->vn_rdwr->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+check_vnode_read->vn_rdwr->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_write->ftruncate_
+check_vnode_write->vn_rdwr->bsd_write_page_cache_file->tws_hash_ws_flush->task_terminate_internal->exit1->exit_
+copy_devfs_label->dev_add_node->dev_add_entry->devfs_propogate->devfs_make_node->_ZN9IOService14startCandidateEPS_->_ZN9IOService15probeCandidatesEP12OSOrderedSet->_ZN9IOService14doServiceMatchEm->_ZN15_IOConfigThread4mainEPS_->IOLibInit->IOLibInit_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->access_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->getattrlist_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->hfs_readdir->namei->getattrlist_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->PositionIterator->ufs_makeinode->hfs_readdir->getdirentries_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve_
+destroy_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->chmod_
+destroy_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->revoke_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->MacToVFSError->symlink_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->chown_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->access_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->getattrlist_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_propogate->devfs_make_node->_ZN9IOService14startCandidateEPS_->_ZN9IOService15probeCandidatesEP12OSOrderedSet->_ZN9IOService14doServiceMatchEm->_ZN15_IOConfigThread4mainEPS_->IOLibInit->IOLibInit_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->chmod_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->chown_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->MacToVFSError->symlink_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve->load_init_program->bsdinit_task_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->prepare_profile_database->setuid_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->hfs_bwrite->mount_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->revoke_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->mount_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->statfs_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->mount->mount_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->mount->mount_
+associate_vnode_singlelabel->getnewvnode->nfs_nget->nfs_mountroot->nfs_mountroot->mount_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_quotactl->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_readdir->getsock->sobind->bind_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->mount_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_create->getsock->sobind->bind_
+check_vnode_lookup->lookup->namei->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+check_vnode_readlink->namei->chown_
+check_vnode_readlink->namei->getsock->sobind->bind_
+check_vnode_write->vn_rdwr->coredump->get_kernel_symfile->kern_sysctl->__sysctl_
+create_cred->crdup->reassignbuf->meta_bread->MacToVFSError->hfs_bwrite->hfs_bwrite->mount_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->access_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getattrlist_
+destroy_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->hfs_bwrite->mount_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_quotactl->sync_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->MacToVFSError->hfs_bwrite->hfs_bwrite->mount_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->hfs_bwrite->mount_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->revoke_
+init_vnode_label->getnewvnode->nfs_nget->nfs_mountroot->nfs_mountroot->mount_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_quotactl->hfs_bwrite->hfs_bwrite->vfs_mountroot_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->getsock->sobind->bind_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_bwrite->hfs_extattr_autostart->hfs_bwrite->hfs_bwrite->mount_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve->load_init_program->bsdinit_task_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->statfs_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_quotactl->sync_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->undelete_
+associate_vnode_singlelabel->getnewvnode->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_vnode_create->symlink_
+check_vnode_lookup->lookup->namei->macx_swapon_
+check_vnode_lookup->lookup->namei->setattrlist_
+check_vnode_readlink->namei->link_
+check_vnode_revoke->revoke_
+create_devfs_device->devfs_make_node->bpf_tap_callback->bpf_init_
+create_devfs_device->devfs_make_node->vndevice_init_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->BTIterateRecords->ufs_makeinode->hfs_readdir->getdirentries_
+destroy_cred_label->crfree->nfsrv_init->statfs_
+destroy_cred_label->crfree->setgroups_
+init_cred_label->crget->nfsrv_init->statfs_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->bpf_tap_callback->bpf_init_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->vndevice_init_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_swap_HFSBTInternalNode->hfs_quotactl->sync_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->undelete_
+init_vnode_label->getnewvnode->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->setgroups_
+check_vnode_readlink->namei->chroot->chdir_
+check_vnode_readlink->namei->mkdir_
+check_vnode_setowner->fchown_
+create_cred->crdup->setgroups_
+destroy_cred_label->crfree->ffree->fdfree->closef->fdfree->proc_exit->thread_terminate_self->special_handler->act_execute_returnhandlers_
+init_cred_label->crget->crdup->setgroups_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->mount->mount_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->chown_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->chroot->chdir_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->chown_
+check_vnode_readlink->namei->chmod_
+check_vnode_readlink->namei->load_shared_file_
+check_vnode_readlink->namei->readlink_
+create_cred->crdup->reassignbuf->meta_bread->hfs_bwrite->hfs_bwrite->mount_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->stat_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->mkdir_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_bwrite->hfs_bwrite->mount_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->chown_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->lstat_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->mkdir_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->mkdir_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+check_vnode_lookup->lookup->namei->symlink_
+check_vnode_readlink->namei->utimes_
+check_vnode_setutimes->fchown->utimes_
+create_devfs_device->devfs_make_node->devfs_update->vfsinit_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->hfs_readdir->namei->__mac_execve->execve_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->devfs_update->vfsinit_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->mkdir_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_readdir->mkdir_
+check_vnode_create->mkdir_
+check_vnode_delete->rmdir_
+check_vnode_setmode->fchmod_
+create_mount->mount_
+init_mount_fs_label->mount_
+init_mount_label->mount_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->mkdir_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->rmdir_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_quotactl->hfs_bwrite->hfs_bwrite->mount_
+check_proc_signal->cansignal->kill_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_quotactl->hfs_bwrite->hfs_bwrite->mount_
+check_proc_sched->donice->setpriority_
+check_vnode_lookup->lookup->namei->revoke_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->hfs_readdir->namei->stat_
+check_vnode_lookup->lookup->namei->hfs_bwrite->mount_
+create_cred->crcopy->setgid_
+init_cred_label->crget->crcopy->setgid_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->__mac_execve->execve_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->__mac_execve->execve_
+check_vnode_lookup->lookup->namei->mount_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->stat_
+check_vnode_lookup->lookup->namei->getsock->sobind->bind_
+create_task->ipc_task_init->task_create_internal->__mac_execve->execve_
+init_proc_label->forkproc->vfork_
+init_task_label->task_create_internal->__mac_execve->execve_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->getattrlist_
+check_vnode_setowner->chown_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->lookup->namei->pathconf_
+check_vnode_chdir->fchdir_
+check_vnode_lookup->lookup->namei->rmdir_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_lookup->lookup->namei->rename_
+check_vnode_lookup->lookup->namei->link_
+check_vnode_lookup->lookup->namei->mount->mount_
+create_cred->crcopy->setuid_
+init_cred_label->crget->crcopy->setuid_
+destroy_cred_label->crfree->wait1_
+destroy_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->open_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->access_
+check_vnode_setflags->chflags_
+check_vnode_setmode->chmod_
+check_vnode_lookup->lookup->namei->statfs_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->stat_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->stat_
+check_vnode_readlink->namei->rename_
+create_cred->crcopy->seteuid_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->hfs_readdir->namei->vn_open->open_
+init_cred_label->crget->crcopy->seteuid_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->setegid_
+check_vnode_lookup->lookup->namei->chflags_
+create_devfs_device->devfs_make_node->_ZN9IOService14startCandidateEPS_->_ZN9IOService15probeCandidatesEP12OSOrderedSet->_ZN9IOService14doServiceMatchEm->_ZN15_IOConfigThread4mainEPS_->IOLibInit->IOLibInit_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->_ZN9IOService14startCandidateEPS_->_ZN9IOService15probeCandidatesEP12OSOrderedSet->_ZN9IOService14doServiceMatchEm->_ZN15_IOConfigThread4mainEPS_->IOLibInit->IOLibInit_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->setgid_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->setuid_
+check_vnode_readlink->namei->vn_open->vn_open->prepare_profile_database->setuid_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->rename_
+check_vnode_readlink->namei->lstat_
+check_vnode_open->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+check_vnode_readlink->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve_
+check_vnode_readlink->namei->__mac_execve->execve_
+copy_vnode_label->__mac_execve->execve_
+destroy_vnode_label->__mac_execve->execve_
+destroy_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->vn_open->open_
+init_vnode_label->__mac_execve->execve_
+check_vnode_lookup->lookup->namei->pathconf_
+check_vnode_readlink->namei->getsock->soconnect->connect_
+check_vnode_delete->undelete_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->undelete_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->open_
+check_service_access->task_set_special_port->task_server_routine->ipc_kobject_server->ipc_kmsg_send->mach_msg_send_
+check_vnode_create->vn_open->open_
+init_vnode_label->getnewvnode->ufs_makeinode->hfs_readdir->vn_open->open_
+check_vnode_lookup->lookup->namei->mkdir_
+check_vnode_chdir->chroot->chdir_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getattrlist_
+check_vnode_lookup->lookup->namei->utimes_
+check_vnode_lookup->lookup->namei->chroot->chdir_
+check_vnode_readlink->namei->undelete_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->ufs_makeinode->GetNode->SearchTree->BTSearchRecord->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->open_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->namei->vn_open->open_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->namei->vn_open->open_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->lstat_
+check_service_access->task_set_special_port->host_security_set_task_token->set_security_token->seteuid_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->stat_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->access_
+check_vnode_access->ufs_makeinode->ufs_makeinode->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->access_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->access_
+destroy_cred_label->crfree->allocbuf->allocbuf->getblk->reassignbuf->meta_bread->hfs_readdir->readlink_
+check_vnode_readlink->namei->getattrlist_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve_
+check_vnode_read->vn_rdwr->pread->pread_
+check_vnode_lookup->lookup->namei->chown_
+create_cred->crdup->reassignbuf->meta_bread->hfs_readdir->readlink_
+init_cred_label->crget->crdup->reassignbuf->meta_bread->hfs_readdir->readlink_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->vn_open->open_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->vn_open->open_
+check_vnode_lookup->lookup->namei->chmod_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->__mac_execve->execve_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->open_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getattrlist_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getattrlist_
+destroy_proc_label->wait1_
+check_vnode_write->vn_rdwr->rwuio->writev_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->getattrlist_
+check_vnode_readlink->readlink_
+check_vnode_readdir->getdirentriesattr_
+check_vnode_lookup->lookup->namei->vn_open->vn_open->prepare_profile_database->setuid_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_pathconf->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->lstat_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->lstat_
+destroy_proc_label->wait1->hashinit->hashinit_
+check_vnode_lookup->lookup->namei->vn_open->vn_open->bsd_open_page_cache_files->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+check_vnode_lookup->lookup->namei->getsock->soconnect->connect_
+check_vnode_access->access_
+check_vnode_readlink->namei->access_
+destroy_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+create_devfs_device->devfs_make_node->pty_init_
+init_devfsdirent_label->dev_add_node->dev_add_entry->devfs_make_node->pty_init_
+check_vnode_lookup->lookup->namei->rename_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_lookup->lookup->namei->vn_open->open_
+check_vnode_read->vn_rdwr->bsd_read_page_cache_file->tws_handle_startup_file->__mac_execve->execve_
+copy_devfs_label->dev_add_node->dev_add_entry->dev_dup_entry->dev_dup_entry->dev_dup_plane->devfs_mount->devfs_kernel_mount_
+init_devfsdirent_label->dev_add_node->dev_add_entry->dev_dup_entry->dev_dup_entry->dev_dup_plane->devfs_mount->devfs_kernel_mount_
+check_vnode_read->vn_rdwr->load_machfile->load_machfile->__mac_execve->execve_
+execve_will_transition->__mac_execve->execve_
+destroy_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->stat_
+check_vnode_exec->__mac_execve->execve_
+check_vnode_read->vn_rdwr->__mac_execve->execve_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->lstat_
+copy_cred_to_task->procdup->cloneproc->procdup_
+create_task->ipc_task_init->task_create_internal->procdup->cloneproc->procdup_
+init_proc_label->forkproc->cloneproc->procdup_
+init_task_label->task_create_internal->procdup->cloneproc->procdup_
+check_vnode_write->vn_rdwr->pwrite->write_
+check_vnode_access->ufs_makeinode->ufs_makeinode->ufs_makeinode->ufs_makeinode->getattrlist_
+check_vnode_lookup->lookup->namei->undelete_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->volfs_lookup->lookup->namei->getattrlist_
+associate_vnode_extattr->ufs_makeinode->hfs_bwrite->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_proc_wait->wait1->hashinit->hashinit_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->volfs_pathconf->volfs_pathconf->volfs_pathconf->volfs_lookup->lookup->namei->vn_open->open_
+check_vnode_lookup->lookup->volfs_pathconf->volfs_pathconf->volfs_pathconf->volfs_lookup->lookup->namei->vn_open->open_
+check_vnode_read->vn_rdwr->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+check_proc_wait->wait1_
+check_vnode_readlink->namei->stat_
+associate_vnode_extattr->ufs_makeinode->ufs_makeinode->getdirentriesattr_
+check_vnode_stat->ufs_makeinode->getdirentriesattr_
+associate_vnode_devfs->devfs_dntovn->devfs_make_link->lookup->namei->stat_
+init_vnode_label->getnewvnode->devfs_dntovn->devfs_make_link->lookup->namei->stat_
+check_vnode_lookup->lookup->namei->load_machfile->load_machfile->load_machfile->load_machfile->__mac_execve->execve_
+check_vnode_lookup->lookup->namei->readlink_
+check_vnode_lookup->lookup->namei->__mac_execve->execve_
+check_vnode_stat->vn_stat->lstat_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->stat_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->stat_
+check_vnode_readdir->getdirentries_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->stat_
+check_vnode_lookup->lookup->namei->access_
+associate_vnode_singlelabel->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->open_
+init_vnode_label->getnewvnode->ufs_makeinode->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->open_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->namei->vn_open->open_
+associate_vnode_extattr->ufs_makeinode->hfs_wakelock->hfs_wakelock->lookup->volfs_pathconf->volfs_pathconf->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_vnode_lookup->lookup->volfs_pathconf->volfs_pathconf->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_vnode_readlink->namei->vn_open->open_
+associate_vnode_extattr->ufs_makeinode->volfs_pathconf->volfs_lookup->lookup->namei->getattrlist_
+check_vnode_stat->vn_stat->stat_
+check_vnode_stat->vn_stat->fstat_
+check_vnode_lookup->lookup->namei->lstat_
+check_vnode_open->vn_open->open_
+check_vnode_lookup->lookup->namei->getattrlist_
+check_vnode_lookup->lookup->namei->load_shared_file_
+check_vnode_read->vn_rdwr->pread->read_
+check_vnode_lookup->lookup->namei->stat_
+check_vnode_lookup->lookup->namei->vn_open->open_
+
+associate_vnode_devfs [label="associate_vnode_devfs 7", fillcolor=yellow];
+associate_vnode_extattr [label="associate_vnode_extattr 43", fillcolor=yellow];
+associate_vnode_singlelabel [label="associate_vnode_singlelabel 30", fillcolor=yellow];
+check_proc_sched [label="check_proc_sched 1", fillcolor=yellow];
+check_proc_signal [label="check_proc_signal 1", fillcolor=yellow];
+check_proc_wait [label="check_proc_wait 2", fillcolor=yellow];
+check_service_access [label="check_service_access 8", fillcolor=yellow];
+check_vnode_access [label="check_vnode_access 3", fillcolor=yellow];
+check_vnode_chdir [label="check_vnode_chdir 2", fillcolor=yellow];
+check_vnode_create [label="check_vnode_create 5", fillcolor=yellow];
+check_vnode_delete [label="check_vnode_delete 2", fillcolor=yellow];
+check_vnode_exec [label="check_vnode_exec 2", fillcolor=yellow];
+check_vnode_link [label="check_vnode_link 1", fillcolor=yellow];
+check_vnode_lookup [label="check_vnode_lookup 38", fillcolor=yellow];
+check_vnode_open [label="check_vnode_open 3", fillcolor=yellow];
+check_vnode_read [label="check_vnode_read 10", fillcolor=yellow];
+check_vnode_readdir [label="check_vnode_readdir 2", fillcolor=yellow];
+check_vnode_readlink [label="check_vnode_readlink 23", fillcolor=yellow];
+check_vnode_revoke [label="check_vnode_revoke 1", fillcolor=yellow];
+check_vnode_setflags [label="check_vnode_setflags 1", fillcolor=yellow];
+check_vnode_setmode [label="check_vnode_setmode 3", fillcolor=yellow];
+check_vnode_setowner [label="check_vnode_setowner 2", fillcolor=yellow];
+check_vnode_setutimes [label="check_vnode_setutimes 1", fillcolor=yellow];
+check_vnode_stat [label="check_vnode_stat 4", fillcolor=yellow];
+check_vnode_write [label="check_vnode_write 5", fillcolor=yellow];
+copy_cred_to_task [label="copy_cred_to_task 4", fillcolor=yellow];
+copy_devfs_label [label="copy_devfs_label 3", fillcolor=yellow];
+copy_vnode_label [label="copy_vnode_label 1", fillcolor=yellow];
+create_cred [label="create_cred 17", fillcolor=yellow];
+create_devfs_device [label="create_devfs_device 7", fillcolor=yellow];
+create_mount [label="create_mount 2", fillcolor=yellow];
+create_proc0 [label="create_proc0 1", fillcolor=yellow];
+create_proc1 [label="create_proc1 1", fillcolor=yellow];
+create_task [label="create_task 2", fillcolor=yellow];
+destroy_cred_label [label="destroy_cred_label 23", fillcolor=yellow];
+destroy_proc_label [label="destroy_proc_label 2", fillcolor=yellow];
+destroy_vnode_label [label="destroy_vnode_label 23", fillcolor=yellow];
+execve_will_transition [label="execve_will_transition 2", fillcolor=yellow];
+init_bsd [label="init_bsd 1", fillcolor=yellow];
+init_cred_label [label="init_cred_label 19", fillcolor=yellow];
+init_devfsdirent_label [label="init_devfsdirent_label 11", fillcolor=yellow];
+init_mount_fs_label [label="init_mount_fs_label 2", fillcolor=yellow];
+init_mount_label [label="init_mount_label 2", fillcolor=yellow];
+init_proc_label [label="init_proc_label 3", fillcolor=yellow];
+init_task_label [label="init_task_label 3", fillcolor=yellow];
+init_vnode_label [label="init_vnode_label 39", fillcolor=yellow];
+
+{rank = same; associate_vnode_devfs associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel check_service_access check_service_access check_vnode_create check_vnode_exec check_vnode_link check_vnode_lookup check_vnode_lookup check_vnode_open check_vnode_readlink check_vnode_readlink check_vnode_read check_vnode_read check_vnode_setmode copy_cred_to_task copy_cred_to_task copy_cred_to_task copy_devfs_label create_cred create_cred create_cred create_cred create_cred create_devfs_device create_devfs_device create_mount create_proc0 create_proc1 destroy_cred_label destroy_cred_label destroy_cred_label destroy_cred_label destroy_cred_label destroy_cred_label destroy_cred_label destroy_vnode_label destroy_vnode_label destroy_vnode_label destroy_vnode_label destroy_vnode_label execve_will_transition init_bsd init_cred_label init_cred_label init_cred_label init_cred_label init_cred_label init_cred_label init_devfsdirent_label init_devfsdirent_label init_devfsdirent_label init_devfsdirent_label init_mount_fs_label init_mount_label init_proc_label init_task_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label associate_vnode_devfs associate_vnode_devfs associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel check_vnode_lookup check_vnode_read check_vnode_read check_vnode_write check_vnode_write copy_devfs_label create_cred create_cred destroy_cred_label destroy_cred_label destroy_cred_label destroy_vnode_label destroy_vnode_label destroy_vnode_label destroy_vnode_label init_cred_label init_cred_label init_devfsdirent_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label associate_vnode_devfs associate_vnode_devfs associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel check_vnode_create check_vnode_lookup check_vnode_readlink check_vnode_readlink check_vnode_write create_cred destroy_cred_label destroy_cred_label destroy_vnode_label destroy_vnode_label init_cred_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label init_vnode_label associate_vnode_extattr associate_vnode_singlelabel associate_vnode_singlelabel associate_vnode_singlelabel check_vnode_create check_vnode_lookup check_vnode_lookup check_vnode_readlink check_vnode_revoke create_devfs_device create_devfs_device destroy_cred_label destroy_cred_label destroy_cred_label init_cred_label init_devfsdirent_label init_devfsdirent_label init_vnode_label init_vnode_label init_vnode_label check_service_access check_vnode_readlink check_vnode_readlink check_vnode_setowner create_cred destroy_cred_label init_cred_label associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_singlelabel check_vnode_readlink check_vnode_readlink check_vnode_readlink create_cred destroy_cred_label destroy_vnode_label init_cred_label init_vnode_label associate_vnode_extattr associate_vnode_extattr associate_vnode_extattr associate_vnode_singlelabel associate_vnode_singlelabel check_vnode_lookup check_vnode_readlink check_vnode_setutimes create_devfs_device destroy_cred_label init_devfsdirent_label init_vnode_label init_vnode_label associate_vnode_singlelabel check_vnode_create check_vnode_delete check_vnode_setmode create_mount init_mount_fs_label init_mount_label init_vnode_label associate_vnode_extattr associate_vnode_singlelabel check_proc_signal init_vnode_label check_proc_sched check_vnode_lookup destroy_cred_label check_vnode_lookup create_cred init_cred_label create_cred init_cred_label check_vnode_lookup associate_vnode_extattr check_vnode_lookup create_task init_proc_label init_task_label associate_vnode_extattr check_vnode_setowner associate_vnode_extattr check_vnode_chdir check_vnode_lookup associate_vnode_extattr check_vnode_lookup check_vnode_lookup create_cred init_cred_label destroy_cred_label destroy_vnode_label destroy_vnode_label check_vnode_setflags check_vnode_setmode check_vnode_lookup create_cred init_cred_label check_vnode_readlink create_cred destroy_cred_label init_cred_label check_service_access check_vnode_lookup create_devfs_device init_devfsdirent_label check_service_access check_service_access check_vnode_readlink associate_vnode_extattr check_vnode_readlink check_vnode_open check_vnode_readlink destroy_vnode_label check_vnode_readlink copy_vnode_label destroy_vnode_label destroy_vnode_label init_vnode_label check_vnode_lookup check_vnode_readlink check_vnode_delete associate_vnode_extattr associate_vnode_singlelabel check_service_access check_vnode_create init_vnode_label check_vnode_lookup check_vnode_chdir destroy_vnode_label check_vnode_lookup check_vnode_lookup check_vnode_readlink destroy_cred_label create_cred init_cred_label destroy_vnode_label check_service_access destroy_vnode_label associate_vnode_singlelabel check_vnode_access init_vnode_label associate_vnode_extattr destroy_cred_label check_vnode_readlink associate_vnode_singlelabel init_vnode_label check_vnode_read check_vnode_lookup create_cred init_cred_label associate_vnode_devfs init_vnode_label check_vnode_lookup associate_vnode_extattr destroy_vnode_label associate_vnode_singlelabel init_vnode_label destroy_proc_label check_vnode_write associate_vnode_extattr check_vnode_readlink check_vnode_readdir check_vnode_lookup associate_vnode_extattr associate_vnode_singlelabel init_vnode_label destroy_proc_label check_vnode_lookup check_vnode_lookup check_vnode_access check_vnode_readlink destroy_vnode_label create_devfs_device init_devfsdirent_label check_vnode_lookup associate_vnode_extattr check_vnode_read copy_devfs_label init_devfsdirent_label check_vnode_read execve_will_transition destroy_vnode_label check_vnode_exec check_vnode_read associate_vnode_extattr copy_cred_to_task create_task init_proc_label init_task_label check_vnode_write check_vnode_access check_vnode_lookup associate_vnode_extattr associate_vnode_extattr check_proc_wait associate_vnode_extattr check_vnode_lookup check_vnode_read associate_vnode_singlelabel init_vnode_label check_proc_wait check_vnode_readlink associate_vnode_extattr check_vnode_stat associate_vnode_devfs init_vnode_label check_vnode_lookup check_vnode_lookup check_vnode_lookup check_vnode_stat associate_vnode_singlelabel init_vnode_label check_vnode_readdir associate_vnode_extattr check_vnode_lookup associate_vnode_singlelabel init_vnode_label associate_vnode_extattr associate_vnode_extattr check_vnode_lookup check_vnode_readlink associate_vnode_extattr check_vnode_stat check_vnode_stat check_vnode_lookup check_vnode_open check_vnode_lookup check_vnode_lookup check_vnode_read check_vnode_lookup check_vnode_lookup; } 
+
+IOLibInit_ [label="IOLibInit 4", fillcolor=pink];
+__sysctl_ [label="__sysctl 7", fillcolor=pink];
+access_ [label="access 10", fillcolor=pink];
+act_execute_returnhandlers_ [label="act_execute_returnhandlers 1", fillcolor=pink];
+bind_ [label="bind 6", fillcolor=pink];
+bpf_init_ [label="bpf_init 2", fillcolor=pink];
+bsd_utaskbootstrap_ [label="bsd_utaskbootstrap 3", fillcolor=pink];
+bsdinit_task_ [label="bsdinit_task 16", fillcolor=pink];
+chdir_ [label="chdir 5", fillcolor=pink];
+chflags_ [label="chflags 3", fillcolor=pink];
+chmod_ [label="chmod 6", fillcolor=pink];
+chown_ [label="chown 9", fillcolor=pink];
+connect_ [label="connect 5", fillcolor=pink];
+crget_ [label="crget 1", fillcolor=pink];
+devfs_kernel_mount_ [label="devfs_kernel_mount 8", fillcolor=pink];
+devfs_make_node_ [label="devfs_make_node 2", fillcolor=pink];
+execve_ [label="execve 35", fillcolor=pink];
+exit_ [label="exit 1", fillcolor=pink];
+fchdir_ [label="fchdir 1", fillcolor=pink];
+fchmod_ [label="fchmod 1", fillcolor=pink];
+fchown_ [label="fchown 1", fillcolor=pink];
+fstat_ [label="fstat 1", fillcolor=pink];
+ftruncate_ [label="ftruncate 1", fillcolor=pink];
+getattrlist_ [label="getattrlist 21", fillcolor=pink];
+getdirentries_ [label="getdirentries 3", fillcolor=pink];
+getdirentriesattr_ [label="getdirentriesattr 9", fillcolor=pink];
+hashinit_ [label="hashinit 3", fillcolor=pink];
+hfs_bwrite_ [label="hfs_bwrite 1", fillcolor=pink];
+kill_ [label="kill 1", fillcolor=pink];
+link_ [label="link 4", fillcolor=pink];
+load_shared_file_ [label="load_shared_file 2", fillcolor=pink];
+lstat_ [label="lstat 9", fillcolor=pink];
+mac_create_proc0_ [label="mac_create_proc0 1", fillcolor=pink];
+mac_init_bsd_ [label="mac_init_bsd 1", fillcolor=pink];
+mac_update_task_label_ [label="mac_update_task_label 1", fillcolor=pink];
+mach_msg_send_ [label="mach_msg_send 1", fillcolor=pink];
+macx_swapon_ [label="macx_swapon 1", fillcolor=pink];
+mkdir_ [label="mkdir 9", fillcolor=pink];
+mount_ [label="mount 28", fillcolor=pink];
+open_ [label="open 23", fillcolor=pink];
+pathconf_ [label="pathconf 2", fillcolor=pink];
+pread_ [label="pread 1", fillcolor=pink];
+procdup_ [label="procdup 4", fillcolor=pink];
+pty_init_ [label="pty_init 2", fillcolor=pink];
+random_init_ [label="random_init 2", fillcolor=pink];
+read_ [label="read 1", fillcolor=pink];
+readlink_ [label="readlink 6", fillcolor=pink];
+rename_ [label="rename 5", fillcolor=pink];
+revoke_ [label="revoke 5", fillcolor=pink];
+rmdir_ [label="rmdir 4", fillcolor=pink];
+setattrlist_ [label="setattrlist 3", fillcolor=pink];
+setegid_ [label="setegid 3", fillcolor=pink];
+seteuid_ [label="seteuid 3", fillcolor=pink];
+setgid_ [label="setgid 3", fillcolor=pink];
+setgroups_ [label="setgroups 4", fillcolor=pink];
+setpriority_ [label="setpriority 1", fillcolor=pink];
+setuid_ [label="setuid 8", fillcolor=pink];
+stat_ [label="stat 15", fillcolor=pink];
+statfs_ [label="statfs 5", fillcolor=pink];
+symlink_ [label="symlink 5", fillcolor=pink];
+sync_ [label="sync 4", fillcolor=pink];
+undelete_ [label="undelete 8", fillcolor=pink];
+utimes_ [label="utimes 3", fillcolor=pink];
+vfork_ [label="vfork 1", fillcolor=pink];
+vfs_mountroot_ [label="vfs_mountroot 13", fillcolor=pink];
+vfsinit_ [label="vfsinit 3", fillcolor=pink];
+vndevice_init_ [label="vndevice_init 2", fillcolor=pink];
+wait1_ [label="wait1 3", fillcolor=pink];
+write_ [label="write 1", fillcolor=pink];
+writev_ [label="writev 1", fillcolor=pink];
+
+{ rank=same; IOLibInit_ __sysctl_ access_ act_execute_returnhandlers_ bind_ bpf_init_ bsd_utaskbootstrap_ bsdinit_task_ chdir_ chflags_ chmod_ chown_ connect_ crget_ devfs_kernel_mount_ devfs_make_node_ execve_ exit_ fchdir_ fchmod_ fchown_ fstat_ ftruncate_ getattrlist_ getdirentries_ getdirentriesattr_ hashinit_ hfs_bwrite_ kill_ link_ load_shared_file_ lstat_ mac_create_proc0_ mac_init_bsd_ mac_update_task_label_ mach_msg_send_ macx_swapon_ mkdir_ mount_ open_ pathconf_ pread_ procdup_ pty_init_ random_init_ read_ readlink_ rename_ revoke_ rmdir_ setattrlist_ setegid_ seteuid_ setgid_ setgroups_ setpriority_ setuid_ stat_ statfs_ symlink_ sync_ undelete_ utimes_ vfork_ vfs_mountroot_ vfsinit_ vndevice_init_ wait1_ write_ writev_} 
+}

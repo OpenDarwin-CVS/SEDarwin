@@ -1,0 +1,11 @@
+# login: auth account password session
+auth       required       pam_nologin.so
+auth       success=1default=2  pam_securityserver.so
+auth       success=okdefault=1 pam_unix.so
+auth       default=done   pam_sedarwin.so
+auth       required       pam_deny.so
+account    required       pam_permit.so
+password   required       pam_deny.so
+session    required       pam_uwtmp.so
+session    required       pam_lctx.so
+session    required       pam_sedarwin.so

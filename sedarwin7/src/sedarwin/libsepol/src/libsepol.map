@@ -1,0 +1,4 @@
+{
+  global: sepol_genbools*;
+  local: *;
+};

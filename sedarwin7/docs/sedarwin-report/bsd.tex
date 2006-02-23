@@ -1,0 +1,146 @@
+\section{The Darwin BSD Subsystem}
+
+The SEDarwin MAC Framework currently provides label storage and
+access mediation for processes and files, as well as System V, POSIX
+and Mach IPC objects.
+
+\subsection{Process Labels}
+
+Like the MAC Framework on FreeBSD, the Darwin MAC Framework adds label
+storage to both the process structure, {\tt struct proc} and the user
+credential structure, {\tt struct ucred}.  Since the shared process
+credential structure includes a reference to the user credentials,
+both labels are available anytime a BSD process is available.  Most
+policy modules (including SEDarwin) store labels in the shared user
+credential structure, but some policies may require storage space
+directly in the process structure.  One example of the latter
+approach is the LOMAC policy\cite{Fraser00,fraser01}).
+
+\subsection{Process Controls}
+
+The Darwin MAC Framework provides entry points for the same four process
+control checks that the FreeBSD MAC framework provides:
+\footnote{On these, only mac\_check\_proc\_signal() is presently
+implemented by the SEDarwin module.}
+
+\begin{center}
+\begin{tabular}{ll}
+mac\_check\_proc\_signal() & mac\_check\_proc\_sched() \\
+mac\_check\_proc\_debug() & mac\_check\_proc\_wait() \\
+\end{tabular}
+\end{center}
+
+The Darwin MAC Framework also provides an additional six process
+control checks not currently present in the FreeBSD MAC framework:
+\footnote{The audit-related entry points are not currently
+implemented for the SEDarwin module.}
+
+\begin{center}
+\begin{tabular}{ll}
+mac\_check\_proc\_getaudit() & mac\_check\_proc\_setaudit() \\
+mac\_check\_proc\_getauid() & mac\_check\_proc\_setauid() \\
+mac\_check\_proc\_getlcid() & mac\_check\_proc\_setlcid() \\
+\end{tabular}
+\end{center}
+
+\subsection{File Labels}
+
+The Darwin MAC Framework adds label storage to vnodes ({\tt struct
+vnode}), devfs device nodes ({\tt struct devnode}), and the mount
+structure ({\tt struct mount}).  The vnode is the core structure
+for all file activity.  A vnode is described by {\tt struct vnode}.
+There is a unique vnode allocated for each active file, each current
+directory, each mounted-on file, text file, and the root.  As with
+the FreeBSD MAC Framework, the mount structure contains two labels,
+one to label the mount point itself and a second label that may be
+used as the default label on single-label file systems.
+
+Policy modules may use HFS+ extended attributes to provide persistence
+for file labels, or the policies may implement their own non-persistent
+file labeling scheme.  For example, SEDarwin labels devfs and other
+non-disk file system entries based on rules in the Type Enforcement
+policy.
+
+\subsection{File System Controls}
+
+The Darwin MAC Framework provides file access control entry points
+with semantics equivalent to the FreeBSD MAC Framework.  The complete
+set of file entry points could not be carried over from FreeBSD due
+to minor differences between the two operating systems (FreeBSD has
+introduced a small number of additional file APIs that must be
+protected).  The current set of entry points is:\footnote{The
+extended attribute and file attribute list entry points are not
+currently implemented in the SEDarwin policy module.}
+
+\begin{center}
+\begin{tabular}{ll}
+mac\_check\_vnode\_access()
+& mac\_check\_vnode\_chdir() \\
+
+mac\_check\_vnode\_chroot()
+& mac\_check\_vnode\_create() \\
+
+mac\_check\_vnode\_delete()
+& mac\_check\_vnode\_deleteextattr() \\
+
+mac\_check\_vnode\_exchangedata()
+& mac\_check\_vnode\_exec() \\
+
+ mac\_check\_vnode\_getattrlist()
+& mac\_check\_vnode\_getextattr() \\
+
+mac\_check\_vnode\_link()
+& mac\_check\_vnode\_listextattr() \\
+
+mac\_check\_vnode\_lookup()
+& mac\_check\_vnode\_mmap() \\
+
+mac\_check\_vnode\_mprotect()
+& mac\_check\_vnode\_open() \\
+
+mac\_check\_vnode\_poll()
+& mac\_check\_vnode\_read() \\
+
+mac\_check\_vnode\_readdir()
+& mac\_check\_vnode\_readlink() \\
+
+mac\_check\_vnode\_rename\_from()
+& mac\_check\_vnode\_rename\_to() \\
+
+mac\_check\_vnode\_revoke()
+& mac\_check\_vnode\_select() \\
+
+mac\_check\_vnode\_setattrlist()
+& mac\_check\_vnode\_setextattr() \\
+
+mac\_check\_vnode\_setflags()
+& mac\_check\_vnode\_setmode() \\
+
+mac\_check\_vnode\_setowner()
+& mac\_check\_vnode\_setutimes() \\
+
+mac\_check\_vnode\_stat()
+& mac\_check\_vnode\_write() \\
+
+\end{tabular}
+\end{center}
+
+Darwin adds several new VFS operations to support the HFS+ file system
+to provide aggregate vnode data to user space or to increase system
+performance.  For instance, the {\tt readdirattr} operation returns
+attributes for all files in the specified directory.  The {\tt
+readdirattr} operation uses optimized routines within the HFS+ file
+system implementation to avoid the performance penalty associated with
+creating a vnode for each file in the directory.  The current design
+of the MAC Framework does not address aggregate operations, nor does
+it address how to best filter the data returned to the user while
+avoiding increased performance costs.  The {\tt getattrlist()} and {\tt
+setattrlist()} system calls operate on HFS+ specific file attributes,
+such as type and creator.
+\footnote{As the {\tt readdirattr} and {\tt setattrlist} VFS operations
+are not required for proper operation of the system they may be
+disabled in a future version of the prototype.}
+
+In this release of SEDarwin, a small number of HFS-specific operations
+have not yet been secured by the MAC Framework.  These include {\tt
+copyfile}, {\tt searchfs}, and {\tt undelete}.

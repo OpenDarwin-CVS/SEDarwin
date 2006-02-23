@@ -1,0 +1,87 @@
+\section{SEBSD Adaptation}
+
+The FLASK type enforcement implementation was ported to FreeBSD
+during the development of the MAC Framework.  Since the kernel
+architectures of Darwin and FreeBSD are similar, the initial port
+was fairly straightforward. As memory allocators and lock constructs
+differ between FreeBSD and Darwin, some minor changes were required.
+
+\subsection{Application Interfaces}
+
+\subsubsection{SEDarwin-specific System Calls}
+
+SEDarwin has several system calls in addition to what the standard
+MAC Framework provides.  These are used to implement policy tools,
+user login or session management, and file labeling tools. The login
+programs need to read the list of permitted user roles and domains
+from the in-kernel policy.  File labeling tools need to be able
+to obtain a list of valid file labels.  Because label formats are
+inherently policy-specific, an SEDarwin-specific system call is
+required.
+
+\subsubsection{User Space Tools}
+
+The SEDarwin module requires a few user space tools in addition to the generic
+Darwin MAC Framework tools that work with all policies. Administrators edit the policy
+configuration in a source language, but it must be compiled by the
+{\tt checkpolicy} program into a binary format that the kernel loads. {\tt checkpolicy}
+takes care of expanding macros and type attributes into individual rules, as
+well as assigning numbers to all the types, security classes, and permissions
+in the source file. {\tt loadpolicy} can be used to replace the policy while
+the system is running. {\tt newrole} allows a user to run a shell in a
+different role. Usually, the set of roles available to a user is the same as the roles
+that were available at login time.  Porting these tools from FreeBSD to Darwin 
+was fairly straightforward.
+
+We have also developed a graphical file labeling tool for SEDarwin
+that allows the user to choose a valid label from its three component
+parts: a role, a type and a user name.  The tool uses the Darwin-specific
+Cocoa framework.
+
+\subsection{Module Adaptation}
+
+The FLASK subsystem from SELinux references permissions and object
+classes by numbers, which is not extensible in a convenient and
+manageable way. We developed an addition to the FLASK security
+server to allow permission lookups by name, for use with the generic
+access check introduced to the MAC framework.  The policy compiler
+now stores the permission names in the policy file. The kernel will
+use these names when a generic access check is attempted. For
+performance reasons, the numbered permission checks are still used
+for most other permission checks.
+
+\subsection{Mach Adaptation}
+
+Once support for Mach object labeling and access control was added
+to the MAC Framework, the SEDarwin module was extended to support
+the new entry points.
+\begin{samepage}
+A FLASK security class and appropriate permissions
+were introduced for ports:
+
+\begin{verbatim}
+class mach_port
+{
+  relabelfrom
+  relabelto
+  send
+  recv
+  make_send
+  copy_send
+  move_recv
+  hold_send
+  hold_recv
+}
+\end{verbatim}
+\end{samepage}
+
+By default, port labels are derived from the task that created the
+port.  A {\tt type\_change} rule in the policy can override this
+behavior. Ports can also be relabeled with the {\tt mach\_set\_port\_label}
+kernel call.  It is also possible for a Framework policy module to
+label kernel ports based on the type of kernel object associated
+with them (e.g. task, clock, memory object). The current implementation
+does not perform additional access control on Mach kernel objects
+themselves, the object's port is used for access control instead.
+Since Mach kernel objects are represented externally as ports this
+approach works well and is consistent with the Mach security model.

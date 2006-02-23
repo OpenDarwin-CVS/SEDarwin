@@ -1,0 +1,377 @@
+#
+# Define common prefixes for access vectors
+#
+# common common_name { permission_name ... }
+
+
+#
+# Define a common prefix for file access vectors.
+#
+
+common file
+{
+	poll
+	ioctl
+	read
+	write
+	create
+	getattr
+	setattr
+	lock
+	relabelfrom
+	relabelto
+	transition
+	append
+	access
+	unlink
+	link
+	rename
+	execute
+	swapon
+	quotaon
+	mounton
+}
+
+
+#
+# Define a common prefix for socket access vectors.
+#
+
+common socket
+{
+# inherited from file
+	poll
+	ioctl
+	read
+	write
+	create
+	getattr
+	setattr
+	lock
+	relabelfrom
+	relabelto
+	transition
+	append
+# socket-specific
+	bind
+	connect
+	listen
+	accept
+	getopt
+	setopt
+	shutdown
+	recvfrom
+	sendto
+	recv_msg
+	send_msg
+	name_bind
+}	
+
+#
+# Define a common prefix for ipc access vectors.
+#
+
+common ipc
+{
+	create
+	destroy
+	getattr
+	setattr
+	read
+	write
+	associate
+	unix_read
+	unix_write
+}
+
+#
+# Define the access vectors.
+#
+# class class_name [ inherits common_name ] { permission_name ... }
+
+
+#
+# Define the access vector interpretation for file-related objects.
+#
+
+class filesystem
+{
+	mount
+	remount
+	unmount
+	getattr
+	relabelfrom
+	relabelto
+	transition
+	associate
+	quotamod
+	quotaget
+}
+
+class dir
+inherits file
+{
+	add_name
+	remove_name
+	reparent
+	search
+	rmdir
+}
+
+class file
+inherits file
+{
+	execute_no_trans
+	entrypoint
+}
+
+class lnk_file
+inherits file
+
+class chr_file
+inherits file
+
+class blk_file
+inherits file
+
+class sock_file
+inherits file
+
+class fifo_file
+inherits file
+
+class fd
+{
+	create
+	use
+}
+
+
+#
+# Define the access vector interpretation for network-related objects.
+#
+
+class socket
+inherits socket
+
+class tcp_socket
+inherits socket
+{
+	connectto
+	newconn
+	acceptfrom
+	node_bind
+}
+
+class udp_socket
+inherits socket
+{
+	node_bind
+}
+
+class rawip_socket
+inherits socket
+{
+	node_bind
+}
+
+class node 
+{
+	tcp_recv
+	tcp_send
+	udp_recv
+	udp_send
+	rawip_recv
+	rawip_send
+	enforce_dest
+}
+
+class netif
+{
+	getattr
+	setattr
+	tcp_recv
+	tcp_send
+	udp_recv
+	udp_send
+	rawip_recv
+	rawip_send
+}
+
+class netlink_socket
+inherits socket
+
+class packet_socket
+inherits socket
+
+class key_socket
+inherits socket
+
+class unix_stream_socket
+inherits socket
+{
+	connectto
+	newconn
+	acceptfrom
+}
+
+class unix_dgram_socket
+inherits socket
+
+
+#
+# Define the access vector interpretation for process-related objects
+#
+
+class process
+{
+	fork
+	transition
+	sigchld # commonly granted from child to parent
+	sigkill # cannot be caught or ignored
+	sigstop # cannot be caught or ignored
+	signull # for kill(pid, 0)
+	signal  # all other signals
+	ptrace
+	getsched
+	setsched
+	getsession
+	getpgid
+	setpgid
+	getcap
+	setcap
+	share
+	getattr
+	setexec
+	setfscreate
+	noatsecure
+	siginh
+	setrlimit
+	rlimitinh
+}
+
+
+#
+# Define the access vector interpretation for ipc-related objects
+#
+
+class ipc
+inherits ipc
+
+class sem
+inherits ipc
+
+class msgq
+inherits ipc
+{
+	enqueue
+}
+
+class msg
+{
+	send
+	receive
+	destroy
+}
+
+class shm
+inherits ipc
+{
+	lock
+}
+
+#
+# Define the access vector interpretation for the security server. 
+#
+
+class security
+{
+	compute_av
+	compute_create
+	compute_member
+	check_context
+	load_policy
+	compute_relabel
+	compute_user
+	setenforce     # was avc_toggle in system class
+	setbool
+}
+
+
+#
+# Define the access vector interpretation for system operations.
+#
+
+class system
+{
+	ipc_info
+	syslog_read  
+	syslog_mod
+	syslog_console
+}
+
+#
+# Define the access vector interpretation for controling capabilies
+#
+
+class capability
+{
+	# The capabilities are defined in include/linux/capability.h
+	# Care should be taken to ensure that these are consistent with
+	# those definitions. (Order matters)
+
+	chown           
+	dac_execute
+	dac_write
+	dac_read_search 
+	fowner          
+	fsetid          
+	kill
+	setfcap            
+	setgid           
+	setuid 
+	audit_control
+	audit_write        
+	linux_immutable  
+	net_bind_service 
+	net_broadcast    
+	net_admin        
+	net_raw          
+	ipc_lock         
+	ipc_owner        
+	sys_module       
+	sys_rawio        
+	sys_chroot       
+	sys_ptrace       
+	sys_pacct        
+	sys_admin        
+	sys_boot         
+	sys_nice         
+	sys_resource     
+	sys_time         
+	sys_tty_config  
+	mknod
+}
+
+class mach_port
+{
+	relabelfrom
+	relabelto
+	send
+	recv
+	make_send
+	make_send_once
+	copy_send
+	move_send
+	move_send_once
+	move_recv
+	hold_send
+	hold_send_once
+	hold_recv
+}
+
+class mach_task
+{
+	terminate
+	set_special_port
+}

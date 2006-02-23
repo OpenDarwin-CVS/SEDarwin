@@ -1,0 +1,42 @@
+
+# List the security modules you want to use
+BUILD_MODULES   ?= sedarwin ipctrace mactest mac_mls mac_none mac_stub \
+	stacktrace
+
+# By default, we will build all security modules, but only install the
+# MLS security policy module.
+INSTALL_MODULES ?= sedarwin
+
+#
+# You shouldn't have to edit anything else
+#
+
+# Staging directory for assembling a release
+EXPORT_ROOT = $(SOURCE_ROOT)/export
+DESTDIR = $(EXPORT_ROOT)
+
+# DSTROOT is sometimes used by projectbuilder Makefiles
+DSTROOT= $(DESTDIR)
+
+# Darwin sources
+DARWIN_ROOT = $(SOURCE_ROOT)/darwin
+DARWIN = $(DARWIN_ROOT)/xnu
+EXPORT_HDRS = $(DARWIN)/BUILD/obj/EXPORT_HDRS
+
+BINOWN= $(EXPORT_OWNER)
+BINGRP= $(EXPORT_OWNER)
+LIBOWN= $(EXPORT_OWNER)
+LIBGRP= $(EXPORT_OWNER)
+INCOWN= $(EXPORT_OWNER)
+INCGRP= $(EXPORT_OWNER)
+MANOWN= $(EXPORT_OWNER)
+MANGRP= $(EXPORT_OWNER)
+BINDIR= /usr/bin
+
+DARWIN_HDRS = -I$(EXPORT_HDRS)/bsd -I$(EXPORT_HDRS)/osfmk -I$(EXPORT_HDRS)
+LIBMAC = -L$(DARWIN_ROOT)/libmac -lmac
+LIBEXTATTR = -L$(DARWIN_ROOT)/libextattr -lextattr
+LIBBSM = -L$(DARWIN_ROOT)/bsm/bsm/lib -lbsm
+BSM_HDRS = $(DARWIN_ROOT)/build/obj/usr/include
+
+RELEASE_TARBALL = macmls.tgz

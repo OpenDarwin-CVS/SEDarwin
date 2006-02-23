@@ -1,0 +1,97 @@
+.\" Copyright (c) 2005 SPARTA, Inc.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd December 8, 2005
+.Dt PAM_SEDARWIN 8
+.Os
+.Sh NAME
+.Nm pam_sedarwin
+.Nd SEDarwin PAM module
+.Sh SYNOPSIS
+.Op Ar service-name
+.Ar module-type
+.Ar control-flag
+.Pa pam_sedarwin
+.Op Ar options
+.Sh DESCRIPTION
+The SEDarwin session service module for PAM,
+.Nm
+provides functionality for two PAM categories:
+authentication
+and session management.
+In terms of the
+.Ar module-type
+parameter, they are the
+.Dq Li auth
+and
+.Dq Li session
+features.
+Of these, the
+.Dq Li session
+feature is required.
+Any options specified on the command line are silently ignored.
+.Pp
+The SEDarwin module will create a label for the user based on the running
+SEDarwin security policy and relabel the calling process appropriately.
+If the policy specifies multiple roles for the user and the
+.Dq auth
+.Ar module-type
+is specified, the user will be prompted for the roles to use.
+If only the
+.Dq session
+.Ar module-type 
+is specified, the user's default role will be used to generate the label.
+This label will be inherited by all subsequent processes created by the login
+session.
+If the security policy does not define a label for the user and there is
+no failsafe context, the
+.Nm
+module will return a session error.
+.Pp
+Note that while
+.Nm
+provides an
+.Dq Li auth
+module type, it does not perform any actual authentication.
+This functionality is simply used to prompt the user for a
+security context to use when there are several to choose from.
+When using the
+.Dq auth
+.Ar module-type ,
+.Em must
+be preceded by another PAM module that performs the actual authentication.
+Otherwise, one would be able to see the roles for any user without
+authenticating.
+.Sh FILES
+.Bl -tag -width "/etc/sedarwin/default_contextXX" -compact
+.It Pa /etc/sedarwin/policy
+SEDarwin policy directory.
+.It Pa /etc/sedarwin/failsafe_context
+Context for users not specified in the security policy.
+.El
+.Sh SEE ALSO
+.Xr pam.conf 5 ,
+.Xr pam 8

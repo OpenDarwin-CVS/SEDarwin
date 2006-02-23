@@ -1,0 +1,32 @@
+Included with this sedarwin distribution is a set of simple servers
+which use mach messaging via MiG to demonstrate the securing of MiG
+applications. This readme is a simple set of instructions detailing
+how to compile and test this set of demonstration applications.
+
+The sources for the client and server can be found in the
+sedarwin78/examples/mig directory of the source distribution. In
+order to build the sample MiG client and server, this source directory
+should be copied onto a running SEDarwin system.  In order to build
+the client/server, simply type 'make' in the source directory.
+
+With the provided sample policy, the server must be run by a user
+with the role user_secret_r and domain user_secret_d. The client
+may be run as either a user with the same role and type as the
+server in order to demonstrate "allowed" functionality or as a user
+of any other role/domain to demonstrate a policy denial for MiG
+messaging. The following is one method of doing this:
+
+- Log a user in with the role:domain pair of user_secret_r:user_secret_d
+  (in this case 'deker')
+- Open 2 terminal windows
+- In window #1 run the mserver binary previously compiled
+- In window #2 run the mclient binary previously compiled
+- You should see some simple messages printed in terminal #1.
+- In window #2, run mclient under a different role:domain using setpmac
+  (ie. 'setpmac sebsd/deker:user_r:user_d ./mclient')
+- You should see SEDarwin policy denial messages in /var/log/system.log 
+  (note: messages will still be output in the mserver window unless the 
+   system is running in enforcing mode. At current the SEDarwin policy is 
+   not robust enough to run the system in enforcing mode.)
+
+

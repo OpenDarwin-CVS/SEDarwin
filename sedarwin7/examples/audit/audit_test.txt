@@ -1,0 +1,40 @@
+Because Apple has not shipped MacOS 10.3.3 with complete audit support, 
+we have provided a test program that can be used to demonstrate or
+test the kernel auditing support. 
+
+To build and install the audit tester:
+$ su
+# gcc -o /usr/bin/audit_test audit_test.c
+# chmod u+s /usr/bin/audit_test
+
+Running audit_test starts a new shell that will have process and
+file operations (failures only) audited to the file specified as an
+argument to audit_test. If desired, the audit masks can be changed to
+include any combination of the types in <sys/audit.h>. Note that there
+are seperate audit masks for successes and failures. 
+
+Showing an MLS denial with auditing:
+$ getpmac
+mls/low(low-high)
+$ echo secret > secret
+$ setfmac mls/10 secret
+$ audit_test audit.1
+$ cat secret
+secret: Permission denied
+$
+
+In another shell (running as root to read the audit file):
+# praudit audit.1
+header,206,1,72,0,Tue Oct 12 12:22:54 2004, + 788 msec
+path,/Users/andrew/secret
+path,/Users/andrew/secret
+attribute,2175057304,andrew,andrew,234881028,276887954980864,0
+text,mac_mls: object: 10.
+text,mac_mls: subject: low(low-high).
+subject,andrew,andrew,andrew,andrew,andrew,329,0,0,0.0.0.0
+return,failure : Permission denied,4294967295
+trailer,206
+
+Note the two lines that start with text,mac_mls. Those were added by
+the MLS policy to describe the subject and object classifications. This
+release does not include those changes to the MLS policy.

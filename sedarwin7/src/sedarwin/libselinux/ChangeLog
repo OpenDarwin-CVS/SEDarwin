@@ -1,0 +1,89 @@
+1.16 2004-08-19
+	* Regenerated headers for nscd class.
+	* Merged man pages from Dan Walsh.
+	* Merged context_new bug fix for MLS ranges from Chad Hanson.
+	* Merged toggle_bool from Chris PeBenito, renamed to togglesebool.
+	* Renamed change_bool and show_bools to setsebool and getsebool.
+	* Merged security_load_booleans() function from Dan Walsh.
+	* Added selinux_booleans_path() function.
+	* Changed avc_init function prototype to use const.
+	* Regenerated headers for crontab permission.
+	* Added checkAccess from Dan Walsh.
+	* Merged getenforce patch from Dan Walsh.
+	* Regenerated headers for dbus classes.
+
+1.14 2004-06-16
+	* Regenerated headers for fine-grained netlink classes.
+	* Merged selinux_config bug fix from Dan Walsh.
+	* Added userspace AVC man pages.
+	* Added man links for API calls to existing man pages documenting them.
+	* Replaced $HOME/.default_contexts support with /etc/selinux/contexts/users/$USER support.
+	* Merged patch to determine config file paths at runtime to support
+	  reorganized layout.
+	* Regenerated flask headers with stable ordering.
+	* Merged patch for man pages from Russell Coker. 
+
+1.12 2004-05-10
+	* Updated flask files to include new SE-X security classes.
+	* Added security_disable function for runtime disable of SELinux prior
+	  to initial policy load (for /sbin/init).
+	* Changed get_ordered_context_list to omit any reachable contexts
+	  that are not explicitly listed in default_contexts, unless there
+	  are no matches.
+	* Merged man pages from Russell Coker and Dan Walsh.
+	* Merged memory leak fixes from Dan Walsh.
+	* Merged policyvers errno patch from Chris PeBenito.
+
+1.10 2004-04-05
+	* Merged getenforce patch from Dan Walsh.
+	* Fixed init_selinuxmnt to correctly handle use of "selinuxfs" as
+	  the device specification, i.e. mount selinuxfs /selinux -t selinuxfs.
+	  Based on a patch by Russell Coker.
+	* Merged matchpathcon buffer size fix from Dan Walsh.
+
+1.8 2004-03-09
+	* Merged is_selinux_mls_enabled() from Chad Hanson of TCS.
+	* Added matchpathcon function.
+	* Updated userspace AVC to handle netlink selinux notifications. 
+
+1.6 2004-02-18
+	* Merged conditional policy extensions from Tresys Technology.
+	* Added userspace avc and SID table implementation.	
+	* Fixed type on size in getpeercon per Thorsten Kukuk's advice.
+	* Fixed use of getpwnam_r per Thorsten Kukuk's advice.
+	* Changed to use getpwnam_r rather than getpwnam internally to 
+	  avoid clobbering any existing pwd struct obtained by the caller.
+	* Added getpeercon function to encapsulate getsockopt SO_PEERSEC
+	  and handle allocation ala getfilecon.
+	* Changed is_selinux_enabled to return -1 on errors.
+	* Changed to discover selinuxfs mount point via /proc/mounts 
+	  so that the mount point can be changed without rebuilding.
+
+1.4 2003-12-01
+	* Merged another cleanup patch from Bastian Blank and Joerg Hoh.
+	* Regenerate headers for new permissions. 
+	* Merged static lib build patch from Bastian Blank and Joerg Hoh.
+	* Export SELINUXMNT definition, add SELINUXPOLICY definition.
+	* Add functions to provide access to enforce and policyvers.
+	* Changed is_selinux_enabled to check /proc/filesystems for selinuxfs.
+	* Fixed type for 'size' in *getfilecon. 
+	* Dropped -lattr and changed #include's to <sys/xattr.h>
+	* Merged patch to move shared library to /lib from Dan Walsh.
+	* Changed get_ordered_context_list to support a failsafe context.
+	* Added selinuxenabled utility.
+	* Merged const patch from Thorsten Kukuk.
+
+1.2 2003-09-30
+        * Change is_selinux_enabled to fail if policy isn't loaded.
+	* Changed Makefiles to allow non-root rpm builds.
+	* Added -lattr for libselinux.so to ensure proper binding.
+
+1.1 2003-08-13
+	* Ensure that context strings are padded with a null byte
+	  in case the kernel didn't include one.
+	* Regenerate headers, update helpers.c for code cleanup.
+	* Pass soname flag to linker (Colin Walters).
+	* Fixes for various items: add const as appropriate, handle missed OOM condition, clean up compile warnings (Colin Walters).
+	  
+1.0 2003-07-11
+	* Initial public release.

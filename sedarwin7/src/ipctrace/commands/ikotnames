@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+#
+# Process ipc_kobject.h into readable names for the kinds of
+# kernel ports.
+#
+
+my $names = (1..200);
+my $max = 1;
+
+while (<>)
+{
+  if (/define\s+IKOT_([A-Z_0-9]+)\s+([0-9]+)/)
+  {
+    $names[$2] = lc ($1);
+    $max = $2;
+  }
+}
+
+print "static const char *ikot_names[] = {\n";
+
+for (my $i = 0; $i <= $#names; $i++) {
+  print "\"$names[$i]\", \n";
+}
+print "NULL};\n";

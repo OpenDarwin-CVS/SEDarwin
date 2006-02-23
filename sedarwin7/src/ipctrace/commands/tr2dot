@@ -1,0 +1,100 @@
+#!/usr/bin/perl
+#
+# Generate a graph of IPC between applications, as reported by
+# the ipctrace module. Graphviz can be used to display the output.
+#
+# Usage: dumptrace | tr2dot > tr.dot
+#
+# Trace and options files can also be passed on the command line.
+# An options file contains some of the following options:
+#  option ignore <expr>          # ignores nodes matching expr
+#  option color <color> <expr>   # colors the graph edges matching expr
+#
+
+sub chop_path
+{
+  my $x = $_[0];
+  $x =~ s/([^\/]+)\.app\/Contents\/MacOS\/\1$/\1.app/;
+  $x =~ s/^.+\/([^\/]+)$/\1/;
+  $x =~ s/^mach_kernel.*$/mach_kernel/;
+  return $x;
+}
+
+sub pairname
+{
+  if ($_[0] lt $_[1]) {
+    return $_[0].'|'.$_[1];
+  } else {
+    return $_[1].'|'.$_[0];
+  }
+}
+
+my @ignores;
+my @gattrs;
+
+sub ignore
+{
+  foreach my $re (@ignores) {
+    return 1 if ($_[0] =~ /$re/);
+  }
+
+  return 0;
+}
+
+sub getattrs
+{
+  my $attr;
+  foreach my $a (@gattrs) {
+    $attr .= $$a[0] if ($_[0] =~ /$$a[1]/)
+  }
+  return $attr;
+}
+
+my %pairs;
+
+while (<>)
+{
+  if (/^([a-z_]+) +(\S?.*\S) +\| +(\S?.*\S) *: +([\S]+) +([0-9]+)$/)
+  {
+    next if ($2 eq '?' || $3 eq '?');
+
+    my $task = chop_path ($2);
+    my $port = chop_path ($3);
+
+    next if (ignore ($task) || ignore ($port));
+
+    my $pn   = pairname ($task, $port);
+
+    if (exists ($pairs{$pn})) {
+      my $a = $pairs{$pn};
+      if ($task lt $port) {
+	$$a[3] |= 1;
+      } else {
+	$$a[3] |= 2;
+      }
+    }
+    else {
+      my $attr = getattrs ($port) . getattrs($task);
+      $pairs{$pn} = [$task, $port, $attr, 1 + ($task ge $port)];
+    }
+  }
+  elsif (/^option ignore +(.*)$/) {
+    push @ignores, $1;
+  }
+  elsif (/^option color +(\w+) +(.*)$/) {
+    push @gattrs, [",color=$1", $2];
+  }
+  elsif (/^[0-9]+ trace records/) {
+  }
+  else { print STDERR "bad line $_"; }
+}
+
+print "digraph G {\n";
+foreach my $p (values %pairs)
+{
+  my @la = @{$p};
+  my $dir = ("none", "forward", "back", "none")[$la[3]];
+
+  print "\"$la[0]\" -> \"$la[1]\" [dir=$dir$la[2]];\n";
+}
+print "}\n";

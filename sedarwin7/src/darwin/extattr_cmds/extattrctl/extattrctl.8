@@ -1,0 +1,117 @@
+.\"-
+.\" Copyright (c) 2000-2001 Robert N. M. Watson
+.\" All rights reserved.
+.\"
+.\" This software was developed by Robert Watson for the TrustedBSD Project.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"       $FreeBSD: src/usr.sbin/extattrctl/extattrctl.8,v 1.23 2003/05/14 20:31:06 rwatson Exp $
+.\"
+.\" Developed by the TrustedBSD Project.
+.\" Support for file system extended attribute.
+.\"
+.Dd March 30, 2000
+.Dt EXTATTRCTL 8
+.Os
+.Sh NAME
+.Nm extattrctl
+.Nd manage HFS+ extended attributes
+.Sh SYNOPSIS
+.Nm
+.Cm initattr
+.Op Fl f
+.Op Fl p Ar path
+.Op Fl i Ar initial_value
+.Ar attrsize
+.Ar attrfile
+.Nm
+.Cm showattr
+.Ar attrfile
+.Sh DESCRIPTION
+The
+.Nm
+utility
+is the management utility for extended attributes over the HFS+ file system.
+It allows initialization of attribute backing files and retrieval of status information.
+.Pp
+The first argument on the command line indicates the operation to be
+performed.
+Operation must be one of the following:
+.Bl -tag -width indent
+.It Xo
+.Cm initattr
+.Op Fl f
+.Op Fl p Ar path
+.Op Fl i Ar initial_value
+.Ar attrsize attrfile
+.Xc
+Create and initialize a file to use as an attribute backing file.
+You must specify a maximum per-inode size for the attribute in bytes in
+.Ar attrsize ,
+as well as the file where the attribute will be stored, using
+.Ar attrfile .
+.Pp
+The
+.Fl f
+argument may be used to indicate that it is alright to overwrite an
+existing attribute backing file; otherwise, if the target file exists,
+an error will be returned.
+.Pp
+The
+.Fl p Ar path
+argument may be used to preallocate space for all attributes rather than
+relying on sparse files to conserve space.
+This has the advantage of guaranteeing that space will be available
+for attributes when they are written, preventing low disk space conditions
+from denying attribute service.
+.Pp
+The
+.Fl i Ar initial_value
+argument may be used to assign a initial value for all attributes rather
+than using an empty value. This requires the use of the
+.Fl p 
+flag to preallocate space as well.
+.Pp
+This file should not exist before running
+.Cm initattr .
+.It Cm showattr Ar attrfile
+Show the attribute header values in the attribute file named by
+.Ar attrfile .
+.El
+.Sh EXAMPLES
+.Dl extattrctl initattr 17 /.attribute/system/md5
+.Pp
+Create an attribute backing file in /.attribute/system/md5, and set the maximum
+size of each attribute to 17 bytes, with a sparse file used for storing
+the attributes.
+.Sh SEE ALSO
+.Xr getextattr 8 ,
+.Xr setextattr 8 ,
+.Sh HISTORY
+Extended attribute support was developed as part of the TrustedBSD Project,
+and introduced in
+.Fx 5.0 .
+It was developed to support security extensions requiring additional labels
+to be associated with each file or directory.
+.Sh AUTHORS
+Robert N M Watson

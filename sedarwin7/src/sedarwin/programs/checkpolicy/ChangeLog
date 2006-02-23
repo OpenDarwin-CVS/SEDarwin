@@ -1,0 +1,51 @@
+1.16 2004-08-13
+	* Allow empty conditional clauses.
+	* Moved genpolbools utility to libsepol.
+	* Updated for libsepol set functions. 
+	* Changed to link with libsepol.a.
+	* Moved core functionality into libsepol.
+	* Merged bug fix for conditional self handling from Karl MacMillan, Dave Caplan, and Joshua Brindle of Tresys.
+	* Added genpolusers program.
+	* Fixed bug in checkpolicy conditional code.
+
+1.14 2004-06-28
+	* Merged fix for MLS logic from Daniel Thayer of TCS. 
+	* Require semicolon terminator for typealias statement.
+
+1.12 2004-06-16
+	* Merged fine-grained netlink class support.
+
+1.10 2004-04-07
+	* Merged ipv6 support from James Morris of RedHat.
+	* Fixed compute_av bug discovered by Chad Hanson of TCS.
+
+1.8 2004-03-09
+	* Merged policydb MLS patch from Chad Hanson of TCS.
+	* Fixed mmap of policy file.
+
+1.6 2004-02-18
+	* Merged conditional policy extensions from Tresys Technology.
+	* Added typealias declaration support per Russell Coker's request.
+	* Added support for excluding types from type sets based on
+	  a patch by David Caplan, but reimplemented as a change to the
+	  policy grammar.
+	* Merged patch from Colin Walters to report source file name and line
+	  number for errors when available.
+	* Un-deprecated role transitions.
+
+1.4 2003-12-01
+	* Regenerated headers.
+	* Merged patches from Bastian Blank and Joerg Hoh.
+
+1.2 2003-09-30
+	* Merged MLS build patch from Karl MacMillan of Tresys. 
+	* Merged checkpolicy man page from Magosanyi Arpad.
+
+1.1 2003-08-13
+	* Fixed endian bug in policydb_write for behavior value. 
+	* License -> GPL.
+        * Merged coding style cleanups from James Morris. 
+
+1.0 2003-07-11
+	* Initial public release.
+

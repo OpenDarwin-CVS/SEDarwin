@@ -1,0 +1,29 @@
+.\" Copyright (c) 2004, Apple Computer, Inc.  All rights reserved.
+.\"
+.Dd Jan 24, 2004
+.Dt AUDIT_CLASS 5
+.Os "Mac OS X"
+.Sh NAME
+.Nm audit_class
+.Nd contains audit event class descriptions
+.Sh DESCRIPTION
+The
+.Nm 
+file contains descriptions of the auditable event classes on the system.  Each
+auditable event is a member of an event class.  Each line maps an audit event 
+mask (bitmap) to a class and a description.  Entries are of the form 
+classmask:eventclass:description.
+.Pp
+Example entries in this file are:
+.Bd -literal -offset indent
+0x00000000:no:invalid class
+0x00000001:fr:file read
+0x00000002:fw:file write
+0x00000004:fa:file attribute access
+0x00000080:pc:process
+0xffffffff:all:all flags set
+.Ed
+.Sh FILES
+.Bl -tag -width "/etc/security/audit_class" -compact
+.It Pa /etc/security/audit_class
+.El

@@ -1,0 +1,49 @@
+.\" Copyright (c) 2004, Apple Computer, Inc.  All rights reserved.
+.\"
+.Dd Jan 24, 2004
+.Dt PRAUDIT 1
+.Os "Mac OS X"
+.Sh NAME
+.Nm praudit
+.Nd print the contents of audit trail files
+.Sh SYNOPSIS
+.Nm praudit
+.Op Fl lrs
+.Op Fl d Ar del
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm 
+utility prints the contents of the audit trail files to the standard output  in
+human-readable form.  If no filename is specified, the standard input is used
+by default.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl l
+Prints the entire record on the same line.  If this option is not specified,
+every token is displayed on a different line.
+.It Fl r
+Prints the records in their raw, numeric form.  This option is exclusive from 
+.Fl s
+.It Fl s
+Prints the tokens in their short form.  Short text representations for
+record and event type are displayed.  This option is exclusive from
+.Fl  r
+.It Fl d Ar del
+Specifies the delimeter.  The default delimeter is the comma.
+.El
+.Pp
+If the raw or short forms are not specified, the default is to print the tokens
+in their long form.  Events are displayed as per their descriptions given in
+/etc/security/audit_event; uids and gids are expanded to their names; and dates and times are displayed in human-readible format.
+.Sh FILES
+.Bl -tag -width "/etc/security/audit_control" -compact
+.It Pa /etc/security/audit_class
+Descriptions of audit event classes
+.It Pa /etc/security/audit_event
+Descriptions of audit events
+.El
+.Sh SEE ALSO
+.Xr audit_class 5 ,
+.Xr audit_event 5

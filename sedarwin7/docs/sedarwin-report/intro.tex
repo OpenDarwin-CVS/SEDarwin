@@ -1,0 +1,197 @@
+\section{Introduction}
+
+\subsection{SEDarwin}
+
+Security-Enhanced Darwin (SEDarwin) is a port of the TrustedBSD
+Mandatory Access Control (MAC) Framework and access control elements
+derived from the NSA's Security Enhanced Linux (SELinux) from the
+FreeBSD operating system to Apple's Mac OS X operating system.
+
+Apple's Mac OS X operating system combines both open source and
+proprietary technologies into a widely-used, production-quality
+UNIX-based workstation supporting a broad variety of applications.
+
+Darwin, the open source core of Apple's operating system, includes
+a substantial quantity of code derived from the open source FreeBSD
+operating system.  The TrustedBSD MAC Framework on FreeBSD is an
+extensible security framework that allows developers to extend the
+security properties of the system.  Based on the common source code
+heritage, the SEDarwin project has ported the MAC Framework to run
+on the Darwin platform, permitting the access control policies of
+Darwin to be similarly extended.  Likewise, the SEBSD project, a
+port of NSA's SELinux FLASK framework and Type Enforcement policy
+language to FreeBSD, has been migrated to run on the Darwin platform.
+
+This report provides background material relating to the component
+technologies and research and development results of the migration
+process. These include approaches for addressing differences between
+the FreeBSD and Darwin MAC Framework implementations, techniques
+for labeling Mach objects, application interface compatibility,
+and the results of porting FLASK to the Darwin MAC Framework.
+
+\subsection{Mac OS X, Darwin System Architectures}
+
+Apple Computer's Mac OS X is a commercially available operating
+system providing a graphical user interface on top of a UNIX core.
+Darwin, the open source core of Mac OS X is composed of a variety
+of technologies, including facilities derived from the Mach 3.0
+microkernel, operating-system services based on FreeBSD 5, high
+performance networking facilities, and multiple integrated file
+systems.  Like most UNIX systems, the Darwin core is engineered for
+stabilty, reliability, and performance.\cite{macosx,osxoverview}
+
+Layered on top of the UNIX core are a collection of graphics routines,
+a windowing system, and a user interface.  Together, these are the
+components that help make Mac OS X a commercially viable system.
+
+Darwin uses a Mach 3.0 core to manage processor resources (CPU and
+memory), handle scheduling, to enforce memory protection, and to
+implement interprocess communication.  Mach provides most of the
+core OS services, including memory protection, preemptive multitasking,
+and advanced virtual memory.  Unlike other systems based on Mach
+3.0, the BSD kernel in Darwin runs in the kernel address space, not
+as a (userspace) task.
+
+A variant of 4.4BSD is used to support Mach and to provide networking
+and file system access.  BSD components also provide process creation
+and management, process signaling, system bootstrap and shutdown,
+generic I/O routines, terminal and device handling, and resource
+limits.
+
+Darwin allows device drivers, networking extensions, and file systems
+to be loaded dynamically.  Device drivers are created using the
+IOKit object-oriented programming framework.  IOKit makes it easier
+to develop plug and play modules for dynamic device management.
+Since Darwin provides a binary interface for modular device drivers,
+vendors are able to provide closed-source or proprietary modules
+that work with the open source kernel.
+
+Apple makes the Darwin source code available under the Apple Public
+Source License, permitting third party inspection, modification,
+and extension of the Darwin operating system.  This makes Darwin
+an attractive platform for operating system research, since researchers
+have the complete source code without the burden of non-disclosure
+restrictions.  Through careful modification of the Darwin core,
+operating system behavior can be changed while still allowing the
+higher level application interfaces (Aqua, Quartz, Carbon, etc.)
+to function, preserving the user experience.
+
+\subsection{Mach}
+
+Mach is a message-passing microkernel system. A running Mach system
+consists of a number of tasks, each with its own address space, all
+of which communicate with one another via messages. Tasks also
+communicate with the kernel using messages--from the task's point
+of view the kernel is just another task.
+
+The object abstraction for messaging is the port right. A port right
+is a handle to a message queue (the port) and a set of operations
+(send or receive) that the task can perform on that port. In constrast
+to Berkeley sockets, which have well-defined source and destination
+ports, Mach ports are uni-directional. A port is only a destination
+for a message.  As ports are relatively lightweight, applications
+often use a port to represent a single higher-level object, such
+as a window or hardware device.  Unlike many Unix IPC mechanisms,
+while multiple tasks may hold a "send right" for a particular port,
+only one task at a time (possibly the kernel) may receive messages
+on a given port by holding a "receive right" for that port.
+
+\subsection{Origin of Components}
+\subsubsection{TrustedBSD MAC Framework on FreeBSD}
+
+SPARTA ISSO (formerly McAfee Research) and the TrustedBSD Project
+have implemented an extensible and modular kernel access control
+framework permitting new access control policies to be introduced
+into the FreeBSD kernel\cite{trustedbsd, bsdcon2000trustedbsd,
+watson01, discex3, watson03}.  The TrustedBSD Mandatory Access
+Control (MAC) Framework addresses many of the challenges associated
+with introducing new access control services into operating system
+kernels.  This is accomplished by abstracting common infrastructure
+services from the policies, thus reducing the cost and complexity
+of policy authoring.  The MAC Framework provides policy-independent
+label storage for kernel objects, and persistent storage of labels
+using file system extended attributes.  The MAC Framework composes
+results from simultaneously loaded access control policies in a
+predictable and reliable manner, permitting appropriately crafted
+policies to be used in concert.
+
+The MAC Framework augments the FreeBSD kernel to provide common
+labeling infrastructure along with a set of entry points to intercept
+operations on labeled objects.  The Framework supports labels on
+file systems, processes, IPC, and network stack elements.  Each
+registered policy may reserve space for security labels and implement
+policy-specific behavior governing label content and use.  Labels
+follow the kernel object life cycle and are initialized, allocated,
+and destroyed along with their object.  Access control entry points
+accept information about the action being performed, invoke each
+registered policy, and compose the results into a success or failure.
+
+\subsubsection{DTOS}
+
+The Distributed Trusted Operating System (DTOS) project enhanced
+the Mach 3.0 microkernel and developed a separate Mach security
+server to help increase the security of process management, file
+objects, and the network stack.  This project was a joint effort
+by the NSA and Secure Computing Corporation (SCC).  This work
+developed a prototype secure Mach microkernel that provided strong,
+flexible security controls while minimizing the effects on performance
+and application compatibility.\cite{dtos95,dtos96} The DTOS microkernel
+made enhancements to the Mach 3.0 design, the same version of Mach
+that Darwin is based upon.  DTOS used the Lites\cite{helander94unix} Mach
+server as its BSD subsystem.  Unlike the BSD subsystem in Darwin,
+Lites runs as a user-level single server; it is not kernel-resident
+as in Darwin.
+
+DTOS developed a separate security server to encapsulate their Type
+Enforcement policy.  This allowed for a separation of the policy
+decision (in the security server), and the the policy enforcement
+(in the Mach microkernel).  This design ultimately led to the
+development of FLASK and Security-Enhanced Linux.
+
+While the DTOS code was not directly used in SEDarwin, it was
+examined to help understand the complexities of introducing security
+into a Mach-based operating system.  The goals of SEDarwin and DTOS
+are quite similar: develop a prototype that can be used to demonstrate
+that strong, useful security features can be introduced into an
+operating system without sacrificing desirable features such as
+performance or utility.
+
+\subsubsection{FLASK}
+
+The Flux Advanced Security Kernel (FLASK) is an operating system
+security architecture that provides a flexible and fine-grained
+mandatory access control (MAC) architecture\cite{SSLHAL99}.  It
+was initially developed as a security-enhanced version of the Fluke
+microkernel-based operating system\cite{ford96microkernels}.  FLASK
+uses an architecture similar to DTOS, but with enhancements based
+on lessons learned from the DTOS prototype.
+
+The FLASK architecture provides flexibility by cleanly separating
+the policy decision-making logic from the policy enforcement logic.
+The policy decision-making logic is encapsulated within a single
+component known as the security policy server.  Access control
+decisions are enforced by a general framework used by the microkernel
+as well as in object managers residing outside the microkernel.
+
+A FLASK object manager binds a security identifier (SID) to active
+kernel objects, and uses these SIDs as context during access control
+checks.  The FLASK architecture includes an Access Vector Cache
+(AVC) component that allows the object manager to cache access
+decisions, reducing the performance penalty of the access checks.
+The policy enforcement provides a source context, a target context,
+a security class, and an access vector to the AVC to determine
+access to an object.  Likewise, when an object manager wishes to
+label a newly created object, it will consult the security server
+to obtain a label.
+
+\subsubsection{SELinux}
+
+The National Security Agency's (NSA) Security-Enhanced
+Linux\cite{loscocco01} (SELinux) is a version of the Linux
+kernel that includes a port of the FLASK security server.
+
+SELinux uses FLASK for the policy decision-making logic.  Policy
+enforcement logic is implemented using the interfaces provided by
+the Linux Security Modules framework\cite{loscocco01}.  A
+wide range of security models can be implemented as security servers
+without requiring changes to any other component of the system.

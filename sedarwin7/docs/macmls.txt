@@ -1,0 +1,108 @@
+MLS (Multi-Level Security) Policy Module
+----------------------------------------
+
+The MLS policy supplied is a port of the TrustedBSD MAC MLS module.
+
+Follow the build instructions to yield a system with the MLS module
+installed.
+
+If both the SEDarwin and MLS policy modules are installed (the SEDarwin
+policy module could be present from a previous installation), move the
+sedarwin.kext bundle out of the /System/Library/Extensions directory and
+reboot.  The SEDarwin policy will deny most MLS level changes.
+
+MLS labels are similar to one of the following:
+ mls/20         Sensitivity level 20 (Possible levels are 0-65535)
+ mls/20:1+50    Level 20, compartments 1 and 50.  (Compartments 1-256 are
+		provided by default.)
+ mls/20:1+5+9   Level 20, compartments 1, 5, and 9
+ mls/20:1++5    Level 20, compartments 1 through 5
+
+MLS also provides the following special labels:
+ mls/equal      Privileged subject or object, all accesses allowed
+ mls/low        Lowest sensitivity level possible
+		(Lower than 'level 0 with no compartments'.)
+ mls/high       Highest sensitivity level possible
+		(Higher than 'level 65535 with all compartments'.)
+Note that equal, low, and high do not permit compartment specifications.
+
+In addition, subject (e.g. process) labels may have a permitted transition
+range:
+ mls/10(8-30)          Process is running at level 10, but may transition to
+		       any level from 8 to 30.
+ mls/10+2(8:2-30:1++4) Process may transition to a level from 8 to 30, and
+		       a set of compartments including at least 2 and any
+		       (or all) others from 1 to 4.
+
+A permitted transition range of (low-high), or anything containing an 'equal',
+indicates a privileged subject that is also allowed to relabel objects to
+equal. Note that the transition range also applies to relabelling objects.
+
+MLS defaults to running all processes as mls/low(low-high), allowing 
+a transition to any other level (including equal), and the setting of any
+classification on an object.
+
+The following steps use the file system to illustrate basic enforcement of the
+MLS policy.
+
+Open a terminal window.  The process should be running at 'low', which
+can be verified by the 'getpmac' command.
+        $ getpmac
+        mls/low(low-high)
+
+The root directory should be 'equal'.
+        $ ls -dZ /
+        mls/equal /
+
+Create a test directory, move into the test directory, and create some empty
+files in the directory.
+        $ mkdir /test
+        $ cd /test
+        $ touch lv2
+        $ touch lv4
+        $ touch lv4cmp100
+
+Use the (low-high) range of the process to change the labels of the files.
+        $ setfmac mls/2 lv2
+        $ setfmac mls/4 lv4
+        $ setfmac mls/4:100 lv4cmp100
+
+Now deposit data into the files.
+        $ echo "Level 2 data" >>lv2
+        $ echo "Level 4 data" >>lv4
+        $ echo "Level 4, Compartment 100 data" >>lv4cmp100
+
+Use the (low-high) range of the process to change the security classification
+of the process and attempt to examine the files.
+        $ setpmac mls/4 bash
+        $ cd /test
+        $ cat lv2
+        Level 2 data
+        $ cat lv4
+        Level 4 data
+        $ cat lv4cmp100
+        cat: lv4cmp100: Permission denied
+The process can view the object only when its classification dominates the
+classification of the object.
+
+Now attempt to change the files by appending data to the end of them.
+        $ echo "Appended Level 4 data" >>lv2
+        bash: lv2: Permission denied
+        $ echo "Appended Level 4 data" >>lv4
+        $ echo "Appended Level 4 data" >>lv4cmp100
+
+Start a shell at the higher classification and look at the results of the
+attempts to append data.
+        $ setpmac mls/4:100 bash
+        $ cd /test
+        $ cat lv2
+        Level 2 data
+        $ cat lv4
+        Level 4 data
+        Appended Level 4 data
+        $ cat lv4cmp100
+        Level 4, Compartment 100 data
+        Appended Level 4 Data
+The (Level 4) process was able to write to an object only when the object's
+classification dominated the classification of the process (subject).
+

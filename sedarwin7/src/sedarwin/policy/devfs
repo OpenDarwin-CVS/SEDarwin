@@ -1,0 +1,14 @@
+# FLASK
+
+genfscon devfs /			system_u:object_r:device_t
+genfscon devfs /null			system_u:object_r:null_device_t
+genfscon devfs /zero			system_u:object_r:zero_device_t
+genfscon devfs /console		system_u:object_r:console_device_t
+genfscon devfs /kmem			system_u:object_r:memory_device_t
+genfscon devfs /mem			system_u:object_r:memory_device_t
+genfscon devfs /random		system_u:object_r:random_device_t
+genfscon devfs /urandom		system_u:object_r:random_device_t
+genfscon devfs /ttyp		system_u:object_r:devpts_t
+genfscon devfs /ptyp		system_u:object_r:devpts_t
+
+# FLASK

@@ -1,0 +1,13 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {"ui_cancel" = id; "ui_menus" = id; "ui_ok" = id; }; 
+            CLASS = LabelDialog; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {labeltext = id; menur = id; menut = id; menuu = id; window = NSWindow; }; 
+            SUPERCLASS = NSObject; 
+        }
+    ); 
+    IBVersion = 1; 
+}

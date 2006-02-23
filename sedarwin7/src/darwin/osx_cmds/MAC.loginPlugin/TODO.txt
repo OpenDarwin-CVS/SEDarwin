@@ -1,0 +1,5 @@
+TODO:
+- Figure out what should happen when multiple MACpolicyPlugins are present.
+- Figure out what should happen when no MACpolicyPlugins are present, or
+  the specified plugin is missing.
+- Figure out how to deal with a MACpolicyPlugin that has no graphical elements.

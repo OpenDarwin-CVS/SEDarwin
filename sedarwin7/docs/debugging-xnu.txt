@@ -1,0 +1,102 @@
+Debugging Darwin
+
+A Darwin kernel compile will produce two files of interest: mach_kernel
+and mach_kernel.sys.  The first is the production kernel; the second
+includes full debugging symbols.  There may be an order of magnitude or
+more in size difference.  Darwin supports network kernel debugging,
+meaning that it is possible to attach gdb to a remotely executing kernel
+over the network.  To configure this, take the following steps to
+configure the "target" machine (which will run your experimental kernel):
+
+(1) Configure Open Firmware to drop into the debugger when an NMI is
+    received.  Typically, this might be done by doing:
+
+        % sudo nvram boot-args="debug=0x144"
+
+    Here are what the flags mean:
+
+ +--------------------------------------------------------------+ 
+ |Symbolic name |Flag |                 Meaning                 | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_HALT       |0x01 |Halt at boot-time and wait for debugger  | 
+ |              |     |attach (gdb).                            | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_PRT        |0x02 |Send kernel debugging printf output to   | 
+ |              |     |console.                                 | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_NMI        |0x04 |Drop into debugger on NMI (Command-Power | 
+ |              |     |or interrupt switch).                    | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_KPRT       |0x08 |Send kernel debugging kprintf output to  | 
+ |              |     |serial port.                             | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_KDB        |0x10 |Make ddb (kdb) the default debugger      | 
+ |              |     |(requires a custom kernel).              | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_SLOG       |0x20 |Output certain diagnostic info to the    | 
+ |              |     |system log,                              | 
+ |--------------+-----+-----------------------------------------| 
+ |              |     |Allow debugger to ARP and route (allows  | 
+ |              |     |debugging across routers and removes the | 
+ |DB_ARP        |0x40 |need for a permanent ARP entry, but is a | 
+ |              |     |potential security hole)-not available in| 
+ |              |     |all kernels.                             | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_KDP_BP_DIS |0x80 |Support old versions of gdb on newer     | 
+ |              |     |systems,                                 | 
+ |--------------+-----+-----------------------------------------| 
+ |DB_LOG_PI_SCRN|0x100|Disable graphical panic dialog,          | 
+ +--------------------------------------------------------------+ 
+
+(2) Install the mach_kernel (as appropriate) on the target system.  
+    Typically, by copying it to /mach_kernel.test and using kswap.sh to
+    set that as the active kernel.
+
+(3) On the host machine with your debugging kernel and full source, start
+    gdb:
+
+        % gdb BUILD/obj/RELEASE_PPC/mach_kernel.sys
+        ...
+        (gdb) target remote-kdp
+        (gdb) attach target-hostname
+
+    Where "hostname" is the name of the target machine.
+
+Lots of information, including the source of this table, may be found at:
+    
+  http://developer.apple.com/techpubs/macosx/Darwin/General/KernelProgramming/build/index.html
+
+A few more useful notes are here:
+
+    http://eriktoh.manilasites.com/stories/storyReader$82
+
+
+Debugging Modules
+-----------------
+
+Apple's documented procedure for debugging kexts will not work on
+security modules (for now, it might eventually), but we can do something
+similar: 
+
+1. Use kextstat on the running system to find the module load address:
+$ kextstat 
+Index Refs Address    Size       Wired      Name (Version) <Linked Against>
+    1    1 0xe54c000  0x18000    0x17000    security.sedarwin (*)
+
+If you need to attach the debugger before you can run kextstat, then
+the showallkmods command from kgm prints almost the same information.
+Currently the header size is missing; assume 0x1000 for (Size-Wired) in step 2.
+To make the showallkmods command available, run 
+(gdb) source <path to xnu>/osfmk/.gdbinit
+
+
+2. Add (Size-Wired) to the address listed:
+0xe54c000 + 0x1000 = 0xe54d000
+The object file header is padded out to a whole page, meaning we don't have
+to know the actual header size.
+
+3. Enter an add-symbol-file command into gdb (doesn't need to be attached):
+(gdb) add-symbol-file <filename> -s LC_SEGMENT.__TEXT.__text 0xe54d000
+
+The filename should be to the object file inside the kext bundle, not
+the bundle (e.g sedarwin.kext/Contents/MacOS/sedarwin).

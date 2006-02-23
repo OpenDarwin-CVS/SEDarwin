@@ -1,0 +1,44 @@
+The script mlstest.sh is designed to test the enforcement of a few basic rules
+of the MAC_MLS policy:
+	You can't read above your level.
+	You can't write below your level.
+(Please excuse the use of 'above' and 'below' as shortcuts for the dominate
+relationship.)  The tests are intended to show that a few of the commonly
+used file system calls are performing correctly.
+
+The script must be run from an xterm window.  One must start the X server.
+Use the Finder to open the Applications folder and then the Utilities folder.
+Start the X11 utility.  After several seconds an xterm window will appear.
+
+Run the getpmac command in the xterm window to get the  security label for
+the process.  It should be mls/low(low-high).  The range must be (low-high)
+for the script to run correctly.
+
+Execute the script without any parameters.  It will create a test directory
+(/mlstestdir), copy itself into the test directory, and create several child
+processes at different security classifications to create and modify files
+in the test directory.  The expected behavior is specified in the script and
+is displayed to the xterm windows as well.
+
+Within the script two things are done to make it easier for the developer/
+tester to try things out, and to debug script malfunctions.  The xterm windows
+are all started with the -hold option which causes the window to persist
+when the script terminates, either normally or abnormally.  This is primarily
+used to debug the script when it abnormally terminates, but could be used to
+examine the output.  The script also executes a bash shell at the end of the
+script for each of the child processes.  This permits the developer/tester
+to try additional commands at each of the security classifications.  Either
+of these can be removed.  If both are removed the xterm windows will disappear
+immediately upon termination.  If both are to be removed, it may be preferable
+to avoid the use of xterm windows altogether, and simply create child processes
+that log their output to files.
+
+The scrollbars on the xterm windows are not particularly easy to use.  The
+only ways I have found to use the mouse on them at all is:
+	Middle button can be used to drag the bar.
+	Left button can be clicked below the bar to page down.
+	Right button can be clicked above the bar to scroll up one line.
+I believe these problems are general problems on Panther and are not specific
+to our system.
+
+
