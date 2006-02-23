@@ -71,8 +71,6 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	extern char *__progname;
-
-	fprintf(stderr, "usage: %s [-m migscs_file] policy_file\n", __progname);
+	fprintf(stderr, "usage: loadpolicy [-m migscs_file] policy_file\n");
 	exit(1);
 }

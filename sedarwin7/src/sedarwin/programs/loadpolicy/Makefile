@@ -1,9 +1,9 @@
 include ../../../Makeconfig
 
-PROG= sebsd_loadpolicy
-MAN8= sebsd_loadpolicy.8
+PROG= loadpolicy
+MAN8= loadpolicy.8
 
-OBJS= sebsd_loadpolicy.o
+OBJS= loadpolicy.o
 
 
 CFLAGS+= -Wall -I$(SOURCE_ROOT)/sedarwin
