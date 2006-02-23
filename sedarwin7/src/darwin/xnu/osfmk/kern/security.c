@@ -87,12 +87,16 @@ mac_check_named_access(
 	rc = mac_check_service_access(&subjl, &objl, serv, perm);
 	mac_destroy_task_label(&subjl);
 	mac_destroy_task_label(&objl);
-	if (rc == /*EINVAL*/ 22)
+
+	switch (rc) {
+	case 0:
+		return KERN_SUCCESS;
+	case 22:
+		/* EINVAL */
 		return KERN_INVALID_ARGUMENT;
-	else if (rc != 0)
+	default:
 		return KERN_NO_ACCESS;
-	else
-		return 0;
+	}
 }
 
 kern_return_t
@@ -143,12 +147,15 @@ mac_check_name_port_access(
 	io_unlock (objp);
 
 	mac_destroy_task_label(&subjl);
-	if (rc == /*EINVAL*/ 22)
+	switch (rc) {
+	case 0:
+		return KERN_SUCCESS;
+	case 22:
+		/* EINVAL */
 		return KERN_INVALID_ARGUMENT;
-	else if (rc != 0)
+	default:
 		return KERN_NO_ACCESS;
-	else
-		return 0;
+	}
 }
 
 kern_return_t
@@ -197,12 +204,15 @@ mac_check_port_access(
 	io_unlock(objp);
 	ipc_port_multiple_unlock();
 
-	if (rc == /*EINVAL*/ 22)
+	switch (rc) {
+	case 0:
+		return KERN_SUCCESS;
+	case 22:
+		/* EINVAL */
 		return KERN_INVALID_ARGUMENT;
-	else if (rc != 0)
+	default:
 		return KERN_NO_ACCESS;
-	else
-		return 0;
+	}
 
 errout:
 	io_unlocklabel(subp);
