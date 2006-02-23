@@ -62,8 +62,8 @@ fixup-dstroot:
 	$(_v) rmdir $(DSTROOT)/etc
 
 install-startup-item:
-	$(_v) $(INSTALL_DIRECTORY) $(DSTROOT)/private/etc/xinetd.d
-	$(_v) $(INSTALL_FILE)   -c ssh-via-xinetd  $(DSTROOT)/private/etc/xinetd.d/ssh
+	#$(_v) $(INSTALL_DIRECTORY) $(DSTROOT)/private/etc/xinetd.d
+	#$(_v) $(INSTALL_FILE)   -c ssh-via-xinetd  $(DSTROOT)/private/etc/xinetd.d/ssh
 	$(_v) $(INSTALL_DIRECTORY) $(DSTROOT)/usr/libexec
 	$(_v) $(INSTALL_FILE) -m 555  -c sshd-keygen-wrapper $(DSTROOT)/usr/libexec/sshd-keygen-wrapper
 
