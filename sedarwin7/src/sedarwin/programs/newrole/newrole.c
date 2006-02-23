@@ -29,7 +29,7 @@
 #include <sedarwin/sebsd.h>
 #include <sedarwin/flask_types.h>
 
-#define SEBSD_SERVICE_NAME "sebsd_newrole"
+#define SERVICE_NAME "newrole"
 
 extern char **environ;
 
@@ -68,7 +68,7 @@ authenticate_via_pam(const struct passwd *pw)
 	  NULL
 	};
 
-	error = pam_start(SEBSD_SERVICE_NAME, pw->pw_name, &pam_conversation, 
+	error = pam_start(SERVICE_NAME, pw->pw_name, &pam_conversation, 
 	    &pam_handle);
 	if (error != PAM_SUCCESS) {
 		fprintf(stderr, "Error, failed to initialize PAM\n");
@@ -102,8 +102,8 @@ main(int argc, char *argv[])
 	mac_t execlabel;
 
 	if (!sebsd_enabled()) {
-		fprintf(stderr, "Sorry, sebsd_newrole may only be used when "
-		    "the SEBSD security module is loaded\n");
+		fprintf(stderr, "Sorry, newrole may only be used when "
+		    "the SEDarwin security module is loaded\n");
 		exit(1);
 	}
 
@@ -231,6 +231,6 @@ void
 usage(void)
 {
 
-	fprintf(stderr, "usage: sebsd_newrole -r role [ -t type ] [ args ]\n");
+	fprintf(stderr, "usage: newrole -r role [ -t type ] [ args ]\n");
 	exit(1);
 }

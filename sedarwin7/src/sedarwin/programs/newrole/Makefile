@@ -1,9 +1,9 @@
 include ../../../Makeconfig
 
-PROG= sebsd_newrole
-MAN1= sebsd_newrole.1
+PROG= newrole
+MAN1= newrole.1
 
-OBJS= sebsd_newrole.o
+OBJS= newrole.o
 
 CFLAGS+= $(DARWIN_HDRS)
 CFLAGS+= -I$(SOURCE_ROOT)/sedarwin
