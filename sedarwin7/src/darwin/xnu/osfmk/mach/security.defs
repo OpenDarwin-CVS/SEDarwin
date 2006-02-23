@@ -13,6 +13,20 @@ subsystem
 type labelstr_t = c_string[*:512];
 
 /**
+  @brief Retrieve a task label as a label handle
+  @param task Target's task port
+  @param label Returned label handle
+
+  This call retrieves a label handle label for the
+  specified task, with respect to the specified policies.
+
+  @return Standard MiG return values (0 for success)
+*/
+
+routine mach_get_task_label(task      : task_t;
+			    out label : mach_port_name_t);
+
+/**
   @brief Retrieve a task label in textual form
   @param task Target's task port
   @param policies Comma-delimited list of policies to query
@@ -27,6 +41,26 @@ type labelstr_t = c_string[*:512];
 routine mach_get_task_label_text(task      : task_t;
 				 policies  : labelstr_t;
 				 out label : labelstr_t);
+
+/**
+  @brief Retrieve a port label as a label handle
+  @param task Issuer's task port
+  @param port Port to query label from
+  @param label Returned label handle
+
+  This call retrieves a label handle label for the
+  specified task, with respect to the specified policies.
+
+  This call retrieves a label handle for the specified port, with
+  respect to the specified policies. If the port represents a label
+  handle, KERN_INVALID_ARGUMENT is returned.
+
+  @return Standard MiG return values (0 for success)
+*/
+
+routine mach_get_label(task      : ipc_space_t;
+		       port      : mach_port_name_t;
+		       out label : mach_port_name_t);
 
 /**
   @brief Retrieve a port label in textual form

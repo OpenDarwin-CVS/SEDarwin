@@ -1760,6 +1760,47 @@ mach_port_extract_member(
 	return kr;
 }
 
+/*
+ * Get a label handle representing the given port's port label.
+ */
+kern_return_t
+mach_get_label(
+	ipc_space_t		space,
+	mach_port_name_t	name,
+	mach_port_name_t	*outlabel)
+{
+	ipc_entry_t entry;
+	ipc_port_t port;
+	struct label outl;
+	kern_return_t kr;
+
+	if (!MACH_PORT_VALID(name))
+		return KERN_INVALID_NAME;
+
+	/* Lookup the port name in the task's space. */
+	kr = ipc_right_lookup_write(space, name, &entry);
+	if (kr != KERN_SUCCESS)
+		return kr;
+
+	/* Make sure we are not dealing with a label handle. */
+	port = (ipc_port_t) entry->ie_object;
+	ip_lock(port);
+	is_write_unlock(space);
+	if (ip_kotype(port) == IKOT_LABELH) {
+		/* already is a label handle! */
+		ip_unlock(port);
+		return KERN_INVALID_ARGUMENT;
+	}
+
+	/* Copy the port label and stash it in a new label handle. */
+	mac_init_port_label(&outl);
+	mac_copy_port_label(&port->ip_label, &outl); 
+	kr = labelh_new_user(space, &outl, outlabel);
+	ip_unlock(port);
+
+	return KERN_SUCCESS;
+}
+
 /* also works on label handles */
 
 kern_return_t

@@ -31,6 +31,32 @@
 #include <kern/task.h>
 
 kern_return_t
+mach_get_task_label(
+	task_t		 t,
+	mach_port_name_t *outlabel)
+{
+	ipc_labelh_t	lh = t->label;
+	ipc_space_t	space = t->itk_space;
+	kern_return_t	kr;
+
+	ip_lock(lh->lh_port);
+	lh->lh_port->ip_mscount++;
+	lh->lh_port->ip_srights++;
+	ip_reference(lh->lh_port);
+	ip_unlock(lh->lh_port);
+	kr = ipc_object_copyout(space, lh->lh_port,
+	    MACH_MSG_TYPE_PORT_SEND, 0, outlabel);
+	if (kr != KERN_SUCCESS) {
+		ip_lock(lh->lh_port);
+		ip_release(lh->lh_port);
+		ip_check_unlock(lh->lh_port);
+		*outlabel = MACH_PORT_NULL;
+	}
+  
+	return (KERN_SUCCESS);
+}
+
+kern_return_t
 mach_get_task_label_text(
 	task_t		t,
 	labelstr_t	policies,
