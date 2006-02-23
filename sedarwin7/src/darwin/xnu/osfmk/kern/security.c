@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2005 SPARTA, Inc.
+ * Copyright (c) 2005, 2006 SPARTA, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -223,10 +223,8 @@ mac_request_label(
 {
 	ipc_entry_t    subi, obji;
 	ipc_object_t   subp, objp;
-	ipc_labelh_t   outlh;
-	ipc_port_t     sport;
 	kern_return_t  kr;
-	struct label  *objl, *subl;
+	struct label  *objl, *subl, outl;
 	int            rc;
 
 	if (space == IS_NULL || space->is_task == NULL)
@@ -242,8 +240,6 @@ mac_request_label(
 	objp = obji->ie_object;
 	subp = subi->ie_object;
 
-	outlh = labelh_new();
-
 	ipc_port_multiple_lock(); /* serialize (not necessary for LH, but simpler) */
 	io_lock(objp);
 	io_lock(subp);
@@ -256,26 +252,31 @@ mac_request_label(
 	if (subl == NULL)
 		goto errout;
 
-	mac_init_port_label(&outlh->lh_label);
-	rc = mac_request_object_label(subl, objl, serv, &outlh->lh_label);
+	mac_init_port_label(&outl);
+	rc = mac_request_object_label(subl, objl, serv, &outl);
 	io_unlocklabel(subp);
 	io_unlock(subp);
 	io_unlocklabel(objp);
 	io_unlock(objp);
 	ipc_port_multiple_unlock();
 
-	ip_lock(outlh->lh_port);
-	sport = ipc_port_make_send_locked(outlh->lh_port);
-	ip_release(outlh->lh_port);
-	ip_unlock(outlh->lh_port);
-	*outlabel = ipc_port_copyout_send(outlh->lh_port,space);
+	switch (rc) {
+	case 0:
+		kr = labelh_new_user(space, &outl, outlabel);
+		break;
+	case 22:
+		/* EINVAL */
+		kr = KERN_INVALID_ARGUMENT;
+		break;
+	default:
+		kr = KERN_NO_ACCESS;
+		break;
+	}
 
-	if (rc == /*EINVAL*/ 22)
-		return KERN_INVALID_ARGUMENT;
-	else if (rc != 0)
-		return KERN_NO_ACCESS;
-	else
-		return 0;
+	if (kr != KERN_SUCCESS)
+		mac_destroy_port_label(&outl);
+
+	return kr;
 
 errout:
 	io_unlocklabel(subp);
@@ -283,6 +284,5 @@ errout:
 	io_unlocklabel(objp);
 	io_unlock(objp);
 	ipc_port_multiple_unlock();
-	labelh_release(outlh);
 	return KERN_INVALID_ARGUMENT;
 }
