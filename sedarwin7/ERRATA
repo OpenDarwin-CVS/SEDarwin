@@ -1,8 +1,8 @@
-Port of TrustedBSD MAC Framework to Darwin 10.3.3
+Port of TrustedBSD MAC Framework to Darwin 10.3.8
 
-McAfee Research
-15204 Omega Drive, Suite 300
-Rockville, MD 20850
+SPARTA, Inc.
+7075 Samuel Morse Drive
+Columbia, MD 21046-3401
 
 The following known issues are present in this release:
 
@@ -28,14 +28,23 @@ The following known issues are present in this release:
      provides /dev/fd entries on darwin instead of implementing this
      within devfs.
 
- 66: Panic with a zalloc: the ipctrace seems to be leaking memory with
-     port labels and the system will panic after a running for a while.
-
  76: If a filesystem makes symbolic links from a partition that is
      using extended attributes into a file system that is not using
      extended attributes, the system will eventually deadlock.
 
+ 89: SEDarwin policy rejecting access to /dev/null when it should
+     not.  Is the general_file_write_access macro not being applied
+     to users?
+
  91: Users who create and attach new disk images cannot then access them.
+
+ 93: After reboot, the first time a user logs in, after entering correct
+     user name and password an alert pops up that says:
+	You cannot continue logging in at this time.  There is a
+	problem that prevents you from logging in at this time.
+	Please contact your system administrator for help.
+    After clicking OK the MAC login plug-in box comes up and the
+    user may login normally.
 
  98: HFS+ ignores mac_associate_vnode_extattr() failure.  HFS+
      currently ignores failures in mac_associate_vnode_extattr(), so a
@@ -72,7 +81,23 @@ The following known issues are present in this release:
      VOP_IOCTL vector.  A MAC Framework access control check needs to
      be inserted here.
 
-147: Panic with a bad v_usecount for a vnode during vnreclaim().  This
-     occurs under a heavy load of combined auditing and file
-     operations.  The stack trace always reflects a problem in the
-     lstat() system call.  It's possible that this is a vendor defect.
+238: Currently the port label of a label handle is unused.  This
+     could (and probably should) be used to implement access control
+     (label visibility).  The port label would start out with the
+     same value as the object label but we should provide methods
+     to get/set this label.  Security server methods that return a
+     label handle or text label can use the port label for access
+     control.
+
+239: The SLOT() macro may return NULL in the SEDarwin policy.  This
+     causes a panic in sebsd_externalize_cred_label() when the port
+     that holds the label has already been destroyed.  There appears
+     to be a missing lock or out of order operation since we should
+     not be trying to externalized a dead port.
+
+XXX: Threads are not labeled, only tasks.  We need to investigate
+     whether threads deserve their own labels.  A task may create
+     a thread in any task it holds the kernel port for.  This means
+     that the task that holds the control port for a thread may be
+     different from the task that actually contains the thread.
+     This may have security implicatons.
