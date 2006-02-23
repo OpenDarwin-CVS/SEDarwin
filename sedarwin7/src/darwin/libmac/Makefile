@@ -26,12 +26,12 @@ install: all
 		$(DSTROOT)/usr/share/man/man3/
 
 clean:
-	rm -f lib$(LIB).a $(OBJS) security.c
+	rm -f lib$(LIB).a $(OBJS) security.[ch]
 
 lib$(LIB).a:: $(OBJS)
 	rm -f lib$(LIB).a
 	$(AR) lib$(LIB).a `lorder $(OBJS) | tsort -q`
 	$(RANLIB) lib$(LIB).a
 
-security.c: $(MIGSOURCE)/security.defs
+security.c security.h: $(MIGSOURCE)/security.defs
 	mig $(CFLAGS) -user $@ -header security.h -server /dev/null -sheader /dev/null $(MIGSOURCE)/security.defs
