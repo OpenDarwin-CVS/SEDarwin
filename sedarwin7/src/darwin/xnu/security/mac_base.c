@@ -732,23 +732,23 @@ mac_destroy_label(struct label *label)
 }
 
 int
-mac_check_service_access (struct label *subj, struct label *obj,
-			  const char *s, const char *p)
+mac_check_service_access(struct label *subj, struct label *obj,
+    const char *s, const char *p)
 {
-  int error;
+	int error;
 
-  MAC_CHECK (check_service_access, subj, obj, s, p);
-  return (error);
+	MAC_CHECK(check_service_access, subj, obj, s, p);
+	return (error);
 }
 
 int
 mac_request_object_label(struct label *subj, struct label *obj,
     const char *s, struct label *out)
 {
-  int error;
+	int error;
 
-  MAC_CHECK (request_object_label, subj, obj, s, out);
-  return error;
+	MAC_CHECK (request_object_label, subj, obj, s, out);
+	return error;
 }
 
 int
