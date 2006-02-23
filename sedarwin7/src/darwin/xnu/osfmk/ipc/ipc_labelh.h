@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2005 SPARTA, Inc.
+ * Copyright (c) 2005, 2006 SPARTA, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,16 +44,18 @@ typedef struct ipc_labelh
 #endif
 } *ipc_labelh_t;
 
-ipc_labelh_t labelh_duplicate (ipc_labelh_t old);
-ipc_labelh_t labelh_modify (ipc_labelh_t old);
-void labelh_release (ipc_labelh_t lh);
-ipc_labelh_t labelh_reference (ipc_labelh_t lh);
-void lh_free (ipc_labelh_t lh);
+ipc_labelh_t labelh_duplicate(ipc_labelh_t old);
+ipc_labelh_t labelh_modify(ipc_labelh_t old);
+ipc_labelh_t labelh_new(void);
+kern_return_t labelh_new_user(ipc_space_t, struct label *, mach_port_name_t *);
+void labelh_release(ipc_labelh_t lh);
+ipc_labelh_t labelh_reference(ipc_labelh_t lh);
+void lh_free(ipc_labelh_t lh);
 
-#define lh_reference(lh) ((lh)->lh_references++)
+#define lh_reference(lh)	((lh)->lh_references++)
 #define lh_release(lh)					\
 MACRO_BEGIN						\
-  assert ((lh)->lh_references > 0);			\
+  assert((lh)->lh_references > 0);			\
 	(lh)->lh_references--;				\
 MACRO_END
 
