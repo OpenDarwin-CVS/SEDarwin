@@ -116,8 +116,6 @@ sebsd_free(void *v)
 
 int sebsd_verbose = 0;
 
-static struct label *last_dead_cred_label, *last_dead_task_label, *last_dead_port_label; // XXX - testing
-
 static int slot = 1; /* TBD, dynamic */
 #define	SLOT(l)	((void *)LABEL_TO_SLOT((l), slot).l_ptr)
 
@@ -485,24 +483,6 @@ sebsd_init_devfs_label(struct label *label)
 static void
 sebsd_destroy_cred_label(struct label *label)
 {
-	// printk("sebsd_destroy_cred_label(%p)\n", &LABEL_TO_SLOT((label), slot));
-	last_dead_cred_label = label;
-	sebsd_free (SLOT(label));
-	SLOT(label) = NULL;
-}
-
-static void
-sebsd_destroy_task_label(struct label *label)
-{
-	last_dead_task_label = label;
-	sebsd_free (SLOT(label));
-	SLOT(label) = NULL;
-}
-
-static void
-sebsd_destroy_port_label(struct label *label)
-{
-	last_dead_port_label = label;
 	sebsd_free (SLOT(label));
 	SLOT(label) = NULL;
 }
@@ -2363,13 +2343,7 @@ sebsd_externalize_cred_label(struct label *label, char *element_name,
 {
 	struct task_security_struct *task;
 
-	/* XXX - SLOT should not return NULL but there is a signal race */
-	/* XXX - this may be fixed... */
-	if ((task = SLOT(label)) == NULL) {
-		printk("sebsd_externalize_cred_label: SLOT returned NULL!\n");
-		printk("label: %p, last_task: %p, last_cred: %p, last_port: %p\n", label, last_dead_task_label, last_dead_cred_label, last_dead_port_label); // XXX
-		return (ESRCH);
-	}
+	task = SLOT(label);
 	return (sebsd_externalize_sid(task->sid, element_name, sb));
 }
 
@@ -2665,8 +2639,8 @@ static struct mac_policy_ops sebsd_ops = {
 
 	.mpo_destroy = sebsd_destroy,
 	.mpo_destroy_cred_label = sebsd_destroy_cred_label,
-	.mpo_destroy_task_label = sebsd_destroy_task_label,
-	.mpo_destroy_port_label = sebsd_destroy_port_label,
+	.mpo_destroy_task_label = sebsd_destroy_cred_label,
+	.mpo_destroy_port_label = sebsd_destroy_cred_label,
 	.mpo_destroy_vnode_label = sebsd_destroy_vnode_label,
 	.mpo_destroy_devfsdirent_label = sebsd_destroy_vnode_label,
 
