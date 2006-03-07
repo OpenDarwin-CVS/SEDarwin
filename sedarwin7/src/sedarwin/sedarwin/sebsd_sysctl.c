@@ -121,19 +121,21 @@ sysctl_sebsd_enforcing(SYSCTL_HANDLER_ARGS)
 	if (error)
 		return (error);
 
-#if 0
 	if (req->newptr != NULL) {
 		error = SYSCTL_IN(req, &enforcing, sizeof(enforcing));
 		if (error)
 			return (error);
 
-		error = thread_has_system (curthread, SYSTEM__AVC_TOGGLE);
+#ifdef APPLE
+		error = proc_has_system(current_proc(), SECURITY__SETENFORCE);
+#else
+		error = thread_has_system(curthread, SECURITY__SETENFORCE);
+#endif
 		if (error)
 			return error;
 
 		selinux_enforcing = enforcing;
 	}
-#endif
 
 	return (0);
 }

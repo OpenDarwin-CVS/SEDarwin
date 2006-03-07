@@ -238,6 +238,20 @@ thread_has_security(struct thread *td, access_vector_t perm)
 
 	return (cred_has_security(td->td_proc->p_ucred, perm));
 }
+#else
+int
+proc_has_system(struct proc *p, access_vector_t perm)
+{
+
+	return (cred_has_system(p->p_ucred, perm));
+}
+
+int
+proc_has_security(struct proc *p, access_vector_t perm)
+{
+
+	return (cred_has_security(p->p_ucred, perm));
+}
 #endif
 
 static __inline security_class_t
