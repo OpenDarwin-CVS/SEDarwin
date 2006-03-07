@@ -1773,6 +1773,7 @@ mach_get_label(
 	ipc_port_t port;
 	struct label outl;
 	kern_return_t kr;
+	int dead;
 
 	if (!MACH_PORT_VALID(name))
 		return KERN_INVALID_NAME;
@@ -1782,10 +1783,16 @@ mach_get_label(
 	if (kr != KERN_SUCCESS)
 		return kr;
 
-	/* Make sure we are not dealing with a label handle. */
 	port = (ipc_port_t) entry->ie_object;
-	ip_lock(port);
+	dead = ipc_right_check(space, port, name, entry);
+	if (dead) {
+		is_write_unlock(space);
+		return KERN_INVALID_RIGHT;
+	}
+	/* port is now locked */
+
 	is_write_unlock(space);
+	/* Make sure we are not dealing with a label handle. */
 	if (ip_kotype(port) == IKOT_LABELH) {
 		/* already is a label handle! */
 		ip_unlock(port);
@@ -1813,6 +1820,7 @@ mach_get_label_text(
 	ipc_entry_t entry;
 	kern_return_t kr;
 	struct label *l;
+	int dead;
 
 	if (space == IS_NULL || space->is_task == NULL)
 		return KERN_INVALID_TASK;
@@ -1824,15 +1832,21 @@ mach_get_label_text(
 	if (kr != KERN_SUCCESS)
 		return kr;
 
-	io_lock(entry->ie_object);
-	is_write_unlock (space);
+	dead = ipc_right_check(space, entry->ie_object, name, entry);
+	if (dead) {
+		is_write_unlock(space);
+		return KERN_INVALID_RIGHT;
+	}
+	/* object (port) is now locked */
+
+	is_write_unlock(space);
 	l = io_getlabel(entry->ie_object);
 
-	mac_externalize_port_label (l, policies, outlabel, 512, 0);
+	mac_externalize_port_label(l, policies, outlabel, 512, 0);
 
 	io_unlocklabel(entry->ie_object);
-	io_unlock (entry->ie_object);
-	return 0;
+	io_unlock(entry->ie_object);
+	return KERN_SUCCESS;
 }
 
 kern_return_t
