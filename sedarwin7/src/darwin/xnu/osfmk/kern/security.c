@@ -58,15 +58,15 @@ mach_get_task_label(
   
 	return (KERN_SUCCESS);
 }
-kern_return_t
 
+kern_return_t
 mach_get_task_label_text(
 	ipc_space_t	space,
 	labelstr_t	policies,
 	labelstr_t	outl)
 {
 
-	if (space == IS_NULL)
+	if (space == IS_NULL || space->is_task == NULL)
 		return KERN_INVALID_TASK;
 
 	tasklabel_lock(space->is_task);
