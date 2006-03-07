@@ -42,7 +42,7 @@ main (int argc, char **argv)
 {
         kern_return_t		kr;
 	mach_port_name_t	labelHandle, portName;
-	char			*textlabel;
+	char			*textlabel, textbuf[512];
 	int			ch, count, dealloc, destroy, getnew, getport;
 	int			gettask, reqlabel, i;
 
@@ -109,7 +109,8 @@ main (int argc, char **argv)
 				mach_error(":", kr);
 				exit(1);
 			}
-			printf("new label handle: 0x%x\n", labelHandle);
+			printf("new label handle: 0x%x (%s)\n", labelHandle,
+			    textlabel);
 		}
 		if (gettask) {
 			/* Get label handle for our task */
@@ -119,7 +120,14 @@ main (int argc, char **argv)
 				mach_error("mach_get_task_label():", kr);
 				exit(1);
 			}
-			printf("task label handle: 0x%x\n", labelHandle);
+			kr = mach_get_task_label_text(mach_task_self(),
+			    "sebsd", textbuf);
+			if (kr != KERN_SUCCESS) {
+				mach_error("mach_get_task_label_text():", kr);
+				exit(1);
+			}
+			printf("task label handle: 0x%x (%s)\n", labelHandle,
+			    textbuf);
 		}
 		if (getport) {
 			/* Get a label handle for the new port */
@@ -129,7 +137,14 @@ main (int argc, char **argv)
 				mach_error("mach_get_label():", kr);
 				exit(1);
 			}
-			printf("port label handle: 0x%x\n", labelHandle);
+			kr = mach_get_label_text(mach_task_self(), labelHandle,
+			    "sebsd", textbuf);
+			if (kr != KERN_SUCCESS) {
+				mach_error("mach_get_label_text():", kr);
+				exit(1);
+			}
+			printf("port label handle: 0x%x (%s)\n", labelHandle,
+			    textbuf);
 		}
 		if (reqlabel) {
 			/* Compute label handle based on port and task. */
@@ -139,7 +154,14 @@ main (int argc, char **argv)
 				mach_error("mac_request_label():", kr);
 				exit(1);
 			}
-			printf("coputed label handle: 0x%x\n", labelHandle);
+			kr = mach_get_label_text(mach_task_self(), labelHandle,
+			    "sebsd", textbuf);
+			if (kr != KERN_SUCCESS) {
+				mach_error("mach_get_label_text():", kr);
+				exit(1);
+			}
+			printf("computed label handle: 0x%x (%s)\n",
+			    labelHandle, textbuf);
 		}
 		if (dealloc) {
 			/* Deallocate the label handle */
@@ -167,7 +189,7 @@ main (int argc, char **argv)
 void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-c count] [-dx] -n text_label | -t | -p\n",
+	fprintf(stderr, "usage: %s [-c count] [-dx] -n text_label | -t | -r | -p\n",
 	    __progname);
 	exit(1);
 }
