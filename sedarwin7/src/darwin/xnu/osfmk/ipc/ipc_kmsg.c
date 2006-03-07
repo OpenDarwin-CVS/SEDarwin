@@ -236,8 +236,8 @@ ipc_kmsg_free(
 
 #ifdef MAC
 	if (kmsg->ikm_sender != NULL) {
-	  labelh_release (kmsg->ikm_sender);
-	  kmsg->ikm_sender = NULL;
+		labelh_release(kmsg->ikm_sender);
+		kmsg->ikm_sender = NULL;
 	}
 #endif
 
@@ -608,8 +608,8 @@ ipc_kmsg_clean(
 
 #ifdef MAC
 	if (kmsg->ikm_sender != NULL) {
-	  labelh_release (kmsg->ikm_sender);
-	  kmsg->ikm_sender = NULL;
+		labelh_release (kmsg->ikm_sender);
+		kmsg->ikm_sender = NULL;
 	}
 #endif
 }
@@ -716,12 +716,10 @@ ipc_kmsg_get(
 
 #ifdef MAC
 	task_t cur = current_thread()->top_act->task;
-	if (cur)
-	  {
-	    labelh_reference (cur->label);
-	    kmsg->ikm_sender = cur->label;
-	  }
-	else
+	if (cur) {
+		labelh_reference(cur->label);
+		kmsg->ikm_sender = cur->label;
+	} else
 		trailer->msgh_labels.sender = 0;
 #else
         trailer->msgh_labels.sender = 0;

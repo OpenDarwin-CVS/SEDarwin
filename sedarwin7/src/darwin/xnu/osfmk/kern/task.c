@@ -381,9 +381,8 @@ task_create_internal(
 	eml_task_reference(new_task, parent_task);
 
 #ifdef MAC
-	/*mutex_init(&new_task->labellock, ETAP_NO_TRACE);*/
-	new_task->label = labelh_new ();
-	mac_init_task_label (&new_task->maclabel);
+	new_task->label = labelh_new();
+	mac_init_task_label(&new_task->maclabel);
 #endif
 
 	ipc_task_init(new_task, parent_task);
@@ -471,8 +470,7 @@ task_deallocate(
 
 	task_lock(task);
 #ifdef MAC
-	/* Prevent task from being destroyed while the label is
-	   still in use */
+	/* Prevent task from being destroyed while the label is still in use */
 	tasklabel_lock(task);
 #endif
 	refs = --task->ref_count;
@@ -1806,5 +1804,4 @@ mac_modify_task_label(
 	(*f)(&pt->maclabel, arg);
 	tasklabel_unlock(pt);
 }
-
 #endif

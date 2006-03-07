@@ -1836,12 +1836,16 @@ mach_get_label_text(
 }
 
 kern_return_t
-mach_set_port_label (ipc_space_t space, mach_port_name_t name, vm_offset_t labelstr)
+mach_set_port_label(
+	ipc_space_t		space,
+	mach_port_name_t	name,
+	vm_offset_t		labelstr)
 {
 #ifdef MAC
 	ipc_entry_t entry;
 	kern_return_t kr;
 	struct label inl;
+	int rc;
 
 	if (space == IS_NULL || space->is_task == NULL)
 		return KERN_INVALID_TASK;
@@ -1849,32 +1853,33 @@ mach_set_port_label (ipc_space_t space, mach_port_name_t name, vm_offset_t label
 	if (!MACH_PORT_VALID(name))
 		return KERN_INVALID_NAME;
 
-	mac_init_port_label (&inl);
-	int rc = mac_internalize_port_label (&inl, labelstr);
+	mac_init_port_label(&inl);
+	rc = mac_internalize_port_label(&inl, labelstr);
 	if (rc)
-	  return KERN_INVALID_ARGUMENT;
+		return KERN_INVALID_ARGUMENT;
 
 	kr = ipc_right_lookup_write(space, name, &entry);
 	if (kr != KERN_SUCCESS)
 		return kr;
 
-	if (IOT_PORT != io_otype(entry->ie_object)) {
-	  is_write_unlock (space);
-	  return KERN_INVALID_RIGHT;
+	if (io_otype(entry->ie_object) != IOT_PORT) {
+		is_write_unlock(space);
+		return KERN_INVALID_RIGHT;
 	}
 
 	ipc_port_t port = (ipc_port_t) entry->ie_object;
 
-	ip_lock (port);
+	ip_lock(port);
 
-	rc = mac_check_port_relabel (&space->is_task->maclabel, &port->ip_label, &inl);
+	rc = mac_check_port_relabel(&space->is_task->maclabel,
+	    &port->ip_label, &inl);
 	if (rc)
-	  kr = KERN_NO_ACCESS;
+		kr = KERN_NO_ACCESS;
 	else
-	  mac_copy_port_label (&inl, &port->ip_label);
+		mac_copy_port_label(&inl, &port->ip_label);
 
-	ip_unlock (port);
-	is_write_unlock (space);
+	ip_unlock(port);
+	is_write_unlock(space);
 	return kr;
 #else
 	return KERN_INVALID_ARGUMENT;
