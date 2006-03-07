@@ -33,7 +33,7 @@
 
 typedef struct ipc_labelh
 {
-	int               lh_references;
+	natural_t         lh_references;
 	int               lh_type;
 	struct label      lh_label;
 	ipc_port_t        lh_port;
