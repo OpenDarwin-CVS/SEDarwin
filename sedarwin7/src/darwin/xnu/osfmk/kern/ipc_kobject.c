@@ -514,7 +514,7 @@ ipc_kobject_destroy(
 		break;
 
 	case IKOT_LABELH:
-		labelh_release(port->ip_kobject);
+		labelh_destroy(port);
 		break;
 
 	default:

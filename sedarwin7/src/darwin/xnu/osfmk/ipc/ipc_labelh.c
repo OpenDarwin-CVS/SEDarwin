@@ -47,7 +47,7 @@ labelh_new_user(ipc_space_t space, struct label *inl, mach_port_name_t *namep)
 	if (space == IS_NULL || space->is_task == NULL)
 		return (KERN_INVALID_TASK);
 
-	/* XXX - perform entrypoint check here */
+	/* XXX - perform entrypoint check here? */
 
 	/*
 	 * Note: the calling task will have a receive right for the port.
@@ -75,7 +75,7 @@ labelh_new_user(ipc_space_t space, struct label *inl, mach_port_name_t *namep)
 	lh->lh_port = port;
 	lh->lh_label = *inl;
 	lh->lh_type = LABELH_TYPE_USER;
-	lh->lh_references = 1;
+	lh->lh_references = 1;		/* unused for LABELH_TYPE_USER */
 
 	/* Must call ipc_kobject_set() with port unlocked. */
 	ip_unlock(lh->lh_port);
@@ -154,6 +154,11 @@ labelh_modify(ipc_labelh_t old)
 {
 	ipc_labelh_t lh;
 
+	/*
+	 * A label handle may only have a single reference. 
+	 * If there are no other references this is a no-op.
+	 * Otherwise, make a copy we can write to and return it.
+	 */
 	if (old->lh_references == 1)
 		return (old);
 	lh = labelh_duplicate(old);
@@ -175,6 +180,9 @@ labelh_reference(ipc_labelh_t lh)
 	return (lh);
 }
 
+/*
+ * Release a reference on an (unlocked) label handle.
+ */
 void
 labelh_release(ipc_labelh_t lh)
 {
@@ -183,10 +191,18 @@ labelh_release(ipc_labelh_t lh)
 	lh_check_unlock(lh);
 }
 
+/*
+ * Deallocate space associated with the label handle backed by the
+ * specified port.  For kernel-allocated label handles the
+ * label handle reference count should be 0.  For user-allocated
+ * handles the ref count is not used (it was initialized to 1).
+ */
 void
-lh_free(ipc_labelh_t lh)
+labelh_destroy(ipc_port_t port)
 {
-	ipc_object_release(&lh->lh_port->ip_object);
+	ipc_labelh_t lh = (ipc_labelh_t) port->ip_kobject;
+
+	ip_release(lh->lh_port);
 	mac_destroy_port_label(&lh->lh_label);
 	zfree(ipc_labelh_zone, (vm_offset_t)lh);
 }
