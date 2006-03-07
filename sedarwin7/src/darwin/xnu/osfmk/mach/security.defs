@@ -23,7 +23,7 @@ type labelstr_t = c_string[*:512];
   @return Standard MiG return values (0 for success)
 */
 
-routine mach_get_task_label(task      : task_t;
+routine mach_get_task_label(task      : ipc_space_t;
 			    out label : mach_port_name_t);
 
 /**
@@ -38,7 +38,7 @@ routine mach_get_task_label(task      : task_t;
   @return Standard MiG return values (0 for success)
 */
 
-routine mach_get_task_label_text(task      : task_t;
+routine mach_get_task_label_text(task      : ipc_space_t;
 				 policies  : labelstr_t;
 				 out label : labelstr_t);
 

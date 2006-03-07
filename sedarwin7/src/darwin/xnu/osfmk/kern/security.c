@@ -32,13 +32,16 @@
 
 kern_return_t
 mach_get_task_label(
-	task_t		 t,
+	ipc_space_t	 space,
 	mach_port_name_t *outlabel)
 {
-	ipc_labelh_t	lh = t->label;
-	ipc_space_t	space = t->itk_space;
 	kern_return_t	kr;
+	ipc_labelh_t	lh;
 
+	if (space == IS_NULL || space->is_task == NULL)
+		return KERN_INVALID_TASK;
+
+	lh = space->is_task->label;
 	ip_lock(lh->lh_port);
 	lh->lh_port->ip_mscount++;
 	lh->lh_port->ip_srights++;
@@ -55,16 +58,21 @@ mach_get_task_label(
   
 	return (KERN_SUCCESS);
 }
-
 kern_return_t
+
 mach_get_task_label_text(
-	task_t		t,
+	ipc_space_t	space,
 	labelstr_t	policies,
 	labelstr_t	outl)
 {
-	tasklabel_lock(t);
-	mac_externalize_task_label(&t->maclabel, policies, outl, 512, 0);
-	tasklabel_unlock(t);
+
+	if (space == IS_NULL)
+		return KERN_INVALID_TASK;
+
+	tasklabel_lock(space->is_task);
+	mac_externalize_task_label(&space->is_task->maclabel, policies, outl,
+	    512, 0);
+	tasklabel_unlock(space->is_task);
   
 	return KERN_SUCCESS;
 }
