@@ -44,6 +44,9 @@ typedef struct ipc_labelh
 #endif
 } *ipc_labelh_t;
 
+#define	LABELH_TYPE_KERN	0
+#define	LABELH_TYPE_USER	1
+
 ipc_labelh_t labelh_duplicate(ipc_labelh_t old);
 ipc_labelh_t labelh_modify(ipc_labelh_t old);
 ipc_labelh_t labelh_new(void);

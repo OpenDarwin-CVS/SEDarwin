@@ -74,7 +74,7 @@ labelh_new_user(ipc_space_t space, struct label *inl, mach_port_name_t *namep)
 	io_lock_init(lh);
 	lh->lh_port = port;
 	lh->lh_label = *inl;
-	lh->lh_type = 0;
+	lh->lh_type = LABELH_TYPE_USER;
 	lh->lh_references = 1;
 
 	/* Must call ipc_kobject_set() with port unlocked. */
@@ -118,7 +118,7 @@ labelh_new(void)
 	lh = (ipc_labelh_t)zalloc(ipc_labelh_zone);
 	io_lock_init(lh);
 	lh->lh_port = ipc_port_alloc_kernel();
-	lh->lh_type = 0;
+	lh->lh_type = LABELH_TYPE_KERN;
 	lh->lh_references = 1;
 	ip_unlock(lh->lh_port);
 
