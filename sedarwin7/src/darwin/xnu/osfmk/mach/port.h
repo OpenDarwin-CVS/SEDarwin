@@ -48,12 +48,6 @@
  * the rights to redistribute these changes.
  */
 /*
- * NOTICE: This file was modified by McAfee Research in 2004 to introduce
- * support for mandatory and extensible security protections.  This notice
- * is included in support of clause 2.2 (b) of the Apple Public License,
- * Version 2.0.
- */
-/*
  */
 /*
  *	File:	mach/port.h
@@ -198,8 +192,7 @@ typedef natural_t mach_port_right_t;
 #define MACH_PORT_RIGHT_SEND_ONCE	((mach_port_right_t) 2)
 #define MACH_PORT_RIGHT_PORT_SET	((mach_port_right_t) 3)
 #define MACH_PORT_RIGHT_DEAD_NAME	((mach_port_right_t) 4)
-#define MACH_PORT_RIGHT_LABELH	        ((mach_port_right_t) 5)
-#define MACH_PORT_RIGHT_NUMBER		((mach_port_right_t) 6)
+#define MACH_PORT_RIGHT_NUMBER		((mach_port_right_t) 5)
 
 typedef natural_t mach_port_type_t;
 typedef mach_port_type_t *mach_port_type_array_t;
@@ -213,7 +206,6 @@ typedef mach_port_type_t *mach_port_type_array_t;
 #define MACH_PORT_TYPE_SEND_ONCE    MACH_PORT_TYPE(MACH_PORT_RIGHT_SEND_ONCE)
 #define MACH_PORT_TYPE_PORT_SET	    MACH_PORT_TYPE(MACH_PORT_RIGHT_PORT_SET)
 #define MACH_PORT_TYPE_DEAD_NAME    MACH_PORT_TYPE(MACH_PORT_RIGHT_DEAD_NAME)
-#define MACH_PORT_TYPE_LABELH       MACH_PORT_TYPE(MACH_PORT_RIGHT_LABELH)
 
 /* Convenient combinations. */
 
