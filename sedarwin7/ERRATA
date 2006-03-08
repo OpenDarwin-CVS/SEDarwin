@@ -21,9 +21,6 @@ The following known issues are present in this release:
      PowerBook G4, I see a kernel trap involving IOKit modules within
      15 minutes.
 
- 47: Setpmac-spawned processes hang on exit.  The MLS policy does not
-     permit a lower-priority shell to wait(2) on the child process.
-
  52: The fdsec (filesystem) should have labels - The fdesc file system
      provides /dev/fd entries on darwin instead of implementing this
      within devfs.
@@ -31,10 +28,6 @@ The following known issues are present in this release:
  76: If a filesystem makes symbolic links from a partition that is
      using extended attributes into a file system that is not using
      extended attributes, the system will eventually deadlock.
-
- 89: SEDarwin policy rejecting access to /dev/null when it should
-     not.  Is the general_file_write_access macro not being applied
-     to users?
 
  91: Users who create and attach new disk images cannot then access them.
 
@@ -57,7 +50,7 @@ The following known issues are present in this release:
 109: Commands 'ls -Z' and 'ps -Z' fail when no mac config file
      present.  If there is no MAC config file present (no
      /etc/mac.conf, and $MAC_CONFFILE not set), using the '-Z' flag on
-     the ls or ps command results in 'Bus error'
+     the ls or ps command results in 'Bus error'.  Fixed in DSEP.
 
 117: The mpo_check_port_relabel entry point does not hold the task
      label lock.  Policies implmenting this entry point should
@@ -88,12 +81,6 @@ The following known issues are present in this release:
      to get/set this label.  Security server methods that return a
      label handle or text label can use the port label for access
      control.
-
-239: The SLOT() macro may return NULL in the SEDarwin policy.  This
-     causes a panic in sebsd_externalize_cred_label() when the port
-     that holds the label has already been destroyed.  There appears
-     to be a missing lock or out of order operation since we should
-     not be trying to externalized a dead port.
 
 XXX: Threads are not labeled, only tasks.  We need to investigate
      whether threads deserve their own labels.  A task may create
