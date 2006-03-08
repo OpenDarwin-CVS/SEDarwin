@@ -357,6 +357,7 @@ allow_mach_ipc(sshd_d,user_d);
 #logind rules
 allow_notify_ipc(login_d);
 allow_mach_ipc(lookupd_d,login_d);
+allow_mach_ipc(user_d,login_d);
 
 # test rule to allow talking to unlabeled_t stuff
 allow_notify_ipc(unlabeled_t);
