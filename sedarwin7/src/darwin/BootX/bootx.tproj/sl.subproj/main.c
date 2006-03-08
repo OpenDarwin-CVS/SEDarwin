@@ -638,16 +638,14 @@ static long SetUpBootArgs(void)
   args->exdatalen = 0;
 
   char *prevname = "", propname[128];
-  while (1) {
-    if (1 != NextProp (gOptionsPH, prevname, propname))
-      break;
+  while (NextProp (gOptionsPH, prevname, propname) == 1) {
     prevname = propname;
     if (!strncmp (propname, "load_", 5)) {
       char pfilename[255];
-      memset (pfilename, 0, 255);
-      size = GetProp(gOptionsPH, propname, pfilename, 255);
+      memset (pfilename, 0, sizeof(pfilename));
+      size = GetProp(gOptionsPH, propname, pfilename, sizeof(pfilename));
 
-      if (size > 0 && strlen(propname+4) < sizeof(int) * 4) {
+      if (size > 0 && strlen(propname+5) <= sizeof(int) * 4) {
 	char datfile[512];
 	strcpy (datfile, gRootDir);
 	strcat (datfile, pfilename);
@@ -658,9 +656,9 @@ static long SetUpBootArgs(void)
     }
     else if (!strncmp (propname, "kenv_", 5)) {
       char pvar[255];
-      size = GetProp(gOptionsPH, propname, pvar, 255);
+      size = GetProp(gOptionsPH, propname, pvar, sizeof(pvar));
 
-      if (size > 0 && strlen(propname+4) < sizeof(int) * 4)
+      if (size > 0 && strlen(propname+5) <= sizeof(int) * 4)
 	AddKernData (args, propname + 5, size, pvar);
     }
   }
