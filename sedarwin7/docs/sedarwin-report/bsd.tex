@@ -20,13 +20,13 @@ approach is the LOMAC policy\cite{Fraser00,fraser01}).
 
 The Darwin MAC Framework provides entry points for the same four process
 control checks that the FreeBSD MAC framework provides:
-\footnote{On these, only mac\_check\_proc\_signal() is presently
+\footnote{On these, only {\tt mac\_check\_proc\_signal()} is presently
 implemented by the SEDarwin module.}
 
 \begin{center}
 \begin{tabular}{ll}
-mac\_check\_proc\_signal() & mac\_check\_proc\_sched() \\
-mac\_check\_proc\_debug() & mac\_check\_proc\_wait() \\
+{\tt mac\_check\_proc\_signal()} & {\tt mac\_check\_proc\_sched()} \\
+{\tt mac\_check\_proc\_debug()} & {\tt mac\_check\_proc\_wait()} \\
 \end{tabular}
 \end{center}
 
@@ -37,9 +37,9 @@ implemented for the SEDarwin module.}
 
 \begin{center}
 \begin{tabular}{ll}
-mac\_check\_proc\_getaudit() & mac\_check\_proc\_setaudit() \\
-mac\_check\_proc\_getauid() & mac\_check\_proc\_setauid() \\
-mac\_check\_proc\_getlcid() & mac\_check\_proc\_setlcid() \\
+{\tt mac\_check\_proc\_getaudit()} & {\tt mac\_check\_proc\_setaudit()} \\
+{\tt mac\_check\_proc\_getauid()} & {\tt mac\_check\_proc\_setauid()} \\
+{\tt mac\_check\_proc\_getlcid()} & {\tt mac\_check\_proc\_setlcid()} \\
 \end{tabular}
 \end{center}
 
@@ -74,53 +74,53 @@ currently implemented in the SEDarwin policy module.}
 
 \begin{center}
 \begin{tabular}{ll}
-mac\_check\_vnode\_access()
-& mac\_check\_vnode\_chdir() \\
+{\tt mac\_check\_vnode\_access()}
+& {\tt mac\_check\_vnode\_chdir()} \\
 
-mac\_check\_vnode\_chroot()
-& mac\_check\_vnode\_create() \\
+{\tt mac\_check\_vnode\_chroot()}
+& {\tt mac\_check\_vnode\_create()} \\
 
-mac\_check\_vnode\_delete()
-& mac\_check\_vnode\_deleteextattr() \\
+{\tt mac\_check\_vnode\_delete()}
+& {\tt mac\_check\_vnode\_deleteextattr()} \\
 
-mac\_check\_vnode\_exchangedata()
-& mac\_check\_vnode\_exec() \\
+{\tt mac\_check\_vnode\_exchangedata()}
+& {\tt mac\_check\_vnode\_exec()} \\
 
- mac\_check\_vnode\_getattrlist()
-& mac\_check\_vnode\_getextattr() \\
+{\tt mac\_check\_vnode\_getattrlist()}
+& {\tt mac\_check\_vnode\_getextattr()} \\
 
-mac\_check\_vnode\_link()
-& mac\_check\_vnode\_listextattr() \\
+{\tt mac\_check\_vnode\_link()}
+& {\tt mac\_check\_vnode\_listextattr()} \\
 
-mac\_check\_vnode\_lookup()
-& mac\_check\_vnode\_mmap() \\
+{\tt mac\_check\_vnode\_lookup()}
+& {\tt mac\_check\_vnode\_mmap()} \\
 
-mac\_check\_vnode\_mprotect()
-& mac\_check\_vnode\_open() \\
+{\tt mac\_check\_vnode\_mprotect()}
+& {\tt mac\_check\_vnode\_open()} \\
 
-mac\_check\_vnode\_poll()
-& mac\_check\_vnode\_read() \\
+{\tt mac\_check\_vnode\_poll()}
+& {\tt mac\_check\_vnode\_read()} \\
 
-mac\_check\_vnode\_readdir()
-& mac\_check\_vnode\_readlink() \\
+{\tt mac\_check\_vnode\_readdir()}
+& {\tt mac\_check\_vnode\_readlink()} \\
 
-mac\_check\_vnode\_rename\_from()
-& mac\_check\_vnode\_rename\_to() \\
+{\tt mac\_check\_vnode\_rename\_from()}
+& {\tt mac\_check\_vnode\_rename\_to()} \\
 
-mac\_check\_vnode\_revoke()
-& mac\_check\_vnode\_select() \\
+{\tt mac\_check\_vnode\_revoke()}
+& {\tt mac\_check\_vnode\_select()} \\
 
-mac\_check\_vnode\_setattrlist()
-& mac\_check\_vnode\_setextattr() \\
+{\tt mac\_check\_vnode\_setattrlist()}
+& {\tt mac\_check\_vnode\_setextattr()} \\
 
-mac\_check\_vnode\_setflags()
-& mac\_check\_vnode\_setmode() \\
+{\tt mac\_check\_vnode\_setflags()}
+& {\tt mac\_check\_vnode\_setmode()} \\
 
-mac\_check\_vnode\_setowner()
-& mac\_check\_vnode\_setutimes() \\
+{\tt mac\_check\_vnode\_setowner()}
+& {\tt mac\_check\_vnode\_setutimes()} \\
 
-mac\_check\_vnode\_stat()
-& mac\_check\_vnode\_write() \\
+{\tt mac\_check\_vnode\_stat()}
+& {\tt mac\_check\_vnode\_write()} \\
 
 \end{tabular}
 \end{center}

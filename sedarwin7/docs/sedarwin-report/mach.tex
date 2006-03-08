@@ -99,8 +99,8 @@ pasteboard server use MiG-formatted messages as well.  Using MiG
 whenever practical greatly reduces the development overhead of
 implementing messaging protocols. This is especially pertinent when
 developing kernel servers since the MiG generated code will handle
-all of the necessary copyin(), copyout(), and basic message validation
-tasks.
+all of the necessary {\tt copyin()}, {\tt copyout()}, and basic message
+validation tasks.
 
 
 \subsection{Mach Protection Primitives}
@@ -157,16 +157,41 @@ routines.
 Access control checks have been added to the Darwin Framework for
 message sending and receiving, port right transfers (both send and
 receive) as well as relabel operations for ports and tasks.  The
-full list of access control entry points is:
+full list of access control entry points is as follows.
 
-\begin{center}
-\begin{tabular}{ll}
-mac\_check\_port\_send() & mac\_check\_port\_make\_send() \\
-mac\_check\_port\_copy\_send() & mac\_check\_port\_move\_recieve() \\
-mac\_check\_port\_hold\_send() & mac\_check\_port\_hold\_recieve() \\
-mac\_check\_port\_receive() & mac\_check\_port\_relabel() \\
-\end{tabular}
-\end{center}
+\begin{longtable}{|p{2.2in}|p{2.3in}|}
+\hline
+{\bf Entry Point} & {\bf Called When} \\
+\hline
+\hline
+\endfirsthead
+\hline
+{\bf Entry Point} & {\bf Called When} \\
+\hline
+\hline
+\endhead
+\hline
+\endfoot
+{\tt mac\_check\_port\_send()} & task attempts to send a message \\[3mm]
+\hline
+{\tt mac\_check\_port\_receive()} & task attempts to receive a message \\[3mm]
+\hline
+{\tt mac\_check\_port\_make\_send()} & task attempts to create a send right from a receive right \\[3mm]
+{\tt mac\_check\_port\_make\_send\_once()} & task attempts to create a send-once right from a receive right \\[3mm]
+\hline
+{\tt mac\_check\_port\_copy\_send()} & task attempts to copy a send right to a task \\[3mm]
+{\tt mac\_check\_port\_move\_send()} & task attempts to move a send right from one task to another \\[3mm]
+{\tt mac\_check\_port\_move\_send\_once()} & task attempts to move a send-one right from one task to another \\[3mm]
+\hline
+{\tt mac\_check\_port\_move\_recieve()} & task attempts to move the receive right from one task another. \\[3mm]
+\hline
+{\tt mac\_check\_port\_hold\_send()} & task attempts to receive a send right \\[3mm]
+{\tt mac\_check\_port\_hold\_send\_once()} & task attempts to receive a send-once right \\[3mm]
+\hline
+{\tt mac\_check\_port\_hold\_recieve()} & task attempts to receive a receive right \\[3mm]
+\hline
+{\tt mac\_check\_port\_relabel()} & task attempts to relabel a port or task \\[3mm]
+\end{longtable}
 
 \subsection{Changes to the Mach Kernel}
 
@@ -221,30 +246,35 @@ if requested by the receiver.  In a stock Darwin system the recipient
 can request three trailer fields: a message sequence number, a
 security token (equivalent to the UNIX uid and gid), and an audit
 token (an opaque object which may be interpreted by the BSM audit
-library).  We have added two additional trailer types: the sender's
-security labels and a policy access decision.
+library).  We have added two additional trailer types:
+{\tt MACH\_RCV\_TRAILER\_LABELS} and {\tt MACH\_RCV\_TRAILER\_AV}.
 
-When security labels are requested, a label handle is returned that
-the caller may use to request access decisions from the security
-server.  For example, the bootstrap namespace server could ensure only a
-privleged process can examine the namespace created by a different
-loginwindow process.  Note that the caller is responsible for freeing
-requested label handles.
+The {\tt MACH\_RCV\_TRAILER\_LABELS} trailer returns the sender's
+security labels as part of the message trailer in the form of a
+label handle.  The caller may use the label handle to request access
+decisions from the security server or convert the handle to text
+form.  For example, the bootstrap namespace server could ensure
+only a privleged process can examine the namespace created by a
+different loginwindow process.  The returned label handle may be
+deallocated using the standard Mach port API functions {\tt
+mach\_port\_deallocate()} and {\tt mach\_port\_destroy()}.  Label
+handles are garbage collected upon task termination just like regular
+Mach ports.
 
-The policy access decision trailer provides similar functionality
-to the DTOS mach\_msg\_secure() trap without requiring an extra trap
-(and the requisite changes to the standard C library).
-This trailer provides a single access decision as a boolean value
-to the caller, computed by the loaded policies using subject, port,
-subsystem, and routine name arguments  Providing the full subsystem
-vector (as in DTOS) is impractical with our abstract policy framework.
-A complex policy would be required to compute decisions for the
-entire subsystem even though only one decision was useful at that
-time and the results of computation may not be usable for future
-calls.  An alternative is to cache access decisions in the policy
-itself for rapid lookup, as FLASK does.  Our extended trailers may
-be use alone or in combination with any other trailers supported
-by Darwin.
+The {\tt MACH\_RCV\_TRAILER\_AV} trailer trailer provides similar
+functionality to the DTOS {\tt mach\_msg\_secure()} trap without
+requiring an extra trap (and the requisite changes to the standard
+C library).  This trailer provides a single access decision as a
+boolean value to the caller, computed by the loaded policies using
+subject, port, subsystem, and routine name arguments  Providing the
+full subsystem vector (as in DTOS) is impractical with our abstract
+policy framework.  A complex policy would be required to compute
+decisions for the entire subsystem even though only one decision
+was useful at that time and the results of computation may not be
+usable for future calls.  An alternative is to cache access decisions
+in the policy itself for rapid lookup, as FLASK does.  Our extended
+trailers may be use alone or in combination with any other trailers
+supported by Darwin.
 
 When the extended trailers are requested by a receiving task, calls
 are made to the loaded security policies and the result is copied
@@ -255,8 +285,6 @@ Although we only report a single access control decision in a
 trailer, we have not precluded a DTOS-style optimization where
 precomputed access control decisions are cache in the ipc\_entry
 field of the sending task.
-
-\textit{XXX: describe our 2 trailers in detail here}
 
 Unlike the stock Darwin trailer fields, our additional trailers are
 not simply existing data that can be copied.  The kernel must make
@@ -313,3 +341,106 @@ such decoupling is to use a proxy server for security decisions. The proxy serve
 the same message formats as the application; after decoding the arguments, the proxy
 server checks authorization with the security system. Depending on the result of the
 authorization check, the proxy server calls the application with the user's message.
+
+
+\subsection{Sequence of Messaging Security Checks}
+
+Message security checks are performed at both the sending and
+receiving ends.  When sending, the kernel first calls the
+{\tt mac\_check\_port\_send()} Framework entry point to permit or deny
+the sending of the message.  Next, each security policy is queried
+for permission to transfer each port right contained in the message.
+If any port right transfers are denied, the message is not sent.
+Because memory objects are not currently labeled, no special check
+is performed for transferring out-of-line memory.  The sending
+checks refer to the receiving port, not the receiving task, as the
+receive right for the destination port could be in the process of
+moving between tasks while the message is in-flight.  On the receiving
+end, the kernel calls the {\tt mac\_check\_port\_receive()} Framework
+entry point to permit or deny receipt of the message.  If the task
+is permitted to receive the message, further checks are made to
+verify that the task is permitted to hold the port rights contained
+in the message.  If any port right transfers are denied, the message
+will not be delivered.
+
+\subsubsection{Message Life Cycle}
+
+\begin{enumerate}
+\item {Message sent by task.}
+The {\tt mach\_msg()} or {\tt mach\_msg\_send()} library function enters the
+kernel via the {\tt mach\_msg\_trap()} syscall.
+
+\item {Kernel allocates space for the (kernel-private) message object.}
+The {\tt mach\_msg\_trap()} syscall calls {\tt mach\_msg\_send()} which uses
+{\tt ipc\_kmsg\_get()} to allocate a new kernel message object.
+
+\item {Framework entry point {\tt mac\_check\_port\_send()} is called.}
+The {\tt mach\_msg\_send()} function calls {\tt ipc\_kmsg\_copyin()}
+to copy the message from user space into the kernel.  The message header
+and an optional message body are copied separately.  Before
+copying the header in {\tt ipc\_kmsg\_copyin\_header()}, the
+{\tt mac\_check\_port\_send()} Framework entry point is called to check
+whether the task is permitted to send the message.
+
+\item {The message header is filled in from user space by {\tt ipc\_kmsg\_copyin\_header()}.}
+If the header contains port rights, {\tt ipc\_right\_copyin()} is called
+to update the capabilities from the user's task.  Before port
+rights are updated, the appropriate Framework entry point is
+called.  The entry points are {\tt mac\_check\_port\_make\_send()} for
+new send (or send-once) rights, {\tt mac\_check\_port\_move\_receive()}
+for receive rights, and {\tt mac\_check\_port\_copy\_send()} for copying
+or moving send (or send-once) rights.
+
+\item {The message body (if any) is copied by {\tt ipc\_kmsg\_copyin\_body()}.}
+The message body may contain additional port rights and inline
+or out of line data (which may itself contain port rights).
+Port rights (and their permission checks) are performed in the
+same manner as the rights contained in the message header.
+Space for memory regions (both inline and out of line) is
+allocated from the kernel's ipc copy memory map (using copy on
+write semantics).
+
+\item {The message object is placed in the port's message queue.}
+The {\tt mach\_msg\_send()} function calls {\tt ipc\_kmsg\_send()} which in
+turn uses {\tt ipc\_mqueue\_send()} to enqueue the message.
+
+\item {Message sent.}
+
+....
+
+\item {Receiving task tries to pick up the message.}
+The {\tt mach\_msg()} or {\tt mach\_msg\_receive()} library function enters
+the kernel via the {\tt mach\_msg\_trap()} syscall.
+
+\item {Framework entry point {\tt mac\_check\_port\_receive()} is called.}
+{\tt mach\_msg\_receive()} calls {\tt ipc\_mqueue\_receive()} which in turn
+calls the Framework entry point {\tt mac\_check\_port\_receive()} to check
+whether the task is permitted to receive the message.  If the task
+is permitted to receive it, the message is moved out of the receiving
+port's message queue.  If permission is denied, the message is dropped
+and the in-kernel message object is deallocated.
+
+\item {MAC Trailers are filled in for the message if they were requested.}
+{\tt mach\_msg\_receive()} checks for {\tt MACH\_RCV\_TRAILER\_AV} or
+{\tt MACH\_RCV\_TRAILER\_LABELS}.
+
+\item {Message header is copied into the user's address space.}
+{\tt ipc\_kmsg\_copyout()} calls {\tt ipc\_kmsg\_copyout\_header()}.
+If the message contains ports rights they are copied via
+{\tt ipc\_right\_copyout()} which first calls the appropriate Framework
+entry point.  The entry points are {\tt mac\_check\_port\_hold\_send()}
+for send rights, {\tt mac\_check\_port\_hold\_send\_once()} for send-once
+rights, and {\tt mac\_check\_port\_hold\_receive()} for receive rights.
+
+\item {Message body is copied into the user's address space.}
+If the body contains ports rights (either inline or out of line)
+they are copied in the same manner as rights contained in the
+header.  If the body contains memory regions they are
+mapped into the calling task's address space by the Mach
+virtual memory subsystem.
+
+\item {In-kernel message object is deallocated.}
+
+\item {Message received.}
+
+\end{enumerate}

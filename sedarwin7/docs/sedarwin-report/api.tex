@@ -72,7 +72,7 @@ for labels must be in the form of a text string. In a typical read label
 call, the user provides a reference to the object (such as a file descriptor),
 and the names of policies to retrieve the associated labels.
 
-\begin{longtable}{|p{1.5in}|p{3in}|}
+\begin{longtable}{|p{1.8in}|p{2.2in}|}
 \hline
 {\bf System Call} & {\bf Purpose} \\
 \hline
@@ -85,23 +85,25 @@ and the names of policies to retrieve the associated labels.
 \endhead
 \hline
 \endfoot
-mac\_set\_file(), mac\_set\_fd(), mac\_set\_link() & Change the label associated with a file. \\[3mm]
+{\tt mac\_set\_file()}, {\tt mac\_set\_fd()}, {\tt mac\_set\_link()} & Change the label associated with a file. \\[3mm]
 \hline
-mac()\_get\_file(), mac\_get\_fd(), mac\_get\_link() & Retrieve the label associated with a file. \\[3mm]
+{\tt mac\_get\_file()}, {\tt mac\_get\_fd()}, {\tt mac\_get\_link()} & Retrieve the label associated with a file. \\[3mm]
 \hline
-mac\_set\_proc() & Change the label of the current process. \\[3mm]
+{\tt mac\_set\_proc()} & Change the label of the current process. \\[3mm]
 \hline
-mac\_get\_pid(), mac\_get\_proc() & Retrieve the label on a process. \\[3mm]
+{\tt mac\_get\_pid()}, {\tt mac\_get\_proc()} & Retrieve the label on a process. \\[3mm]
 \hline
-mach\_get\_label\_text() & Retrieve the label on a port or label handle. \\[3mm]
+{\tt mach\_get\_label\_text()} & Retrieve the label on a port as a label handle. \\[3mm]
+{\tt mach\_get\_label\_text()} & Retrieve the label on a port or label handle in text form. \\[3mm]
 \hline
-mach\_set\_port\_label() & Change the label on a port. \\[3mm]
+{\tt mach\_set\_port\_label()} & Change the label on a port. \\[3mm]
 \hline
-mach\_get\_task\_label\_text() & Retrieve the label on a task. \\[3mm]
+{\tt mach\_get\_task\_label\_text()} & Retrieve the label on a task as a label handle. \\[3mm]
+{\tt mach\_get\_task\_label\_text()} & Retrieve the label on a task in text form. \\[3mm]
 \hline
-mac\_label\_new() & Create a new label handle. \\\\[3mm]
+{\tt mac\_label\_new()} & Create a new label handle. \\[3mm]
 \hline
-mac\_request\_label() & Compute a new label based on subject, object, service name. \\
+{\tt mac\_request\_label()} & Compute a new label based on subject, object, service name. \\
 \end{longtable}
 
 \subsubsection{Secure Program Execution}
