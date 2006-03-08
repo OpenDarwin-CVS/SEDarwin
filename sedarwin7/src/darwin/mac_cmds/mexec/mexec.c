@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2006 SPARTA, Inc.
  * Copyright (c) 2004 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -26,24 +27,35 @@
 
 #include <sys/types.h>
 #include <sys/mac.h>
+#include <err.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+
+void
+usage(void)
+{
+	extern char *__progname;
+
+	fprintf(stderr, "usage: %s label command_path [command args]\n",
+	    __progname);
+	exit(1);
+}
 
 int
 main(int argc, char *argv[])
 {
 	mac_t exl;
 
-	/* XXXRW: Shouldn't there be an (argc>=3) usage check here? */
-	if (mac_prepare(&exl, "sebsd")) {
-		perror("mexec");
-		return (1);
-	}
-	if (mac_from_text(&exl, argv[1])) {
-		perror(argv[1]);
-		return (1);
-	}
-	argv+=2;
+	if (argc < 3)
+		usage();
+
+	if (mac_prepare(&exl, "sebsd"))
+		err(1, "sebsd");
+	if (mac_from_text(&exl, argv[1]))
+		err(1, argv[1]);
+	argv += 2;
 	if (mac_execve(argv[0], argv, NULL, exl))
-		perror("mexec");
-	return (1);
+		perror(argv[0]);
+	exit(1);
 }
