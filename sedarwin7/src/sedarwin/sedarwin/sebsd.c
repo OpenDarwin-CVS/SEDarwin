@@ -306,10 +306,6 @@ file_mask_to_av(enum vtype vt, int mask)
 {
 	access_vector_t av = 0;
 
-	/* per access(2), mask == 0 means only check for existence */
-	if (mask == 0)
-		return FILE__ACCESS;
-
 	if (vt != VDIR) {
 		if (mask & VEXEC)
 			av |= FILE__EXECUTE;
@@ -1243,8 +1239,6 @@ sebsd_request_label (struct label *subj, struct label *obj, const char *s,
 	    &osec->sid);
 }
 
-extern int selinux_enforcing;
-
 static int
 sebsd_check_ipc_method(struct label *subj, struct label *obj, int msgid)
 {
@@ -1708,7 +1702,10 @@ sebsd_check_vnode_access(struct ucred *cred, struct vnode *vp,
     struct label *filelabel, int acc_mode)
 {
 
-	/* NOTE: acc_mode == 0 is legal for access(2) */
+	/* existence check (F_OK) */
+	if (acc_mode == 0)
+		return 0;
+
 	return (vnode_has_perm(cred, vp, file_mask_to_av(vp->v_type, acc_mode),
 	    NULL));
 }
