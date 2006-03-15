@@ -1792,30 +1792,22 @@ access(p, uap, retval)
 	vp = nd.ni_vp;
 
 	/* Flags == 0 means only check for existence. */
-	flags = 0;
 	if (uap->flags) {
+		flags = 0;
 		if (uap->flags & R_OK)
 			flags |= VREAD;
 		if (uap->flags & W_OK)
 			flags |= VWRITE;
 		if (uap->flags & X_OK)
 			flags |= VEXEC;
+#ifdef MAC
+		error = mac_check_vnode_access(cred, vp, flags);
+		if (error)
+			return (error);
+#endif
 		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
 			error = VOP_ACCESS(vp, flags, cred, p);
 	}
-#ifdef MAC
-	/*
-	 * Override DAC error value with MAC error value unless
-	 * MAC returns OK and DAC returns error.
-	 */
-	{
-		int mac_error;
-
-		mac_error = mac_check_vnode_access(cred, vp, flags);
-		if (mac_error)
-			error = mac_error;
-	}
-#endif
 	vput(vp);
 out1:
 	cred->cr_uid = t_uid;
