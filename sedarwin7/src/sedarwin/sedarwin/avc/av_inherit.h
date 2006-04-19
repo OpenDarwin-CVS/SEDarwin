@@ -3,9 +3,9 @@
 
 typedef struct
 {
-    security_class_t tclass;
+    u16 tclass;
     char **common_pts;
-    access_vector_t common_base;
+    u32 common_base;
 } av_inherit_t;
 
 static av_inherit_t av_inherit[] = {

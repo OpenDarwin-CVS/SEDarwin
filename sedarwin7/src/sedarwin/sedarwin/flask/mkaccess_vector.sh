@@ -38,17 +38,17 @@ BEGIN	{
 		printf("/* %s */\n\n", subproject) > inheritfile;
 		printf("typedef struct\n") > inheritfile;
 		printf("{\n") > inheritfile;
-		printf("    security_class_t tclass;\n") > inheritfile;
+		printf("    u16 tclass;\n") > inheritfile;
 		printf("    char **common_pts;\n") > inheritfile; 
-		printf("    access_vector_t common_base;\n") > inheritfile; 
+		printf("    u32 common_base;\n") > inheritfile; 
 		printf("} av_inherit_t;\n\n") > inheritfile;
 		printf("static av_inherit_t av_inherit[] = {\n") > inheritfile;
 	
 		printf("/* %s */\n\n", subproject) > avpermfile;
 		printf("typedef struct\n") > avpermfile;
 		printf("{\n") > avpermfile;
-		printf("    security_class_t tclass;\n") > avpermfile;
-		printf("    access_vector_t value;\n") > avpermfile; 
+		printf("    u16 tclass;\n") > avpermfile;
+		printf("    u32 value;\n") > avpermfile; 
 		printf("    char *name;\n") > avpermfile; 
 		printf("} av_perm_to_string_t;\n\n") > avpermfile;
 		printf("static av_perm_to_string_t av_perm_to_string[] = {\n") > avpermfile;

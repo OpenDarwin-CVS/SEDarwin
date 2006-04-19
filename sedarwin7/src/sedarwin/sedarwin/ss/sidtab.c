@@ -7,9 +7,6 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/errno.h>
-#ifndef __APPLE__
-#include <sys/limits.h>
-#endif
 #include <sys/time.h>
 #include <sedarwin/ss/sidtab.h>
 #include <sedarwin/linux-compat.h>
@@ -19,7 +16,7 @@
 #define SIDTAB_HASH(sid) \
 (sid & SIDTAB_HASH_MASK)
 
-#ifdef _KERNEL
+#ifdef __FreeBSD__
 #define INIT_SIDTAB_LOCK(s) 					\
   memset (&s->lock, 0, sizeof (struct mtx));			\
   mtx_init (&s->lock, "SEBSD sidtab lock", NULL, MTX_DEF) 
@@ -29,6 +26,7 @@
 
 #else
 
+/* XXX - darwin locking */
 #define INIT_SIDTAB_LOCK(s) 
 #define SIDTAB_LOCK(s) 
 #define SIDTAB_UNLOCK(s) 
@@ -51,7 +49,7 @@ int sidtab_init(struct sidtab *s)
 	return 0;
 }
 
-int sidtab_insert(struct sidtab *s, security_id_t sid, struct context *context)
+int sidtab_insert(struct sidtab *s, u32 sid, struct context *context)
 {
 	int hvalue, rc = 0;
 	struct sidtab_node *prev, *cur, *newnode;
@@ -103,7 +101,7 @@ out:
 	return rc;
 }
 
-int sidtab_remove(struct sidtab *s, security_id_t sid)
+int sidtab_remove(struct sidtab *s, u32 sid)
 {
 	int hvalue, rc = 0;
 	struct sidtab_node *cur, *last;
@@ -139,7 +137,7 @@ out:
 	return rc;
 }
 
-struct context *sidtab_search(struct sidtab *s, security_id_t sid)
+struct context *sidtab_search(struct sidtab *s, u32 sid)
 {
 	int hvalue;
 	struct sidtab_node *cur;
@@ -167,7 +165,7 @@ struct context *sidtab_search(struct sidtab *s, security_id_t sid)
 }
 
 int sidtab_map(struct sidtab *s,
-	       int (*apply) (security_id_t sid,
+	       int (*apply) (u32 sid,
 			     struct context *context,
 			     void *args),
 	       void *args)
@@ -192,7 +190,7 @@ out:
 }
 
 void sidtab_map_remove_on_error(struct sidtab *s,
-				int (*apply) (security_id_t sid,
+				int (*apply) (u32 sid,
 					      struct context *context,
 					      void *args),
 				void *args)
@@ -230,7 +228,7 @@ void sidtab_map_remove_on_error(struct sidtab *s,
 	return;
 }
 
-static inline security_id_t sidtab_search_context(struct sidtab *s,
+static inline u32 sidtab_search_context(struct sidtab *s,
 						  struct context *context)
 {
 	int i;
@@ -249,9 +247,9 @@ static inline security_id_t sidtab_search_context(struct sidtab *s,
 
 int sidtab_context_to_sid(struct sidtab *s,
 			  struct context *context,
-			  security_id_t *out_sid)
+			  u32 *out_sid)
 {
-	security_id_t sid;
+	u32 sid;
 	int ret = 0;
 
 	*out_sid = SECSID_NULL;

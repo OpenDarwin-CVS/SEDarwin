@@ -23,7 +23,6 @@
 #include <sedarwin/ss/sidtab.h>
 #include <sedarwin/ss/context.h>
 #include <sedarwin/ss/constraint.h>
-#include <sedarwin/flask_types.h>
 #include <sedarwin/linux-compat.h>
 
 /*
@@ -87,10 +86,6 @@ struct role_allow {
 struct type_datum {
 	u32 value;		/* internal type value */
 	unsigned char primary;	/* primary name? */
-#ifndef _KERNEL
-        unsigned char  isattr;   /* is this a type attribute? */
-        struct ebitmap types;    /* types with this attribute */
-#endif
 };
 
 /* User attributes */

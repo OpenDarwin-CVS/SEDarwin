@@ -131,7 +131,7 @@ int
 sebsd_check_ipc_method1(int subj, int obj, int msgid)
 {
 	struct msgid_classinfo *mcl;
-	access_vector_t    perms;
+	u32    perms;
 	int                cl;
 
 	/*
@@ -143,11 +143,11 @@ sebsd_check_ipc_method1(int subj, int obj, int msgid)
 	if (mcl == NULL)
 		return 0;
 
-	cl = (msgid - mcl->baseid) / (8 * sizeof(access_vector_t));
+	cl = (msgid - mcl->baseid) / (8 * sizeof(u32));
 	if (cl >= mcl->nclasses)
 		return (1);	/* bad message, access denied */
 
-	perms = (access_vector_t)1 <<
-	    (msgid - mcl->baseid - (cl * 8 * sizeof(access_vector_t)));
+	perms = (u32)1 <<
+	    (msgid - mcl->baseid - (cl * 8 * sizeof(u32)));
 	return avc_has_perm_audit(subj, obj, mcl->classes[cl], perms, NULL);
 }

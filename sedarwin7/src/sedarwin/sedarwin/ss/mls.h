@@ -1,20 +1,14 @@
-
-/* Author : Stephen Smalley (NAI Labs), <ssmalley@nai.com> */
-
-/* FLASK */
-
 /*
  * Multi-level security (MLS) policy operations.
  *
  * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
  */
 
-#ifndef _MLS_H_
-#define _MLS_H_
+#ifndef _SS_MLS_H_
+#define _SS_MLS_H_
 
 #include <sedarwin/ss/context.h>
 #include <sedarwin/ss/policydb.h>
-#include <sedarwin/ss/services.h>
 
 #ifdef CONFIG_SECURITY_SELINUX_MLS
 

@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2005, 2006 SPARTA, Inc.
  * Copyright (c) 2002 Networks Associates Technology, Inc.
+ * Copyright (c) 2005, 2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -54,10 +54,6 @@
 #include <sedarwin/sebsd_syscalls.h>
 #include <sedarwin/avc/avc.h>
 
-#ifdef __APPLE__
-#define	TUNABLE_INT(x, y)
-#endif
-
 #if 0
 /*
  * Sysctl handler for security.mac.sebsd.sids
@@ -71,7 +67,7 @@ sysctl_list_sids(SYSCTL_HANDLER_ARGS)
 	u_int32_t scontext_len;
 	struct sidtab_node *cur;
 	char *buffer;
-	security_context_t scontext;
+	char *scontext;
 
 	count = sidtab.nel;
 	MALLOC(buffer, char *, linesize, M_TEMP, M_WAITOK);
@@ -111,11 +107,7 @@ out:
  * avc will audit failures.
  */
 static int
-#ifdef __APPLE__
 sysctl_sebsd_auditing SYSCTL_HANDLER_ARGS
-#else
-sysctl_sebsd_auditing(SYSCTL_HANDLER_ARGS)
-#endif
 {
 	int error, auditing;
 
@@ -134,11 +126,7 @@ sysctl_sebsd_auditing(SYSCTL_HANDLER_ARGS)
 		 * Treat ability to set audit status as equivilent to
 		 * changing enforcement status.
 		 */
-#ifdef __APPLE__
 		error = proc_has_system(current_proc(), SECURITY__SETENFORCE);
-#else
-		error = thread_has_system(curthread, SECURITY__SETENFORCE);
-#endif
 		if (error)
 			return (error);
 
@@ -153,11 +141,7 @@ sysctl_sebsd_auditing(SYSCTL_HANDLER_ARGS)
  * the avc is in enforcement mode.
  */
 static int
-#ifdef __APPLE__
 sysctl_sebsd_enforcing SYSCTL_HANDLER_ARGS
-#else
-sysctl_sebsd_enforcing(SYSCTL_HANDLER_ARGS)
-#endif
 {
 	int error, enforcing;
 
@@ -172,11 +156,7 @@ sysctl_sebsd_enforcing(SYSCTL_HANDLER_ARGS)
 		if (error)
 			return (error);
 
-#ifdef __APPLE__
 		error = proc_has_system(current_proc(), SECURITY__SETENFORCE);
-#else
-		error = thread_has_system(curthread, SECURITY__SETENFORCE);
-#endif
 		if (error)
 			return error;
 
@@ -195,8 +175,8 @@ static int
 sysctl_user_sids(SYSCTL_HANDLER_ARGS)
 {
 	u_int32_t n, nsids, scontext_len;
-	security_id_t *sids, sid;
-	security_context_t scontext;
+	u32 *sids, sid;
+	char *scontext;
 	char *context, *username;
 	int error, len;
 
@@ -253,10 +233,9 @@ static int
 sysctl_change_sid(SYSCTL_HANDLER_ARGS)
 {
 	u_int32_t newcontext_len;
-	security_id_t sid, tsid, newsid;
-	security_context_t newcontext;
-	security_class_t tclass;
-	char *scontext, *tcontext;
+	u32 sid, tsid, newsid;
+	u16 tclass;
+	char *scontext, *tcontext, *newcontext;
 	int error;
 
 	if (req->newlen < 4 + sizeof(tclass))
@@ -306,9 +285,9 @@ out:
 static int
 sysctl_compute_av(SYSCTL_HANDLER_ARGS)
 {
-	security_id_t sid, tsid;
-	security_class_t tclass;
-	access_vector_t av;
+	u32 sid, tsid;
+	u16 tclass;
+	u32 av;
 	struct av_decision avd;
 	char *scontext, *tcontext;
 	int error;
@@ -361,7 +340,6 @@ SYSCTL_NODE(_security_mac, OID_AUTO, sebsd, CTLFLAG_RW, 0,
 
 SYSCTL_INT(_security_mac_sebsd, OID_AUTO, verbose, CTLFLAG_RW,
     &sebsd_verbose, 0, " SEBSD Verbose Debug Stuff");
-TUNABLE_INT("security.mac.sebsd.verbose", &sebsd_verbose);
 #if 0
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, sids, CTLTYPE_STRING|CTLFLAG_RD,
     NULL, 0, sysctl_list_sids, "A", "SEBSD SIDs");
@@ -377,11 +355,9 @@ SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, compute_av, CTLTYPE_STRING |
 #endif
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, auditing, CTLTYPE_INT |
     CTLFLAG_RW, NULL, 0, sysctl_sebsd_auditing, "I", "SEBSD avc auditing");
-TUNABLE_INT("security.mac.sebsd.auditing", &selinux_auditing);
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, enforcing, CTLTYPE_INT |
     CTLFLAG_RW, NULL, 0, sysctl_sebsd_enforcing, "I",
     "SEBSD avc enforcement");
-TUNABLE_INT("security.mac.sebsd.enforcing", &selinux_enforcing);
 
 void
 sebsd_register_sysctls()

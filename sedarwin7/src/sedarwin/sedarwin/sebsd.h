@@ -37,8 +37,6 @@
 #ifndef _SYS_SECURITY_SEBSD_H
 #define _SYS_SECURITY_SEBSD_H
 
-#include <sedarwin/flask_types.h>
-
 #define SELINUX_MAGIC 0xf97cff8c
 #define	SEBSD_ID_STRING			"sebsd"
 #define	SEBSD_MAC_EXTATTR_NAME		"sebsd"
@@ -48,27 +46,13 @@
 
 extern int	avc_debug_always_allow;
 
-#if defined(_KERNEL) || defined (KERNEL)
-
-#if !defined(_M_SEBSD_DEF) && !defined(APPLE)
-MALLOC_DECLARE(M_SEBSD);
-#define _M_SEBSD_DEF
-#endif
-
 extern int sebsd_verbose;
 
 extern void sebsd_register_sysctls(void);
+extern int sebsd_load_migscs(void *, size_t);
 extern int security_init(void);
-#if 0
-extern int sebsd_syscall(struct thread *td, int call, void *args);
-extern int thread_has_system(struct thread *td, access_vector_t perm);
-extern int thread_has_security(struct thread *td, access_vector_t perm);
-#endif
-#else /* !_KERNEL */
-extern int sebsd_enabled(void);
-extern int sebsd_enforcing(void);
-extern int sebsd_load_policy(const char *);
-extern int sebsd_load_migscs(const char *);
-#endif /* !_KERNEL */
+extern int sebsd_syscall(struct proc *p, int call, void *args, int *retv);
+extern int proc_has_system(struct proc *p, u32 perm);
+extern int proc_has_security(struct proc *p, u32 perm);
 
 #endif /* _SYS_SECURITY_SEBSD_H */

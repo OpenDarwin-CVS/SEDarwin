@@ -20,8 +20,6 @@
 #ifndef _SS_AVTAB_H_
 #define _SS_AVTAB_H_
 
-#include <sedarwin/flask_types.h>
-
 struct avtab_key {
 	u32 source_type;	/* source type */
 	u32 target_type;	/* target type */
@@ -39,7 +37,7 @@ struct avtab_datum {
 #define AVTAB_TYPE       (AVTAB_TRANSITION | AVTAB_MEMBER | AVTAB_CHANGE)
 #define AVTAB_ENABLED    0x80000000 /* reserved for used in cond_avtab */
 	u32 specified;	/* what fields are specified */
-	access_vector_t data[3];	/* access vectors or types */
+	u32 data[3];	/* access vectors or types */
 #define avtab_allowed(x) (x)->data[0]
 #define avtab_auditdeny(x) (x)->data[1]
 #define avtab_auditallow(x) (x)->data[2]

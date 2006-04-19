@@ -7,12 +7,6 @@
 #include <sedarwin/ss/ebitmap.h>
 #include <sedarwin/ss/policydb.h>
 
-#ifndef _KERNEL
-#include <sys/errno.h>
-#define TRUE 1
-#define FALSE 0
-#endif
-
 int ebitmap_or(struct ebitmap *dst, struct ebitmap *e1, struct ebitmap *e2)
 {
 	struct ebitmap_node *n1, *n2, *new, *prev;

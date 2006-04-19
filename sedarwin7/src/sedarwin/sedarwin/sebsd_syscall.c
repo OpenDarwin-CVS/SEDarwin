@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2005, 2006 SPARTA, Inc.
  * Copyright (c) 2002 Networks Associates Technology, Inc.
+ * Copyright (c) 2005, 2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -44,20 +44,17 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 
+#include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/sebsd_syscalls.h>
-#include <sedarwin/linux-compat.h>
 #include <sedarwin/avc/avc.h>
 #include <sedarwin/ss/services.h>
 
 #define MAX_UC 510
 
-int sebsd_load_migscs(void *, size_t); /* XXX - move to header file */
-
-struct lp_args
-{
-	void  *data;
-	size_t len;
+struct lp_args {
+	void	*data;
+	size_t	 len;
 };
 
 static int
@@ -66,7 +63,7 @@ sys_load_policy(struct proc *td, void *data, size_t len)
 	void *kdata;
 	int rc;
 	
-	rc = cred_has_security(td->p_ucred, SECURITY__LOAD_POLICY);
+	rc = proc_has_security(td->p_ucred, SECURITY__LOAD_POLICY);
 	if (rc)
 		return (rc);
 
@@ -112,8 +109,8 @@ static int
 sys_get_sids(int function, char *context, char *username, char *out, int *outlen)
 {
 	u_int32_t n, nsids, scontext_len;
-	security_id_t *sids, sid;
-	security_context_t scontext;
+	u32 *sids, sid;
+	char * scontext;
 	int error;
 	int olen = 1;
 	int ubufsz;
@@ -171,9 +168,9 @@ static int
 sys_change_sid(char *domains, char *sources, char *sclasss, char *out,
     int *outlen)
 {
-	security_id_t       domain, source;
+	u32       domain, source;
 	struct class_datum *cld;
-	security_context_t  outc;
+	char *  outc;
 	int error;
 	int ubufsz, outclen;
 

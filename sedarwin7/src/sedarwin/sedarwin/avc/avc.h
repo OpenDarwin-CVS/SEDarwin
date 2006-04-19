@@ -6,21 +6,14 @@
 #ifndef _SELINUX_AVC_H_
 #define _SELINUX_AVC_H_
 
-#if defined(_KERNEL) || defined(KERNEL)
 #include <sys/malloc.h>
 #include <sys/lock.h>
-#ifndef __APPLE__
-#include <sys/mutex.h>
-#endif
-#else /* _KERNEL */
-#include <unistd.h>
-#endif /* _KERNEL */
 
 #ifdef CAPABILITIES
 #include <sys/capability.h>
 #endif
 
-#include <netinet/in.h> 
+#include <netinet/in.h>
 
 #include <sedarwin/flask.h>
 #include <sedarwin/sebsd.h>
@@ -72,7 +65,7 @@ struct avc_audit_data {
 			char *netif;
 			struct sock *sk;
 			u16 family;
-			u16 port;
+			u16 dport;
 			u16 sport;
 			union {
 				struct {
@@ -113,13 +106,13 @@ struct avc_audit_data {
  * AVC display support
  */
 void avc_dump_av(
-	security_class_t tclass,	/* IN */
-	access_vector_t av);		/* IN */
+	u16 tclass,	/* IN */
+	u32 av);		/* IN */
 
 void avc_dump_query(
-	security_id_t ssid,		/* IN */
-	security_id_t tsid,		/* IN */
-	security_class_t tclass);	/* IN */
+	u32 ssid,		/* IN */
+	u32 tsid,		/* IN */
+	u16 tclass);	/* IN */
 
 void avc_dump_cache(char *tag);
 
@@ -130,28 +123,28 @@ void avc_dump_cache(char *tag);
 void avc_init(void);
 
 int avc_lookup(
-	security_id_t ssid,		/* IN */
-	security_id_t tsid,		/* IN */
-        security_class_t tclass,	/* IN */
-	access_vector_t requested,	/* IN */
+	u32 ssid,		/* IN */
+	u32 tsid,		/* IN */
+        u16 tclass,	/* IN */
+	u32 requested,	/* IN */
 	struct avc_entry_ref *aeref);	/* OUT */
 
-int avc_insert(security_id_t ssid,		/* IN */
-	       security_id_t tsid,		/* IN */
-	       security_class_t tclass,		/* IN */
+int avc_insert(u32 ssid,		/* IN */
+	       u32 tsid,		/* IN */
+	       u16 tclass,		/* IN */
 	       struct avc_entry *ae,		/* IN */
 	       struct avc_entry_ref *out_aeref);	/* OUT */
 
-void avc_audit(security_id_t ssid, security_id_t tsid,
-               security_class_t tclass, access_vector_t requested,
+void avc_audit(u32 ssid, u32 tsid,
+               u16 tclass, u32 requested,
                struct av_decision *avd, int result, struct avc_audit_data *auditdata);
 
-int avc_has_perm_noaudit(security_id_t ssid, security_id_t tsid,
-                         security_class_t tclass, access_vector_t requested,
+int avc_has_perm_noaudit(u32 ssid, u32 tsid,
+                         u16 tclass, u32 requested,
                          struct avc_entry_ref *aeref, struct av_decision *avd);
 
-int avc_has_perm(security_id_t ssid, security_id_t tsid,
-                 security_class_t tclass, access_vector_t requested,
+int avc_has_perm(u32 ssid, u32 tsid,
+                 u16 tclass, u32 requested,
                  struct avc_entry_ref *aeref, struct avc_audit_data *auditdata);
 
 #define avc_has_perm_audit(ssid,tsid,tclass,perms,ad) \
@@ -172,11 +165,11 @@ int avc_has_perm(security_id_t ssid, security_id_t tsid,
 #define AVC_CALLBACK_AUDITDENY_ENABLE	64
 #define AVC_CALLBACK_AUDITDENY_DISABLE	128
 
-int avc_add_callback(int (*callback)(u32 event, security_id_t ssid, security_id_t tsid,
-                                     security_class_t tclass, access_vector_t perms,
-				     access_vector_t *out_retained),
-		     u32 events, security_id_t ssid, security_id_t tsid,
-		     security_class_t tclass, access_vector_t perms);
+int avc_add_callback(int (*callback)(u32 event, u32 ssid, u32 tsid,
+                                     u16 tclass, u32 perms,
+				     u32 *out_retained),
+		     u32 events, u32 ssid, u32 tsid,
+		     u16 tclass, u32 perms);
 
 #endif /* _SELINUX_AVC_H_ */
 

@@ -9,16 +9,11 @@
 
 #include <sedarwin/ss/context.h>
 #include <sedarwin/linux-compat.h>
-#include <sedarwin/flask_types.h>
 
-#include <sys/lock.h>
-
-#ifndef __APPLE__
-#include <sys/mutex.h>
-#endif
+#include <kern/lock.h>
 
 struct sidtab_node {
-	security_id_t sid;		/* security identifier */
+	u32 sid;		/* security identifier */
 	struct context context;	/* security context structure */
 	struct sidtab_node *next;
 };
@@ -34,31 +29,31 @@ struct sidtab {
 	unsigned int nel;	/* number of elements */
 	unsigned int next_sid;	/* next SID to allocate */
 	unsigned char shutdown;
-#ifdef _KERNEL
+#ifdef __FreeBSD__
 	spinlock_t lock;
 #endif
 };
 
 int sidtab_init(struct sidtab *s);
-int sidtab_insert(struct sidtab *s, security_id_t sid, struct context *context);
-int sidtab_remove(struct sidtab *s, security_id_t sid);
-struct context *sidtab_search(struct sidtab *s, security_id_t sid);
+int sidtab_insert(struct sidtab *s, u32 sid, struct context *context);
+int sidtab_remove(struct sidtab *s, u32 sid);
+struct context *sidtab_search(struct sidtab *s, u32 sid);
 
 int sidtab_map(struct sidtab *s,
-	       int (*apply) (security_id_t sid,
+	       int (*apply) (u32 sid,
 			     struct context *context,
 			     void *args),
 	       void *args);
 
 void sidtab_map_remove_on_error(struct sidtab *s,
-				int (*apply) (security_id_t sid,
+				int (*apply) (u32 sid,
 					      struct context *context,
 					      void *args),
 				void *args);
 
 int sidtab_context_to_sid(struct sidtab *s,
 			  struct context *context,
-			  security_id_t *sid);
+			  u32 *sid);
 
 void sidtab_hash_eval(struct sidtab *h, char *tag);
 void sidtab_destroy(struct sidtab *s);

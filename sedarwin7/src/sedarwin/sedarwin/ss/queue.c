@@ -7,11 +7,9 @@
  * Implementation of the double-ended queue type.
  */
 
-#if (defined(__FreeBSD__) && defined(_KERNEL)) || defined(__APPLE__) && defined(KERNEL)
 #include <sys/param.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
-#endif
 
 #include <sedarwin/linux-compat.h>
 #include <sedarwin/ss/global.h>
@@ -22,8 +20,7 @@ queue_create(void)
 {
 	queue_t q;
 
-	q = (queue_t) sebsd_malloc(sizeof(struct queue_info),
-				      M_WAITOK);
+	q = (queue_t) sebsd_malloc(sizeof(struct queue_info), M_WAITOK);
 	if (q == NULL)
 		return NULL;
 
@@ -41,7 +38,7 @@ int queue_insert(queue_t q, queue_element_t e)
 		return -1;
 
 	newnode = (queue_node_ptr_t) sebsd_malloc(sizeof(struct queue_node),
-						     M_WAITOK);
+	    M_WAITOK);
 	if (newnode == NULL)
 		return -1;
 
@@ -67,7 +64,7 @@ int queue_push(queue_t q, queue_element_t e)
 		return -1;
 
 	newnode = (queue_node_ptr_t) sebsd_malloc(sizeof(struct queue_node),
-						     M_WAITOK);
+	    M_WAITOK);
 	if (newnode == NULL)
 		return -1;
 

@@ -8,9 +8,6 @@
 #include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
-#ifdef _KERNEL
-#include <sys/libkern.h>
-#endif
 
 struct hashtab *hashtab_create(u32 (*hash_value)(struct hashtab *h, void *key),
                                int (*keycmp)(struct hashtab *h, void *key1, void *key2),

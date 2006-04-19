@@ -16,7 +16,6 @@
 #define _SS_CONSTRAINT_H_
 
 #include <sedarwin/ss/ebitmap.h>
-#include <sedarwin/flask_types.h>
 
 #define CEXPR_MAXDEPTH 5
 
@@ -44,14 +43,10 @@ struct constraint_expr {
 	struct ebitmap names;	/* names */
 
 	struct constraint_expr *next;   /* next expression */
-
-#ifndef _KERNEL
-	int count;
-#endif
 };
 
 struct constraint_node {
-	access_vector_t permissions;	/* constrained permissions */
+	u32 permissions;	/* constrained permissions */
 	struct constraint_expr *expr;	/* constraint on permissions */
 	struct constraint_node *next;	/* next constraint */
 };

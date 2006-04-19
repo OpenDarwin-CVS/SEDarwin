@@ -21,18 +21,6 @@
  * This variable is set to one when the security server
  * has completed initialization.
  */
-#include <sys/malloc.h>
-
-#if !defined(_KERNEL) && !defined(KERNEL)
-#include <stdlib.h>
-#include <errno.h>
-#define sebsd_malloc(a,b,c) (c&M_ZERO)?calloc(1,a):malloc(a)
-#define sebsd_free(a,b) free(a)
-#define kmalloc(l,f) sebsd_malloc(l,f)
-#define	mtx_lock(a)
-#define	mtx_unlock(a)
-#endif /* _KERNEL */
-
 extern int ss_initialized;
 
 #ifdef __TDB_CDV__

@@ -2,8 +2,6 @@
 #ifndef _LINUX_FLASK_H_
 #define _LINUX_FLASK_H_
 
-#include <sedarwin/flask_types.h>
-
 /*
  * Security object class definitions
  */

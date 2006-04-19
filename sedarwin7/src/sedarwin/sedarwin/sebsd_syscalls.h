@@ -1,5 +1,5 @@
 #ifndef _SEBSD_SYSCALLS_H_
-#define _SEBSD_SYSCALLS_H_
+#define	_SEBSD_SYSCALLS_H_
 
 #include <sedarwin/linux-compat.h>
 
@@ -20,24 +20,24 @@
 
 /* Structure definitions for compute_av call. */
 struct security_query {
-	char *scontext;
-	char *tcontext;
-	security_class_t tclass;
-	access_vector_t requested;
+	char	*scontext;
+	char	*tcontext;
+	u16	 tclass;
+	u32	 requested;
 };
 
 struct security_response {
-	access_vector_t allowed;
-	access_vector_t decided;
-	access_vector_t auditallow;
-	access_vector_t auditdeny;
-	access_vector_t notify;
-	u32 seqno;
+	u32	 allowed;
+	u32	 decided;
+	u32	 auditallow;
+	u32	 auditdeny;
+	u32	 notify;
+	u32	 seqno;
 };
 
 struct sebsd_get_bools {
-	int len;
-	char *out;
+	int	 len;
+	char	*out;
 };
 
 #endif /* _SEBSD_SYSCALLS_H_ */

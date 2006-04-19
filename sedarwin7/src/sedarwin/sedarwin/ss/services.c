@@ -36,7 +36,7 @@
 #include <sedarwin/avc/avc_ss.h>
 #include <sys/socket.h>
 
-#ifdef _KERNEL
+#ifdef __FreeBSD__
 
 #include <sys/rwlock.h>
 #include <sys/proc.h>
@@ -207,8 +207,8 @@ static int constraint_expr_eval(struct context *scontext,
  */
 static int context_struct_compute_av(struct context *scontext,
 				     struct context *tcontext,
-				     security_class_t tclass,
-				     access_vector_t requested,
+				     u16 tclass,
+				     u32 requested,
 				     struct av_decision *avd)
 {
 	struct constraint_node *constraint;
@@ -304,10 +304,10 @@ static int context_struct_compute_av(struct context *scontext,
  * Return -%EINVAL if any of the parameters are invalid or %0
  * if the access vector decisions were computed successfully.
  */
-int security_compute_av(security_id_t ssid,
-			security_id_t tsid,
-			security_class_t tclass,
-			access_vector_t requested,
+int security_compute_av(u32 ssid,
+			u32 tsid,
+			u16 tclass,
+			u32 requested,
 			struct av_decision *avd)
 {
 	struct context *scontext = NULL, *tcontext = NULL;
@@ -404,7 +404,7 @@ static int context_struct_to_string(struct context *context, char **scontext, u3
  * into a dynamically allocated string of the correct size.  Set @scontext
  * to point to this string and set @scontext_len to the length of the string.
  */
-int security_sid_to_context(security_id_t sid, char **scontext, u32 *scontext_len)
+int security_sid_to_context(u32 sid, char **scontext, u32 *scontext_len)
 {
 	struct context *context;
 	int rc = 0;
@@ -451,7 +451,7 @@ out:
  * Returns -%EINVAL if the context is invalid, -%ENOMEM if insufficient
  * memory is available, or 0 on success.
  */
-int security_context_to_sid(char *scontext, u32 scontext_len, security_id_t *sid)
+int security_context_to_sid(char *scontext, u32 scontext_len, u32 *sid)
 {
 	char *scontext2;
 	struct context context;
@@ -572,33 +572,35 @@ static inline int compute_sid_handle_invalid_context(
 	u16 tclass,
 	struct context *newcontext)
 {
-	int rc = 0;
+	char *s = NULL, *t = NULL, *n = NULL;
+	u32 slen, tlen, nlen;
 
-	if (selinux_enforcing) {
-		rc = EACCES;
-	} else {
-		char *s, *t, *n;
-		u32 slen, tlen, nlen;
+	if (context_struct_to_string(scontext, &s, &slen) < 0)
+		goto out;
+	if (context_struct_to_string(tcontext, &t, &tlen) < 0)
+		goto out;
+	if (context_struct_to_string(newcontext, &n, &nlen) < 0)
+		goto out;
+	printk(KERN_ERR "security_compute_sid:  invalid context %s"
+		  " for scontext=%s"
+		  " tcontext=%s"
+		  " tclass=%s\n",
+		  n, s, t, policydb.p_class_val_to_name[tclass-1]);
+out:
+	kfree(s);
+	kfree(t);
+	kfree(n);
 
-		context_struct_to_string(scontext, &s, &slen);
-		context_struct_to_string(tcontext, &t, &tlen);
-		context_struct_to_string(newcontext, &n, &nlen);
-		printk(KERN_ERR "security_compute_sid:  invalid context %s", n);
-		printk(" for scontext=%s", s);
-		printk(" tcontext=%s", t);
-		printk(" tclass=%s\n", policydb.p_class_val_to_name[tclass-1]);
-		kfree(s);
-		kfree(t);
-		kfree(n);
-	}
-	return rc;
+	if (!selinux_enforcing)
+		return 0;
+	return EACCES;
 }
 
-static int security_compute_sid(security_id_t ssid,
-				security_id_t tsid,
-				security_class_t tclass,
+static int security_compute_sid(u32 ssid,
+				u32 tsid,
+				u16 tclass,
 				u32 specified,
-				security_id_t *out_sid)
+				u32 *out_sid)
 {
 	struct context *scontext = NULL, *tcontext = NULL, newcontext;
 	struct role_trans *roletr = NULL;
@@ -771,10 +773,10 @@ out:
  * if insufficient memory is available, or %0 if the new SID was
  * computed successfully.
  */
-int security_transition_sid(security_id_t ssid,
-			    security_id_t tsid,
-			    security_class_t tclass,
-			    security_id_t *out_sid)
+int security_transition_sid(u32 ssid,
+			    u32 tsid,
+			    u16 tclass,
+			    u32 *out_sid)
 {
 	return security_compute_sid(ssid, tsid, tclass, AVTAB_TRANSITION, out_sid);
 }
@@ -792,10 +794,10 @@ int security_transition_sid(security_id_t ssid,
  * if insufficient memory is available, or %0 if the SID was
  * computed successfully.
  */
-int security_member_sid(security_id_t ssid,
-			security_id_t tsid,
-			security_class_t tclass,
-			security_id_t *out_sid)
+int security_member_sid(u32 ssid,
+			u32 tsid,
+			u16 tclass,
+			u32 *out_sid)
 {
 	return security_compute_sid(ssid, tsid, tclass, AVTAB_MEMBER, out_sid);
 }
@@ -813,10 +815,10 @@ int security_member_sid(security_id_t ssid,
  * if insufficient memory is available, or %0 if the SID was
  * computed successfully.
  */
-int security_change_sid(security_id_t ssid,
-			security_id_t tsid,
-			security_class_t tclass,
-			security_id_t *out_sid)
+int security_change_sid(u32 ssid,
+			u32 tsid,
+			u16 tclass,
+			u32 *out_sid)
 {
 	return security_compute_sid(ssid, tsid, tclass, AVTAB_CHANGE, out_sid);
 }
@@ -905,7 +907,7 @@ out:
 }
 
 /* Clone the SID into the new SID table. */
-static int clone_sid(security_id_t sid,
+static int clone_sid(u32 sid,
 		     struct context *context,
 		     void *arg)
 {
@@ -1010,6 +1012,8 @@ bad:
 	goto out;
 }
 
+/* extern void selinux_complete_init(void); */
+
 /**
  * security_load_policy - Load a security policy configuration.
  * @data: binary policy data
@@ -1027,10 +1031,7 @@ int security_load_policy(void *data, size_t len)
 	struct convert_context_args args;
 	u32 seqno;
 	int rc = 0;
-	struct policy_file file, *fp = &file;
-
-	file.data = data;
-	file.len = len;
+	struct policy_file file = { data, len }, *fp = &file;
 
 	LOAD_LOCK;
 
@@ -1045,6 +1046,7 @@ int security_load_policy(void *data, size_t len)
 			return EINVAL;
 		}
 		ss_initialized = 1;
+
 		LOAD_UNLOCK;
 		/*selinux_complete_init();*/
 		return 0;
@@ -1091,6 +1093,7 @@ int security_load_policy(void *data, size_t len)
 	memcpy(&policydb, &newpolicydb, sizeof policydb);
 	sidtab_set(&sidtab, &newsidtab);
 	seqno = ++latest_granting;
+
 	POLICY_WRUNLOCK;
 	LOAD_UNLOCK;
 
@@ -1099,6 +1102,7 @@ int security_load_policy(void *data, size_t len)
 	sidtab_destroy(&oldsidtab);
 
 	avc_ss_reset(seqno);
+	/* selnl_notify_policyload(seqno); */
 
 	return 0;
 
@@ -1122,7 +1126,7 @@ int security_port_sid(u16 domain,
 		      u16 type,
 		      u8 protocol,
 		      u16 port,
-		      security_id_t *out_sid)
+		      u32 *out_sid)
 {
 	struct ocontext *c;
 	int rc = 0;
@@ -1163,8 +1167,8 @@ out:
  * @msg_sid: default SID for received packets
  */
 int security_netif_sid(char *name,
-		       security_id_t *if_sid,
-		       security_id_t *msg_sid)
+		       u32 *if_sid,
+		       u32 *msg_sid)
 {
 	int rc = 0;
 	struct ocontext *c;
@@ -1306,13 +1310,13 @@ out:
  * number of elements in the array.
  */
 
-int security_get_user_sids(security_id_t fromsid,
+int security_get_user_sids(u32 fromsid,
 	                   char *username,
-			   security_id_t **sids,
+			   u32 **sids,
 			   u32 *nel)
 {
 	struct context *fromcon, usercon;
-	security_id_t *mysids, *mysids2, sid;
+	u32 *mysids, *mysids2, sid;
 	u32 mynel = 0, maxnel = SIDS_NEL;
 	struct user_datum *user;
 	struct role_datum *role;
@@ -1398,12 +1402,11 @@ out:
 	return rc;
 }
 
-struct getfilesids
-{
+struct getfilesids {
 	struct context     *scon;
-	security_class_t    sclass;
+	u16		    sclass;
 	struct class_datum *sca;
-	security_id_t      *sids;
+	u32		   *sids;
 	int                 maxsids;
 	int                 numsids;
 };
@@ -1437,7 +1440,7 @@ static int getfilesids1(struct avtab_key *avk,
 		fc.role = ir + 1;
 		for (iu = 0; iu < policydb.p_users.nprim; iu++) {
 			struct constraint_node *constraint;
-			security_id_t sid;
+			u32 sid;
 
 			if (fc.role == OBJECT_R_VAL ||
 			    ebitmap_get_bit(&policydb.user_val_to_struct[iu]->roles, ir)) {
@@ -1454,12 +1457,12 @@ static int getfilesids1(struct avtab_key *avk,
 				    sidtab_context_to_sid(&sidtab, &fc, &sid) == 0) {
 					/* passed all checks, add to list */
 					if (p->numsids == p->maxsids) {
-						security_id_t *sids;
+						u32 *sids;
 
 						p->maxsids += 16;
-						sids = kmalloc(sizeof(security_id_t) * p->maxsids, GFP_KERNEL);
+						sids = kmalloc(sizeof(u32) * p->maxsids, GFP_KERNEL);
 						memcpy(sids, p->sids,
-						    sizeof(security_id_t) * p->numsids);
+						    sizeof(u32) * p->numsids);
 						kfree(p->sids);
 						p->sids = sids;
 					}
@@ -1472,9 +1475,9 @@ static int getfilesids1(struct avtab_key *avk,
 	return 0;
 }
 
-int security_get_file_sids(security_id_t user,
-			   security_class_t sclass,
-			   security_id_t **sids,
+int security_get_file_sids(u32 user,
+			   u16 sclass,
+			   u32 **sids,
 			   int *numsids)
 {
 	struct context *scontext = sidtab_search(&sidtab, user);
@@ -1489,7 +1492,7 @@ int security_get_file_sids(security_id_t user,
 		goto out_err;
 	p.sca = policydb.class_val_to_struct[sclass - 1];
 	p.maxsids = 32;
-	p.sids = kmalloc(sizeof(security_id_t) * p.maxsids, GFP_KERNEL);
+	p.sids = kmalloc(sizeof(u32) * p.maxsids, GFP_KERNEL);
 	p.numsids = 0;
 	avtab_map(&policydb.te_avtab, getfilesids1, &p);
 	*sids = p.sids;
@@ -1515,8 +1518,8 @@ out_err:
  */
 int security_genfs_sid(const char *fstype,
 	               char *path,
-		       security_class_t sclass,
-		       security_id_t *sid)
+		       u16 sclass,
+		       u32 *sid)
 {
 	int len;
 	struct genfs *genfs;
@@ -1573,7 +1576,7 @@ out:
 int security_fs_use(
 	const char *fstype,
 	unsigned int *behavior,
-	security_id_t *sid)
+	u32 *sid)
 {
 	int rc = 0;
 	struct ocontext *c;
@@ -1824,59 +1827,7 @@ out:
 	return rc;
 }
 
-#ifndef _KERNEL
-
-/*
- * Return the SIDs to use for an unlabeled file system
- * that is being mounted from the device with the
- * the kdevname `name'.  The `fs_sid' SID is returned for 
- * the file system and the `file_sid' SID is returned
- * for all files within that file system.
- */
-int security_fs_sid(char *name,
-		    security_id_t * fs_sid,
-		    security_id_t * file_sid)
-{
-	int rc = 0;
-	struct ocontext *c;
-
-	POLICY_RDLOCK;
-
-	c = policydb.ocontexts[OCON_FS];
-	while (c) {
-		if (strcmp(c->u.name, name) == 0)
-			break;
-		c = c->next;
-	}
-
-	if (c) {
-		if (!c->sid[0] || !c->sid[1]) {
-			rc = sidtab_context_to_sid(&sidtab,
-						   &c->context[0],
-						   &c->sid[0]);
-			if (rc)
-				goto out;
-			rc = sidtab_context_to_sid(&sidtab,
-						   &c->context[1],
-						   &c->sid[1]);
-			if (rc)
-				goto out;
-		}
-		*fs_sid = c->sid[0];
-		*file_sid = c->sid[1];
-	} else {
-		*fs_sid = SECINITSID_FS;
-		*file_sid = SECINITSID_FILE;
-	}
-
-      out:
-	POLICY_RDUNLOCK;
-	return rc;
-}
-
-#endif
-
-static const char *findperm(struct hashtab *h, access_vector_t perm)
+static const char *findperm(struct hashtab *h, u32 perm)
 {
 	int i;
 	struct hashtab_node *cur;
@@ -1896,12 +1847,12 @@ static const char *findperm(struct hashtab *h, access_vector_t perm)
  * @tclass: target security class
  * @av: access vector
  */
-void avc_dump_av(security_class_t tclass, access_vector_t av)
+void avc_dump_av(u16 tclass, u32 av)
 {
 	char **common_pts = 0;
 	struct class_datum  *cls;
 	struct common_datum *clb;
-	access_vector_t common_base = 0, perm;
+	u32 common_base = 0, perm;
 	int i, i2;
 
 	if (av == 0) {

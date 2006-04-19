@@ -39,40 +39,39 @@
 
 #include <sedarwin/sebsd.h>
 #include <sedarwin/linux-compat.h>
-#include <sedarwin/flask_types.h>
 #include <sedarwin/avc/avc.h>
 
 struct task_security_struct {
-	security_id_t osid;
-	security_id_t sid;
+	u32 osid;
+	u32 sid;
 	struct avc_entry_ref avcr;
 };
 
 struct file_security_struct {
-	security_id_t sid;
+	u32 sid;
 };
 
 struct vnode_security_struct {
-	security_id_t task_sid;
-	security_id_t sid;
-	security_class_t sclass;
+	u32 task_sid;
+	u32 sid;
+	u16 sclass;
 	struct avc_entry_ref avcr;
 };
 
 struct network_security_struct {
-	security_id_t sid;
-	security_id_t task_sid;
+	u32 sid;
+	u32 task_sid;
 	struct avc_entry_ref avcr;
 };
 
 struct ipc_security_struct {
-	security_id_t sid;
-	security_class_t sclass;
+	u32 sid;
+	u16 sclass;
 	struct avc_entry_ref avcr;
 };
 
 struct mount_security_struct {
-	security_id_t sid;              /* SID of file system */
+	u32 sid;              /* SID of file system */
 #ifndef __FreeBSD__
 	struct psidtab *psidtab;        /* persistent SID mapping */
 #endif
@@ -87,6 +86,6 @@ struct mount_security_struct {
 };
 
 struct mount_fs_security_struct {
-	security_id_t sid;              /* default object SID of file system */
+	u32 sid;              /* default object SID of file system */
 };
 #endif /* _SYS_SECURITY_SEBSD_LABELS_H */

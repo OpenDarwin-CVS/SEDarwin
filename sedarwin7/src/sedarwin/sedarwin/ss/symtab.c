@@ -3,12 +3,6 @@
  *
  * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
  */
-#if defined(__FreeBSD__) && defined(_KERNEL)
-#include <sys/param.h>
-#include <sys/conf.h>
-#include <sys/kernel.h>
-#include <sys/systm.h>
-#endif /* FreeBSD _KERNEL */
 
 #include <sedarwin/linux-compat.h>
 #include <sedarwin/flask.h>

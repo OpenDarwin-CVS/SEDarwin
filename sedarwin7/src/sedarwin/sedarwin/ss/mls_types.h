@@ -6,8 +6,6 @@
 #ifndef _SS_MLS_TYPES_H_
 #define _SS_MLS_TYPES_H_
 
-#include <sedarwin/ss/ebitmap.h>
-
 struct mls_level {
 	u32 sens;		/* sensitivity */
 	struct ebitmap cat;	/* category set */

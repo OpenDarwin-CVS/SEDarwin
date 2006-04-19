@@ -14,12 +14,6 @@
  *	the Free Software Foundation, version 2.
  */
 
-#ifdef _KERNEL
-#include <sys/param.h>
-#include <sys/conf.h>
-#include <sys/kernel.h>
-#endif /* _KERNEL */
-
 #include <sedarwin/linux-compat.h>
 #include <sedarwin/ss/avtab.h>
 #include <sedarwin/ss/policydb.h>
@@ -336,8 +330,6 @@ int avtab_read_item(void *fp, struct avtab_datum *avdatum, struct avtab_key *avk
 		printk(KERN_ERR "security: avtab: entry has both access vectors and types\n");
 		goto bad;
 	}
-
-
 	if (avdatum->specified & AVTAB_AV) {
 		if (avdatum->specified & AVTAB_ALLOWED)
 			avtab_allowed(avdatum) = le32_to_cpu(buf[items++]);
@@ -370,7 +362,7 @@ int avtab_read(struct avtab *a, void *fp, u32 config)
 	struct avtab_key avkey;
 	struct avtab_datum avdatum;
 	u32 *buf;
-	u32 nel, items, items2;
+	u32 nel;
 
 
 	buf = next_entry(fp, sizeof(u32));
@@ -404,6 +396,3 @@ bad:
 	avtab_destroy(a);
 	goto out;
 }
-
-
-

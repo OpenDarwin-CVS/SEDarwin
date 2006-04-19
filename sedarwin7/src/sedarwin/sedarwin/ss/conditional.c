@@ -7,13 +7,6 @@
  *	the Free Software Foundation, version 2.
  */
 
-#if defined(__FreeBSD__) && defined(_KERNEL)
-#include <sys/param.h>
-#include <sys/conf.h>
-#include <sys/kernel.h>
-#include <sys/systm.h>
-#endif /* FreeBSD _KERNEL */
-
 #include <sedarwin/linux-compat.h>
 #include <sedarwin/ss/security.h>
 #include <sedarwin/ss/conditional.h>
@@ -209,7 +202,7 @@ int cond_index_bool(void *key, void *datum, void *datap)
 	return 0;
 }
 
-int bool_isvalid(struct cond_bool_datum *b)
+static int bool_isvalid(struct cond_bool_datum *b)
 {
 	if (!(b->state == 0 || b->state == 1))
 		return 0;

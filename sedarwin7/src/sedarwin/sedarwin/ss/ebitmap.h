@@ -14,25 +14,7 @@
 #ifndef _SS_EBITMAP_H_
 #define _SS_EBITMAP_H_
 
-#ifdef __APPLE__
-
-#ifdef KERNEL
 #include <sys/systm.h>
-#else
-#include <stdlib.h>
-#include <stdio.h>
-#endif
-
-#else
-
-#ifdef _KERNEL
-#include <sys/libkern.h>
-#else
-#include <stdlib.h>
-#include <stdio.h>
-#endif
-
-#endif
 
 #include <sedarwin/linux-compat.h>
 
@@ -67,9 +49,5 @@ int ebitmap_get_bit(struct ebitmap *e, unsigned long bit);
 int ebitmap_set_bit(struct ebitmap *e, unsigned long bit, int value);
 void ebitmap_destroy(struct ebitmap *e);
 int ebitmap_read(struct ebitmap *e, void *fp);
-
-#if !defined(__KERNEL__) && !defined(_KERNEL) && !defined(KERNEL)
-int ebitmap_write(struct ebitmap * e, FILE * fp);
-#endif
 
 #endif	/* _SS_EBITMAP_H_ */

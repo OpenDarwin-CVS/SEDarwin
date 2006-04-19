@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2005, 2006 SPARTA, Inc.
  * Copyright (c) 2002, 2003 Networks Associates Technology, Inc.
+ * Copyright (c) 2005, 2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -62,8 +62,8 @@
 
 #ifdef __APPLE__
 /*
- * The code is conditional upon the following list of defines.  For now,
- * Darwin does not provide support for them:
+ * The code is conditional upon the following list of defines.
+ * At the moment, Darwin does not provide support for all of them:
  * CAPABILITIES
  * HAS_THREADS
  * HAS_PIPES
@@ -74,13 +74,13 @@
  * HAS_ACLS
  */
 
-#define HAS_STRING
 #define HAS_STRINGS
 
 #include <sys/ucred.h>
 #include <vm/vm_kern.h>
 #include <kern/kalloc.h>
 
+/* XXX - move sebsd_malloc/free */
 void *
 sebsd_malloc(size_t size, int flags)
 {
@@ -113,18 +113,15 @@ sebsd_free(void *v)
 
 #include <sys/mac_policy.h>
 
+#include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/sebsd_labels.h>
 #include <sedarwin/ss/policydb.h>
 
-int sebsd_verbose = 0;
+int	sebsd_verbose = 0;
 
 static int slot = 1; /* TBD, dynamic */
 #define	SLOT(l)	((void *)LABEL_TO_SLOT((l), slot).l_ptr)
-
-#ifndef __APPLE__
-MALLOC_DEFINE(M_SEBSD, "sebsd", "Security Enhanced BSD");
-#endif
 
 extern int ss_initialized;
 static __inline int ss_precondition(void)
@@ -136,12 +133,10 @@ static void
 sebsd_init(struct mac_policy_conf *mpc)
 {
 	printf("sebsd:: init\n");
-
 	avc_init();
 	if (security_init()) {
 		panic("SEBSD: couldn't read policy file");
 	}
-
 	sebsd_mach_av_init();
 }
 
@@ -179,7 +174,7 @@ cred_has_capability(struct ucred *cred, cap_value_t cap)
 #endif
 
 static int
-cred_has_perm(struct ucred *cred, struct proc *proc, access_vector_t perm)
+cred_has_perm(struct ucred *cred, struct proc *proc, u32 perm)
 {
 	struct task_security_struct *task, *target;
 
@@ -191,7 +186,7 @@ cred_has_perm(struct ucred *cred, struct proc *proc, access_vector_t perm)
 }
 
 static int
-mount_has_perm(struct ucred *cred, struct mount *mp, access_vector_t perm,
+mount_has_perm(struct ucred *cred, struct mount *mp, u32 perm,
     struct avc_audit_data *ad)
 {
 	struct mount_security_struct *sbsec;
@@ -205,7 +200,7 @@ mount_has_perm(struct ucred *cred, struct mount *mp, access_vector_t perm,
 }
 
 static int
-cred_has_system(struct ucred *cred, access_vector_t perm)
+cred_has_system(struct ucred *cred, u32 perm)
 {
 	struct task_security_struct *task;
 
@@ -216,7 +211,7 @@ cred_has_system(struct ucred *cred, access_vector_t perm)
 }
 
 int
-cred_has_security(struct ucred *cred, access_vector_t perm)
+cred_has_security(struct ucred *cred, u32 perm)
 {
 	struct task_security_struct *task;
 
@@ -228,35 +223,35 @@ cred_has_security(struct ucred *cred, access_vector_t perm)
 
 #ifdef HAS_THREADS
 int
-thread_has_system(struct thread *td, access_vector_t perm)
+thread_has_system(struct thread *td, u32 perm)
 {
 
 	return (cred_has_system(td->td_proc->p_ucred, perm));
 }
 
 int
-thread_has_security(struct thread *td, access_vector_t perm)
+thread_has_security(struct thread *td, u32 perm)
 {
 
 	return (cred_has_security(td->td_proc->p_ucred, perm));
 }
 #else
 int
-proc_has_system(struct proc *p, access_vector_t perm)
+proc_has_system(struct proc *p, u32 perm)
 {
 
 	return (cred_has_system(p->p_ucred, perm));
 }
 
 int
-proc_has_security(struct proc *p, access_vector_t perm)
+proc_has_security(struct proc *p, u32 perm)
 {
 
 	return (cred_has_security(p->p_ucred, perm));
 }
 #endif
 
-static __inline security_class_t
+static __inline u16
 vnode_type_to_security_class(enum vtype vt)
 {
 
@@ -287,7 +282,7 @@ vnode_type_to_security_class(enum vtype vt)
 	return (SECCLASS_FILE);
 }
 
-static __inline security_class_t
+static __inline u16
 devfs_type_to_security_class(int type)
 {
 
@@ -305,10 +300,10 @@ devfs_type_to_security_class(int type)
 	return (SECCLASS_FILE);
 }
 
-static __inline access_vector_t
+static __inline u32
 file_mask_to_av(enum vtype vt, int mask)
 {
-	access_vector_t av = 0;
+	u32 av = 0;
 
 	if (vt != VDIR) {
 		if (mask & VEXEC)
@@ -337,7 +332,7 @@ file_mask_to_av(enum vtype vt, int mask)
 }
 
 static int
-vnode_has_perm(struct ucred *cred, struct vnode *vp, access_vector_t perm,
+vnode_has_perm(struct ucred *cred, struct vnode *vp, u32 perm,
     struct avc_entry_ref *aeref)
 {
 	struct task_security_struct *task;
@@ -378,7 +373,7 @@ vnode_has_perm(struct ucred *cred, struct vnode *vp, access_vector_t perm,
 
 #ifdef HAS_PIPES
 static int
-pipe_has_perm(struct ucred *cred, struct pipe *pipe, access_vector_t perm)
+pipe_has_perm(struct ucred *cred, struct pipe *pipe, u32 perm)
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
@@ -497,6 +492,7 @@ sebsd_init_devfs_label(struct label *label)
 static void
 sebsd_destroy_label(struct label *label)
 {
+
 	sebsd_free(SLOT(label));
 	SLOT(label) = NULL;
 }
@@ -504,7 +500,7 @@ sebsd_destroy_label(struct label *label)
 static void
 sebsd_relabel_cred(struct ucred *cred, struct label *newlabel)
 {
-	/* 
+	/*
 	 * XXX/TBD: normally, SEBSD doesn't permit process labels to change
 	 * other than at exec time...
 	 */
@@ -543,10 +539,10 @@ sebsd_associate_vnode_extattr(struct mount *mp, struct label *fslabel,
     struct vnode *vp, struct label *vlabel)
 {
 	struct vnode_security_struct *vsec;
-	/* 
+	/*
 	 * TBD: static buffers aren't a good idea, and SELinux contexts
 	 * aren't restricted in length.
-	 * 
+	 *
 	 * This doesn't matter too much, since HFS extattr support
 	 * currently uses a backing file pre-allocated with fixed-size
 	 * attributes.
@@ -560,8 +556,9 @@ sebsd_associate_vnode_extattr(struct mount *mp, struct label *fslabel,
 	vsec = SLOT(vlabel);
 
 	context_len = sizeof(context); /* TBD: bad fixed length */
-	error = vn_extattr_get(vp, IO_NODELOCKED, SEBSD_MAC_EXTATTR_NAMESPACE,
-	    SEBSD_MAC_EXTATTR_NAME, &context_len, context, p);
+	error = vn_extattr_get(vp, IO_NODELOCKED,
+	    SEBSD_MAC_EXTATTR_NAMESPACE, SEBSD_MAC_EXTATTR_NAME,
+	    &context_len, context, p);
 	if (error == ENOATTR || error == EOPNOTSUPP) {
 		vsec->sid = SECINITSID_UNLABELED; /* Use the default label */
 
@@ -733,7 +730,7 @@ sebsd_create_port(struct label *it, struct label *st, struct label *port)
 	    &psec->sid);
 
 	/*
-	 * On error label ports the same as owner process. 
+	 * On error label ports the same as owner process.
 	 * This is consistent with other IPC objects.
 	 */
 	if (error)
@@ -785,7 +782,7 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 {
 	char *path;
 	int rc;
-	security_id_t newsid;
+	u32 newsid;
 	struct vnode_security_struct *dirent;
 
 	dirent = SLOT(label);
@@ -822,7 +819,7 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 	if (sebsd_verbose > 1) {
 		printf("sebsd_create_devfs_device(%s): "
 		    "rc=%d, sclass=%d, computedsid=%d, "
-		    "dirent=%d\n", path, 
+		    "dirent=%d\n", path,
 		    rc, dirent->sclass, newsid, dirent->sid);
 	}
 	sebsd_free(path);
@@ -836,7 +833,7 @@ sebsd_create_devfs_directory(struct mount *mp, char *dirname,
 {
 	char *path;
 	int rc;
-	security_id_t newsid;
+	u32 newsid;
 	struct mount_security_struct *sbsec;
 	struct vnode_security_struct *dirent;
 
@@ -874,7 +871,7 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 {
 	char *path;
 	int rc;
-	security_id_t newsid;
+	u32 newsid;
 	struct vnode_security_struct *lnksec;
 	struct vnode_security_struct *dirsec;
 	struct mount_security_struct *sbsec;
@@ -949,7 +946,7 @@ sebsd_create_proc1(struct ucred *cred)
 	task->osid = SECINITSID_KERNEL;
 	task->sid = SECINITSID_INIT;
 	printf("sebsd_create_proc1:: using SICINITSID_INIT = %d\n",
-	       SECINITSID_INIT);
+	    SECINITSID_INIT);
 }
 
 static void
@@ -1051,9 +1048,9 @@ sebsd_create_vnode_extattr(struct ucred *cred, struct mount *mp,
 {
 	struct vnode_security_struct *dir, *vsec;
 	struct task_security_struct *task;
-	security_context_t context;
+	char *context;
 	u_int32_t context_len;
-	security_id_t newsid;
+	u32 newsid;
 	int error;
 	int tclass;
 
@@ -1076,9 +1073,8 @@ sebsd_create_vnode_extattr(struct ucred *cred, struct mount *mp,
 		return (error);
 
 	error = vn_extattr_set(child, IO_NODELOCKED,
-			       SEBSD_MAC_EXTATTR_NAMESPACE,
-			       SEBSD_MAC_EXTATTR_NAME,
-			       context_len, context, current_proc());
+	   SEBSD_MAC_EXTATTR_NAMESPACE, SEBSD_MAC_EXTATTR_NAME,
+	   context_len, context, current_proc());
 
 	security_free_context(context);
 	return (error);
@@ -1104,7 +1100,7 @@ sebsd_check_cred_relabel(struct ucred *cred, struct label *newlabel)
 
 	if (nsec == NULL)
 		return (0);
-	  
+	
 	rc = avc_has_perm_ref_audit(tsec->sid, tsec->sid, SECCLASS_PROCESS,
 	    FILE__RELABELFROM, NULL, NULL);
 	if (rc)
@@ -1168,7 +1164,7 @@ extern struct policydb policydb;
 
 static int
 sebsd_check_service_access(struct label *subj, struct label *obj,
-    const char *s, const char * pn)
+    const char *s, const char *pn)
 {
 	struct task_security_struct *tsec, *psec;
 	struct class_datum *cld;
@@ -1228,7 +1224,7 @@ sebsd_check_mount(struct ucred *cred, struct vnode *vp, struct label *vl,
     const char *vfc_name, struct label *mntlabel)
 {
 	int rc;
-	security_id_t sid;
+	u32 sid;
 	int behavior;
 	struct vnode_security_struct *vsec;
 	struct task_security_struct  *task;
@@ -1285,7 +1281,8 @@ sebsd_check_remount(struct ucred *cred, struct mount *mp,
 }
 
 static int
-sebsd_check_umount(struct ucred *cred, struct mount *mp, struct label *mntlabel)
+sebsd_check_umount(struct ucred *cred, struct mount *mp,
+    struct label *mntlabel)
 {
 
 	return (mount_has_perm(cred, mp, FILESYSTEM__UNMOUNT, NULL));
@@ -1441,7 +1438,7 @@ sebsd_check_proc_setlcid(struct proc *p0, struct proc *p, pid_t pid, pid_t lcid)
 static int
 sebsd_check_proc_signal(struct ucred *cred, struct proc *proc, int signum)
 {
-	access_vector_t perm;
+	u32 perm;
 
 	switch (signum) {
 	case SIGCHLD:
@@ -1505,7 +1502,7 @@ sebsd_execve_will_transition(struct ucred *old, struct vnode *vp,
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
-	security_id_t newsid;
+	u32 newsid;
 
 	task = SLOT(old->cr_label);
 	if (interpvnodelabel != NULL)
@@ -1527,9 +1524,9 @@ sebsd_execve_will_transition(struct ucred *old, struct vnode *vp,
 	return (newsid != task->sid);
 }
 
-#ifdef HAS_STRING
+#ifdef HAS_STRINGS
 static int
-sebsd_internalize_sid(security_id_t *sidp, char *element_name,
+sebsd_internalize_sid(u32 *sidp, char *element_name,
     char *element_data)
 {
 	char context[128];  /* TBD: contexts aren't fixed size */
@@ -1635,7 +1632,7 @@ sebsd_setlabel_vnode_extattr(struct ucred *cred, struct vnode *vp,
     struct label *vlabel, struct label *intlabel)
 {
 	struct vnode_security_struct *newlabel;
-	security_context_t context;
+	char *context;
 	u_int32_t context_len;
 	int error;
 
@@ -1645,8 +1642,9 @@ sebsd_setlabel_vnode_extattr(struct ucred *cred, struct vnode *vp,
 	if (error)
 		return (error);
 
-	error = vn_extattr_set(vp, IO_NODELOCKED, SEBSD_MAC_EXTATTR_NAMESPACE,
-	    SEBSD_MAC_EXTATTR_NAME, context_len, context, current_proc());
+	error = vn_extattr_set(vp, IO_NODELOCKED,
+	    SEBSD_MAC_EXTATTR_NAMESPACE, SEBSD_MAC_EXTATTR_NAME,
+	    context_len, context, current_proc());
 	security_free_context(context);
 	return (error);
 }
@@ -1690,8 +1688,8 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *dir;
 	struct mount_security_struct *sbsec;
-	security_class_t tclass;
-	security_id_t newsid;
+	u16 tclass;
+	u32 newsid;
 	struct avc_audit_data ad;
 	int rc;
 
@@ -1719,14 +1717,16 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 	if (dvp->v_mount) {
 		/*
 		 * XXX: mpo_check_vnode_create should probably pass the
-		 * mntlabel
+		 * mntlabel.
 		 */
 		sbsec = SLOT(dvp->v_mount->mnt_mntlabel);
+#ifdef SEFOS_DEBUG
 		if (sbsec == NULL) {
 			printf ("create_vnode: no mount label for mnt=%s\n",
 			    dvp->v_mount->mnt_stat.f_mntonname);
 			return (0);
 		}
+#endif
 		rc = avc_has_perm_audit(newsid, sbsec->sid,
 		    SECCLASS_FILESYSTEM, FILESYSTEM__ASSOCIATE, &ad);
 		if (rc)
@@ -1744,7 +1744,7 @@ sebsd_check_vnode_delete(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *dir, *file;
 	struct avc_audit_data ad;
-	access_vector_t av;
+	u32 av;
 	int rc;
 
 	task = SLOT(cred->cr_label);
@@ -1798,7 +1798,7 @@ sebsd_check_vnode_exec(struct ucred *cred, struct vnode *vp,
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
-	security_id_t newsid;
+	u32 newsid;
 	struct avc_audit_data ad;
 	int rc;
 
@@ -1821,14 +1821,12 @@ sebsd_check_vnode_exec(struct ucred *cred, struct vnode *vp,
 		    FILE__EXECUTE_NO_TRANS, &ad);
 		if (rc)
 			return (EACCES);
-
 	} else {
 		/* Check permissions for the transition. */
 		rc = avc_has_perm_audit(task->sid, newsid, SECCLASS_PROCESS,
 		    PROCESS__TRANSITION, &ad);
 		if (rc)
 			return (EACCES);
-
 		rc = avc_has_perm_audit(newsid, file->sid, SECCLASS_FILE,
 		    FILE__ENTRYPOINT, &ad);
 		if (rc)
@@ -2038,7 +2036,7 @@ sebsd_check_vnode_rename_from(struct ucred *cred, struct vnode *dvp,
 		return (rc);
 	if (old_file->sclass == 0) {
 		printf("vnode_rename_from:: ERROR, sid=%d, sclass=0, "
-		       "v_type=%d\n", old_file->sid, vp->v_type);
+		   "v_type=%d\n", old_file->sid, vp->v_type);
 		return (0);	/* TBD: debugging */
 	}
 
@@ -2058,7 +2056,7 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *new_dir, *new_file;
 	struct avc_audit_data ad;
-	access_vector_t av;
+	u32 av;
 	int rc;
 
 	task = SLOT(cred->cr_label);
@@ -2096,13 +2094,12 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 			       "v_type=%d\n", new_file->sid, vp->v_type);
 			return (0);	/* TBD: debugging */
 		}
-		if (vp->v_type == VDIR) {
+		if (vp->v_type == VDIR)
 			rc = avc_has_perm_ref(task->sid, new_file->sid,
 			    new_file->sclass, DIR__RMDIR, &new_file->avcr);
-		} else {
+		else
 			rc = avc_has_perm_ref(task->sid, new_file->sid,
 			    new_file->sclass, FILE__UNLINK, &new_file->avcr);
-		}
 		if (rc)
 			return (rc);
 	}
@@ -2237,7 +2234,7 @@ static int
 sebsd_check_vnode_mmap(struct ucred *cred, struct vnode *vp,
     struct label *label, int prot, int flags, int *maxprot)
 {
-	access_vector_t av;
+	u32 av;
 
 	/*
 	 * TBD: Incomplete?
@@ -2261,7 +2258,7 @@ static int
 sebsd_check_vnode_mprotect(struct ucred *cred, struct vnode *vp,
     struct label *label, int prot)
 {
-	access_vector_t av;
+	u32 av;
 
 	/*
 	 * TBD: Incomplete?
@@ -2282,11 +2279,14 @@ sebsd_check_vnode_mprotect(struct ucred *cred, struct vnode *vp,
 
 #ifdef HAS_STRINGS
 static int
-sebsd_externalize_sid(security_id_t sid, char *element_name, struct sbuf *sb)
+sebsd_externalize_sid(u32 sid, char *element_name, struct sbuf *sb)
 {
-	security_context_t context;
+	char *context;
 	u_int32_t context_len;
 	int error;
+
+	if (strcmp("sebsd", element_name) != 0)
+		return (0);
 
 	error = security_sid_to_context(sid, &context, &context_len);
 	if (error)
@@ -2369,6 +2369,7 @@ sebsd_update_port_from_cred_label(struct label *src, struct label *dest)
 	    *(struct task_security_struct *)SLOT(src);
 }
 
+#if 0
 static int
 sebsd_check_file_create(struct ucred *cred)
 {
@@ -2380,129 +2381,26 @@ sebsd_check_file_create(struct ucred *cred)
 }
 
 static int
-ipc_has_perm(struct ucred *cred, struct label *label, access_vector_t perm)
+sebsd_check_file_ioctl(struct ucred *cred, struct file *fp,
+    struct label *fplabel, u_long com)
 {
-	struct task_security_struct *task;
-	struct ipc_security_struct *ipcsec;
+	struct task_security_struct *tsec;
+	struct file_security_struct *fsec;
+	int error;
 
-	task = SLOT(cred->cr_label);
-	ipcsec = SLOT(label);
+	tsec = SLOT(cred->cr_label);
+	fsec = SLOT(fplabel);
 
-	/*
-	 * TBD: No audit information yet
-	 */
+	error = avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	    FD__USE, NULL);
+	if (error)
+		return (error);
+	if (fp->f_type != DTYPE_VNODE)
+		return (0);
 
-	return (avc_has_perm_ref(task->sid, ipcsec->sid, ipcsec->sclass,
-	    perm, &ipcsec->avcr));
+	return (vnode_has_perm(cred, fp->f_vnode, FILE__IOCTL, NULL));
 }
-
-static int
-sebsd_check_sysv_semctl(struct ucred *cred, struct semid_kernel *semakptr,
-    struct label *semaklabel, int cmd)
-{
-	access_vector_t perm;
-
-	switch(cmd) {
-	case GETPID:
-	case GETNCNT:
-	case GETZCNT:
-		perm = SEM__GETATTR;
-		break;
-	case GETVAL:
-	case GETALL:
-		perm = SEM__READ;
-		break;
-	case SETVAL:
-	case SETALL:
-		perm = SEM__WRITE;
-		break;
-	case IPC_RMID:
-		perm = SEM__DESTROY;
-		break;
-	case IPC_SET:
-		perm = SEM__SETATTR;
-		break;
-	case IPC_STAT:
-		perm = SEM__GETATTR | SEM__ASSOCIATE;
-		break;
-	default:
-		return (EACCES);
-	}
-
-	/*
-	 * TBD: No audit information yet
-	 */
-	return (ipc_has_perm(cred, semaklabel, perm));
-}
-
-static int
-sebsd_check_sysv_semget(struct ucred *cred, struct semid_kernel *semakptr,
-    struct label *semaklabel)
-{
-
-	return (ipc_has_perm(cred, semaklabel, SEM__ASSOCIATE));
-}
-
-static int
-sebsd_check_sysv_semop(struct ucred *cred, struct semid_kernel *semakptr,
-    struct label *semaklabel, size_t accesstype)
-{
-	access_vector_t perm;
-	perm = 0UL;
-
-	if (accesstype & SEM_R)
-		perm = SEM__READ;
-	if (accesstype & SEM_A)
-		perm = SEM__READ | SEM__WRITE;
-	
-	return (ipc_has_perm(cred, semaklabel, perm));
-}
-
-static int
-sebsd_check_sysv_shmat(struct ucred *cred, struct shmid_kernel *shmsegptr,
-    struct label *shmseglabel, int shmflg)
-{
-	access_vector_t perm;
-
-	if (shmflg & SHM_RDONLY)
-		perm = SHM__READ;
-	else
-		perm = SHM__READ | SHM__WRITE;
-
-	return (ipc_has_perm(cred, shmseglabel, perm));
-}
-
-static int
-sebsd_check_sysv_shmctl(struct ucred *cred, struct shmid_kernel *shmsegptr,
-    struct label *shmseglabel, int cmd)
-{
-	access_vector_t perm;
-
-	switch(cmd) {
-	case IPC_RMID:
-		perm = SHM__DESTROY;
-		break;
-	case IPC_SET:
-		perm = SHM__SETATTR;
-		break;
-	case IPC_STAT:
-		perm = SHM__GETATTR | SHM__ASSOCIATE;
-		break;
-	default:
-		return (EACCES);
-	}
-
-	return (ipc_has_perm(cred, shmseglabel, perm));
-
-}
-
-static int
-sebsd_check_sysv_shmget(struct ucred *cred, struct shmid_kernel *shmsegptr,
-    struct label *shmseglabel, int shmflg)
-{
-
-	return (ipc_has_perm(cred, shmseglabel, SHM__ASSOCIATE));
-}
+#endif
 
 /*
  * Simplify all other fd permissions to just "use" for now.  The ones we
@@ -2587,7 +2485,130 @@ sebsd_check_file_change_offset(struct ucred *cred, struct file *fp,
 	    FD__USE, NULL));
 }
 
-extern int sebsd_syscall(struct proc *p, int call, void *args, int *retv);
+static int
+ipc_has_perm(struct ucred *cred, struct label *label, u32 perm)
+{
+	struct task_security_struct *task;
+	struct ipc_security_struct *ipcsec;
+
+	task = SLOT(cred->cr_label);
+	ipcsec = SLOT(label);
+
+	/*
+	 * TBD: No audit information yet
+	 */
+
+	return (avc_has_perm_ref(task->sid, ipcsec->sid, ipcsec->sclass,
+	    perm, &ipcsec->avcr));
+}
+
+static int
+sebsd_check_sysv_semctl(struct ucred *cred, struct semid_kernel *semakptr,
+    struct label *semaklabel, int cmd)
+{
+	u32 perm;
+
+	switch(cmd) {
+	case GETPID:
+	case GETNCNT:
+	case GETZCNT:
+		perm = SEM__GETATTR;
+		break;
+	case GETVAL:
+	case GETALL:
+		perm = SEM__READ;
+		break;
+	case SETVAL:
+	case SETALL:
+		perm = SEM__WRITE;
+		break;
+	case IPC_RMID:
+		perm = SEM__DESTROY;
+		break;
+	case IPC_SET:
+		perm = SEM__SETATTR;
+		break;
+	case IPC_STAT:
+		perm = SEM__GETATTR | SEM__ASSOCIATE;
+		break;
+	default:
+		return (EACCES);
+	}
+
+	/*
+	 * TBD: No audit information yet
+	 */
+	return (ipc_has_perm(cred, semaklabel, perm));
+}
+
+static int
+sebsd_check_sysv_semget(struct ucred *cred, struct semid_kernel *semakptr,
+    struct label *semaklabel)
+{
+
+	return (ipc_has_perm(cred, semaklabel, SEM__ASSOCIATE));
+}
+
+static int
+sebsd_check_sysv_semop(struct ucred *cred, struct semid_kernel *semakptr,
+    struct label *semaklabel, size_t accesstype)
+{
+	u32 perm;
+	perm = 0UL;
+
+	if (accesstype & SEM_R)
+		perm = SEM__READ;
+	if (accesstype & SEM_A)
+		perm = SEM__READ | SEM__WRITE;
+	
+	return (ipc_has_perm(cred, semaklabel, perm));
+}
+
+static int
+sebsd_check_sysv_shmat(struct ucred *cred, struct shmid_kernel *shmsegptr,
+    struct label *shmseglabel, int shmflg)
+{
+	u32 perm;
+
+	if (shmflg & SHM_RDONLY)
+		perm = SHM__READ;
+	else
+		perm = SHM__READ | SHM__WRITE;
+
+	return (ipc_has_perm(cred, shmseglabel, perm));
+}
+
+static int
+sebsd_check_sysv_shmctl(struct ucred *cred, struct shmid_kernel *shmsegptr,
+    struct label *shmseglabel, int cmd)
+{
+	u32 perm;
+
+	switch(cmd) {
+	case IPC_RMID:
+		perm = SHM__DESTROY;
+		break;
+	case IPC_SET:
+		perm = SHM__SETATTR;
+		break;
+	case IPC_STAT:
+		perm = SHM__GETATTR | SHM__ASSOCIATE;
+		break;
+	default:
+		return (EACCES);
+	}
+
+	return (ipc_has_perm(cred, shmseglabel, perm));
+
+}
+
+static int
+sebsd_check_sysv_shmget(struct ucred *cred, struct shmid_kernel *shmsegptr,
+    struct label *shmseglabel, int shmflg)
+{
+
+	return (ipc_has_perm(cred, shmseglabel, SHM__ASSOCIATE));
+}
 
 static struct mac_policy_ops sebsd_ops = {
 	/* Init Labels */
@@ -2736,15 +2757,15 @@ static struct mac_policy_ops sebsd_ops = {
 
 
 #if 0
-MAC_POLICY_SET(&sebsd_ops, sebsd, "NSA/NAI Labs Security Enhanced BSD",
+MAC_POLICY_SET(&sebsd_ops, sebsd, "NSA/SPARTA Security Enhanced BSD",
     MPC_LOADTIME_FLAG_NOTLATE, &slot);
 #endif
 
-static char *labelnamespaces[SEBSD_MAC_LABEL_NAME_COUNT] = 
+static char *labelnamespaces[SEBSD_MAC_LABEL_NAME_COUNT] =
     {SEBSD_MAC_LABEL_NAMESPACES};
 struct mac_policy_conf sebsd_mac_policy_conf = {
 	"sebsd",				/* policy name */
-	"NSA/NAI Labs Security Enhanced BSD",	/* full name */
+	"NSA/SPARTA Security Enhanced BSD",	/* full name */
 	labelnamespaces,			/* label namespaces */
 	SEBSD_MAC_LABEL_NAME_COUNT,		/* namespace count */
 	&sebsd_ops,				/* policy operations */
@@ -2768,7 +2789,7 @@ kmod_stop(kmod_info_t *ki, void *xd)
 
 extern kern_return_t _start(kmod_info_t *ki, void *data);
 extern kern_return_t _stop(kmod_info_t *ki, void *data);
- 
+
 KMOD_EXPLICIT_DECL(security.sedarwin,  POLICY_VER,  _start, _stop)
 kmod_start_func_t *_realmain = kmod_start;
 kmod_stop_func_t *_antimain = kmod_stop;

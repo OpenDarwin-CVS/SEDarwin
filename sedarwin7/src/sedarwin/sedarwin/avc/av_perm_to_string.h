@@ -3,8 +3,8 @@
 
 typedef struct
 {
-    security_class_t tclass;
-    access_vector_t value;
+    u16 tclass;
+    u32 value;
     char *name;
 } av_perm_to_string_t;
 
