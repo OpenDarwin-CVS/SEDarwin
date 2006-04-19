@@ -17,8 +17,7 @@ type labelstr_t = c_string[*:512];
   @param task Target's task port
   @param label Returned label handle
 
-  This call retrieves a label handle label for the
-  specified task, with respect to the specified policies.
+  This call retrieves the label handle of the specified task.
 
   @return Standard MiG return values (0 for success)
 */
@@ -48,12 +47,9 @@ routine mach_get_task_label_text(task      : ipc_space_t;
   @param port Port to query label from
   @param label Returned label handle
 
-  This call retrieves a label handle label for the
-  specified task, with respect to the specified policies.
-
-  This call retrieves a label handle for the specified port, with
-  respect to the specified policies. If the port represents a label
-  handle, KERN_INVALID_ARGUMENT is returned.
+  This call retrieves a new label handle for the specified port.
+  If the port represents a label handle, KERN_INVALID_ARGUMENT is
+  returned.
 
   @return Standard MiG return values (0 for success)
 */
