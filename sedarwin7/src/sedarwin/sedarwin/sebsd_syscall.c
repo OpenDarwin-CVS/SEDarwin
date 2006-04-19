@@ -63,7 +63,7 @@ sys_load_policy(struct proc *td, void *data, size_t len)
 	void *kdata;
 	int rc;
 	
-	rc = proc_has_security(td->p_ucred, SECURITY__LOAD_POLICY);
+	rc = proc_has_security(td, SECURITY__LOAD_POLICY);
 	if (rc)
 		return (rc);
 
