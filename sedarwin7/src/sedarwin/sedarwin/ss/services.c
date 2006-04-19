@@ -18,6 +18,11 @@
  *	This program is free software; you can redistribute it and/or modify
  *  	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, version 2.
+ *
+ * Copyright (c) 2005 SPARTA, Inc.
+ *
+ * This software was enhanced by SPARTA ISSO under SPAWAR contract
+ * N66001-04-C-6019 ("SEFOS").
  */
 
 #include <sedarwin/linux-compat.h>
@@ -33,16 +38,16 @@
 
 #ifdef _KERNEL
 
-#include <sys/sx.h>
+#include <sys/rwlock.h>
 #include <sys/proc.h>
 
-static struct sx policy_rwlock;
-#define POLICY_RDLOCK sx_slock(&policy_rwlock)
-#define POLICY_WRLOCK sx_xlock(&policy_rwlock)
-#define POLICY_RDUNLOCK sx_sunlock(&policy_rwlock)
-#define POLICY_WRUNLOCK sx_xunlock(&policy_rwlock)
+static struct rwlock policy_rwlock;
+#define POLICY_RDLOCK rw_rlock(&policy_rwlock)
+#define POLICY_WRLOCK rw_wlock(&policy_rwlock)
+#define POLICY_RDUNLOCK rw_runlock(&policy_rwlock)
+#define POLICY_WRUNLOCK rw_wunlock(&policy_rwlock)
 
-SX_SYSINIT(policy_rwlock, &policy_rwlock, "SEBSD policy lock");
+RW_SYSINIT(policy_rwlock, &policy_rwlock, "SEBSD policy lock");
 
 static struct mtx load_sem;
 #define LOAD_LOCK mtx_lock(&load_sem)
@@ -51,6 +56,7 @@ static struct mtx load_sem;
 MTX_SYSINIT(load_sem, &load_sem, "SEBSD policy load lock", MTX_DEF);
 
 #else
+/* XXX - define locking for Darwin */
 #define POLICY_RDLOCK 
 #define POLICY_WRLOCK 
 #define POLICY_RDUNLOCK
@@ -304,14 +310,14 @@ int security_compute_av(security_id_t ssid,
 			access_vector_t requested,
 			struct av_decision *avd)
 {
-	struct context *scontext = 0, *tcontext = 0;
+	struct context *scontext = NULL, *tcontext = NULL;
 	int rc = 0;
 
 	if (!ss_initialized) {
 		avd->allowed = requested;
 		avd->decided = requested;
 		avd->auditallow = 0;
-		avd->auditdeny = 0xffffffffLL;
+		avd->auditdeny = 0xffffffff;
 		avd->seqno = latest_granting;
 		return 0;
 	}
@@ -347,7 +353,7 @@ out:
  * to point to this string and set `*scontext_len' to
  * the length of the string.
  */
-int context_struct_to_string(struct context *context, char **scontext, u32 *scontext_len)
+static int context_struct_to_string(struct context *context, char **scontext, u32 *scontext_len)
 {
 	char *scontextp;
 
@@ -1350,8 +1356,6 @@ int security_get_user_sids(security_id_t fromsid,
 			if (!ebitmap_get_bit(&role->types, j))
 				continue;
 			usercon.type = j+1;
-			if (usercon.type == fromcon->type)
-				continue;
 			mls_for_user_ranges(user,usercon) {
 				rc = context_struct_compute_av(fromcon, &usercon,
 							       SECCLASS_PROCESS,
@@ -1394,98 +1398,108 @@ out:
 	return rc;
 }
 
-/* Return the list of sids that a user can use to relabel files to. 
-   This could probably be more efficient. */
-
 struct getfilesids
 {
-  struct context     *scon;
-  security_class_t    sclass;
-  struct class_datum *sca;
-  security_id_t      *sids;
-  int                 maxsids;
-  int                 numsids;
+	struct context     *scon;
+	security_class_t    sclass;
+	struct class_datum *sca;
+	security_id_t      *sids;
+	int                 maxsids;
+	int                 numsids;
 };
 
-static int getfilesids1 (struct avtab_key *avk, struct avtab_datum *avd, struct getfilesids *p)
+/*
+ * Return the list of sids that a user can use to relabel files to. 
+ * This could probably be more efficient.
+ */
+static int getfilesids1(struct avtab_key *avk,
+			struct avtab_datum *avd,
+			void *args)
 {
-  if (avk->source_type == p->scon->type && avk->target_class == p->sclass &&
-      (avd->specified & AVTAB_AV) && (avtab_allowed(avd) & COMMON_FILE__RELABELTO))
-    {
-      int            ir, iu;
-      struct context fc;
+	struct getfilesids *p = args;
+	struct context fc;
+	int ir, iu;
 
-      fc.type = avk->target_type;
+	if (avk->source_type != p->scon->type ||
+	    avk->target_class != p->sclass ||
+	    (avd->specified & AVTAB_AV) == 0 ||
+	    (avtab_allowed(avd) & COMMON_FILE__RELABELTO) == 0)
+		return 0;
 
-      for (ir = 0; ir < policydb.p_roles.nprim; ir++)
-	if (ir+1 == OBJECT_R_VAL || ebitmap_get_bit (&policydb.role_val_to_struct[ir]->types, fc.type-1))
-	  {
-	    fc.role = ir+1;
+	fc.type = avk->target_type;
 
-	    for (iu = 0; iu < policydb.p_users.nprim; iu++)
-	      if (fc.role == OBJECT_R_VAL || ebitmap_get_bit (&policydb.user_val_to_struct[iu]->roles, ir))
-		{
-		  fc.user = iu+1;
+	for (ir = 0; ir < policydb.p_roles.nprim; ir++) {
+		if (ir + 1 != OBJECT_R_VAL &&
+		    ebitmap_get_bit(&policydb.role_val_to_struct[ir]->types,
+		    fc.type - 1) == 0)
+			continue;
 
-		  struct constraint_node *constraint = p->sca->constraints;
-		  while (constraint)
-		    {
-		      if ((constraint->permissions & COMMON_FILE__RELABELTO) &&
-			  !constraint_expr_eval(p->scon, &fc, constraint->expr))
-			break;
-		      constraint = constraint->next;
-		    }
+		fc.role = ir + 1;
+		for (iu = 0; iu < policydb.p_users.nprim; iu++) {
+			struct constraint_node *constraint;
+			security_id_t sid;
 
-		  security_id_t sid;
+			if (fc.role == OBJECT_R_VAL ||
+			    ebitmap_get_bit(&policydb.user_val_to_struct[iu]->roles, ir)) {
+				fc.user = iu + 1;
+				for (constraint = p->sca->constraints;
+				    constraint != NULL;
+				    constraint = constraint->next) {
+					if ((constraint->permissions & COMMON_FILE__RELABELTO) &&
+					    !constraint_expr_eval(p->scon, &fc, constraint->expr))
+						break;
+				}
 
-		  if (constraint == NULL && 0 == sidtab_context_to_sid (&sidtab, &fc, &sid))
-		    {
-		      /* passed all checks, add to list */
-		      if (p->numsids == p->maxsids)
-			{
-			  p->maxsids += 16;
-			  security_id_t *sids = kmalloc (sizeof (security_id_t) * p->maxsids, GFP_KERNEL);
-			  memcpy (sids, p->sids, sizeof (security_id_t) * p->numsids);
-			  kfree (p->sids);
-			  p->sids = sids;
+				if (constraint == NULL &&
+				    sidtab_context_to_sid(&sidtab, &fc, &sid) == 0) {
+					/* passed all checks, add to list */
+					if (p->numsids == p->maxsids) {
+						security_id_t *sids;
+
+						p->maxsids += 16;
+						sids = kmalloc(sizeof(security_id_t) * p->maxsids, GFP_KERNEL);
+						memcpy(sids, p->sids,
+						    sizeof(security_id_t) * p->numsids);
+						kfree(p->sids);
+						p->sids = sids;
+					}
+					p->sids[p->numsids++] = sid;
+				}
 			}
-		      p->sids[p->numsids++] = sid;
-		    }
 		}
-	  }
-    }
+	}
 
-  return 0;
+	return 0;
 }
 
-int security_get_file_sids (security_id_t user,
-			    security_class_t sclass,
-			    security_id_t **sids,
-			    int *numsids)
+int security_get_file_sids(security_id_t user,
+			   security_class_t sclass,
+			   security_id_t **sids,
+			   int *numsids)
 {
-  struct context *scontext = sidtab_search(&sidtab, user);
+	struct context *scontext = sidtab_search(&sidtab, user);
 
-  if (scontext == NULL)
-    goto out_err;
+	if (scontext == NULL)
+		goto out_err;
 
-  struct getfilesids p;
-  p.scon = scontext;
-  p.sclass = sclass;
-  if (!sclass || sclass > policydb.p_classes.nprim)
-    goto out_err;
-  p.sca = policydb.class_val_to_struct[sclass - 1];
-  p.maxsids = 32;
-  p.sids = kmalloc (sizeof (security_id_t) * p.maxsids, GFP_KERNEL);
-  p.numsids = 0;
-  avtab_map (&policydb.te_avtab, getfilesids1, &p);
-  *sids = p.sids;
-  *numsids = p.numsids;
-  return 0;
+	struct getfilesids p;
+	p.scon = scontext;
+	p.sclass = sclass;
+	if (!sclass || sclass > policydb.p_classes.nprim)
+		goto out_err;
+	p.sca = policydb.class_val_to_struct[sclass - 1];
+	p.maxsids = 32;
+	p.sids = kmalloc(sizeof(security_id_t) * p.maxsids, GFP_KERNEL);
+	p.numsids = 0;
+	avtab_map(&policydb.te_avtab, getfilesids1, &p);
+	*sids = p.sids;
+	*numsids = p.numsids;
+	return 0;
 
- out_err:
-  *numsids = 0;
-  *sids = NULL;
-  return EINVAL;
+out_err:
+	*numsids = 0;
+	*sids = NULL;
+	return EINVAL;
 }
 
 /**
@@ -1631,7 +1645,7 @@ int security_get_bool_string(int *len, char *out)
 	return err;
 }
 
-int security_get_bools(int *len, char ***names, int **values)
+static __unused int security_get_bools(int *len, char ***names, int **values)
 {
 	int i, rc = ENOMEM;
 
@@ -1681,7 +1695,7 @@ err:
 
 int security_commit_pending_bools(void)
 {
-	int i, rc = 0, seqno;
+	int i, rc = 0, seqno = 0;
 	struct cond_node *cur;
 
 	POLICY_WRLOCK;
@@ -1746,7 +1760,7 @@ int security_get_bool(char *name, int *value, int *pending)
 	return (ENOENT);
 }
 
-int security_set_bools(int len, int *values)
+static __unused int security_set_bools(int len, int *values)
 {
 	int i, rc = 0;
 	int lenp, seqno = 0;
@@ -1791,7 +1805,7 @@ out:
 	return rc;
 }
 
-int security_get_bool_value(int bool)
+static __unused int security_get_bool_value(int bool)
 {
 	int rc = 0;
 	int len;
@@ -1862,18 +1876,16 @@ int security_fs_sid(char *name,
 
 #endif
 
-static const char *findperm (struct hashtab *h, access_vector_t perm)
+static const char *findperm(struct hashtab *h, access_vector_t perm)
 {
 	int i;
 	struct hashtab_node *cur;
 
 	for (i = 0; i < h->size; i++) {
-	  cur = h->htable[i];
-	  while (cur != NULL) {
-	    if (perm == ((struct perm_datum *) cur->datum)->value - 1)
-	      return (const char *) cur->key;
-	    cur = cur->next;
-	  }
+		for (cur = h->htable[i]; cur != NULL; cur = cur->next) {
+			if (perm == ((struct perm_datum *)cur->datum)->value - 1)
+				return (const char *)cur->key;
+		}
 	}
 
 	return NULL;
@@ -1887,6 +1899,8 @@ static const char *findperm (struct hashtab *h, access_vector_t perm)
 void avc_dump_av(security_class_t tclass, access_vector_t av)
 {
 	char **common_pts = 0;
+	struct class_datum  *cls;
+	struct common_datum *clb;
 	access_vector_t common_base = 0, perm;
 	int i, i2;
 
@@ -1895,33 +1909,31 @@ void avc_dump_av(security_class_t tclass, access_vector_t av)
 		return;
 	}
 
-	struct class_datum  *cls = policydb.class_val_to_struct[tclass-1];
-	struct common_datum *clb = cls->comdatum;
+	cls = policydb.class_val_to_struct[tclass-1];
+	clb = cls->comdatum;
 
 	printk(" {");
-	i = 0;
-	perm = 1;
-	while (i < sizeof(av) * 8) {
-	  if (perm & av) {
-	    const char *pstr = findperm (cls->permissions.table, i);
-	    if (!pstr && clb)
-	      pstr = findperm (clb->permissions.table, i);
-	    if (!pstr)
-	      printk (" %s:%d", policydb.p_class_val_to_name[tclass-1], i);
-	    else
-	      printk (" %s", pstr);
-	  }
-	  i++;
-	  perm <<= 1;
+	for (i = 0, perm = 1; i < sizeof(av) * 8; i++, perm <<= 1) {
+		if (perm & av) {
+			const char *pstr;
+			
+			pstr = findperm(cls->permissions.table, i);
+			if (!pstr && clb)
+				pstr = findperm(clb->permissions.table, i);
+			if (!pstr)
+				printk(" %s:%d",
+				    policydb.p_class_val_to_name[tclass-1], i);
+			else
+				printk(" %s", pstr);
+		}
 	}
 
-	printk (" }");
+	printk(" }");
 }
 
-const char *security_class_to_string (int tclass)
+const char *security_class_to_string(int tclass)
 {
-  if (tclass > policydb.p_classes.nprim)
-    return "unknown";
-  else
-    return policydb.p_class_val_to_name[tclass-1];
+	if (tclass > policydb.p_classes.nprim)
+		return "unknown";
+	return policydb.p_class_val_to_name[tclass-1];
 }

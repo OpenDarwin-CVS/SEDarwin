@@ -40,13 +40,13 @@
 #include <sedarwin/flask_types.h>
 
 #define SELINUX_MAGIC 0xf97cff8c
-#define SEBSD_ID_STRING			"sebsd"
+#define	SEBSD_ID_STRING			"sebsd"
 #define	SEBSD_MAC_EXTATTR_NAME		"sebsd"
 #define	SEBSD_MAC_EXTATTR_NAMESPACE	EXTATTR_NAMESPACE_SYSTEM
-#define SEBSD_MAC_LABEL_NAMESPACES	"sebsd"
-#define SEBSD_MAC_LABEL_NAME_COUNT	1
+#define	SEBSD_MAC_LABEL_NAMESPACES	"sebsd"
+#define	SEBSD_MAC_LABEL_NAME_COUNT	1
 
-extern int avc_debug_always_allow;
+extern int	avc_debug_always_allow;
 
 #if defined(_KERNEL) || defined (KERNEL)
 

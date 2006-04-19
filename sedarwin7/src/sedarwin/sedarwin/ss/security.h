@@ -94,7 +94,7 @@ int security_genfs_sid(const char *fstype, char *name, security_class_t sclass,
 #define security_free_context(ctx) ({ if (ctx) free(ctx, M_SEBSD); })
 
 int security_get_bool_string(int *len, char *out);
-int security_commit_pending_bools();
+int security_commit_pending_bools(void);
 int security_set_bool(char *name, int value);
 int security_get_bool(char *name, int *value, int *pending);
 

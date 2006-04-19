@@ -22,8 +22,8 @@
 
 struct lpargs
 {
-  int   size;
-  void *data;
+	int   size;
+	void *data;
 };
 
 extern kmod_info_t *kmod;
@@ -62,19 +62,19 @@ int security_init(void)
 	policy_len = *(size_t *) tmp;
 
 #else
-	if (!preload_find_data ("sebsd_policy", &policy_len, &policy_data))
-	  goto loaderr;
+	if (!preload_find_data("sebsd_policy", &policy_len, &policy_data))
+		goto loaderr;
 #endif
 
 	printf("security:  reading policy configuration\n");
 
-	rc = security_load_policy (policy_data, policy_len);
+	rc = security_load_policy(policy_data, policy_len);
 	if (rc) {
 		printf("security:  error while reading policy, cannot initialize.\n");
 		return EINVAL;
 	}
 	
-	return rc;
+	return 0;
 
 loaderr:
 	printf("security:  policy not supplied by bootloader\n");

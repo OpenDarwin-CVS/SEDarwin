@@ -84,7 +84,7 @@ int ebitmap_cpy(struct ebitmap *dst, struct ebitmap *src)
 
 	ebitmap_init(dst);
 	n = src->node;
-	prev = 0;
+	prev = NULL;
 	while (n) {
 		new = kmalloc(sizeof(*new), GFP_ATOMIC);
 		if (!new) {

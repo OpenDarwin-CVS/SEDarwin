@@ -41,6 +41,7 @@ struct sidtab {
 
 int sidtab_init(struct sidtab *s);
 int sidtab_insert(struct sidtab *s, security_id_t sid, struct context *context);
+int sidtab_remove(struct sidtab *s, security_id_t sid);
 struct context *sidtab_search(struct sidtab *s, security_id_t sid);
 
 int sidtab_map(struct sidtab *s,

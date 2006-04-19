@@ -88,7 +88,7 @@ static inline void mls_context_destroy(struct context *c)
 
 static inline void context_init(struct context *c)
 {
-	bzero(c, sizeof(*c));
+	memset(c, 0, sizeof(*c));
 }
 
 static inline int context_cpy(struct context *dst, struct context *src)

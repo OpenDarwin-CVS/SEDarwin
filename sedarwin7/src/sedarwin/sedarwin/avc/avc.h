@@ -20,10 +20,14 @@
 #include <sys/capability.h>
 #endif
 
+#include <netinet/in.h> 
+
 #include <sedarwin/flask.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/avc/av_permissions.h>
 #include <sedarwin/ss/security.h>
+
+extern int selinux_auditing;
 
 #define CONFIG_SECURITY_SELINUX_DEVELOP
 
@@ -66,8 +70,20 @@ struct avc_audit_data {
 		} fs;
 		struct {
 			char *netif;
+			struct sock *sk;
+			u16 family;
 			u16 port;
-			u32 daddr;
+			u16 sport;
+			union {
+				struct {
+					u32 daddr;
+					u32 saddr;
+				} v4;
+				struct {
+					struct in6_addr daddr;
+					struct in6_addr saddr;
+				} v6;
+			} fam;
 		} net;
 #ifdef CAPABILITIES
 		cap_value_t cap;
@@ -111,7 +127,6 @@ void avc_dump_cache(char *tag);
  * AVC operations
  */
 
-/* Initialize the AVC */
 void avc_init(void);
 
 int avc_lookup(
@@ -163,5 +178,5 @@ int avc_add_callback(int (*callback)(u32 event, security_id_t ssid, security_id_
 		     u32 events, security_id_t ssid, security_id_t tsid,
 		     security_class_t tclass, access_vector_t perms);
 
-#endif /* _LINUX_AVC_H_ */
+#endif /* _SELINUX_AVC_H_ */
 

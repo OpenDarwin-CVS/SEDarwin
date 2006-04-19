@@ -35,6 +35,7 @@
 #include <kern/lock.h>
 #endif
 
+int selinux_auditing = 1;
 int selinux_enforcing = 0;
 
 #define AVC_CACHE_SLOTS		512
@@ -98,7 +99,7 @@ static inline void avc_cache_stats_incr(int type)
 }
 
 static inline void avc_cache_stats_add(int type, unsigned val)
-
+{
 	avc_cache_stats[type] += val;
 }
 #else
@@ -110,6 +111,7 @@ static inline void avc_cache_stats_add(int type, unsigned val)
 #endif
 
 #if 0
+/* XXXMAC - moved to services.c */
 /**
  * avc_dump_av - Display an access vector in human-readable form.
  * @tclass: target security class
@@ -189,7 +191,7 @@ void avc_dump_query(security_id_t ssid, security_id_t tsid, security_class_t tcl
 		printk(" tcontext=%s", scontext);
 		kfree(scontext);
 	}
-	printk(" tclass=%s", security_class_to_string (tclass));
+	printk(" tclass=%s", security_class_to_string(tclass));
 }
 
 /**
@@ -200,6 +202,8 @@ void avc_dump_query(security_id_t ssid, security_id_t tsid, security_class_t tcl
 void avc_init(void)
 {
 	struct avc_node	*new;
+	size_t evsize;
+	char *ev;
 	int i;
 
 	for (i = 0; i < AVC_NSTATS; i++)
@@ -237,11 +241,9 @@ void avc_init(void)
 	mtx_init(&avc_log_lock, "SEBSD message lock", NULL, MTX_DEF);
 #endif
 
-	size_t  evsize;
-	char   *ev;
 	if (preload_find_data ("sebsd_enforce", &evsize, &ev)) {
-	  if (evsize > 0 && ev[0] == '1')
-	    selinux_enforcing = 1;
+		if (evsize > 0 && ev[0] == '1')
+			selinux_enforcing = 1;
 	}
 }
 
@@ -535,6 +537,17 @@ out:
 
 static inline int check_avc_ratelimit(void)
 {
+
+	/*
+	 * If auditing is not enabled, suppress all messages.
+	 */
+	if (!selinux_auditing)
+		return 0;
+
+	/*
+	 * Otherwise, rate limit messages in enforcing mode, or display all
+	 * messages in permissive mode.
+	 */
 	if (selinux_enforcing)
 		return avc_ratelimit();
 	else {

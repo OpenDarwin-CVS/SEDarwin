@@ -102,7 +102,7 @@ static struct policydb_compat_info *policydb_lookup_compat(int version)
 /*
  * Initialize the role table.
  */
-int roles_init(struct policydb *p)
+static int roles_init(struct policydb *p)
 {
 	char *key = NULL;
 	int rc;
@@ -483,7 +483,7 @@ static int (*destroy_f[SYM_NUM]) (void *key, void *datum, void *datap) =
 	cond_destroy_bool
 };
 
-void ocontext_destroy(struct ocontext *c, int i)
+static void ocontext_destroy(struct ocontext *c, int i)
 {
 	context_destroy(&c->context[0]);
 	context_destroy(&c->context[1]);
