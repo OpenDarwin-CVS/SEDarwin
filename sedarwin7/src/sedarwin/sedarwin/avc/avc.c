@@ -185,7 +185,7 @@ void avc_dump_query(u32 ssid, u32 tsid, u16 tclass)
 		printk(" tcontext=%s", scontext);
 		kfree(scontext);
 	}
-	printk(" tclass=%s", class_to_string(tclass));
+	printk(" tclass=%s", security_class_to_string(tclass));
 }
 
 /**
