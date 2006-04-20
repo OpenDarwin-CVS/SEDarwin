@@ -48,8 +48,11 @@
 
 #include <sys/types.h>			/* NOTE: mach sys/types, not BSD one. */
 #include <sys/lock.h>			/* For atomic operation protos */
-#include <machine/endian.h>		/* We need to explicitly include */
-#include <architecture/byte_order.h>	/* byte order includes for mach. */
+#ifdef KERNEL
+#include <libkern/OSByteOrder.h>
+#else
+#include <architecture/byte_order.h>
+#endif
 
 typedef u_int64_t u64;
 typedef u_int64_t __le64;
@@ -71,12 +74,12 @@ typedef u_int8_t  u8;
 #define	le32_to_cpu(x)	((__uint32_t)(x))
 #define	le64_to_cpu(x)	((__uint64_t)(x))
 #elif BYTE_ORDER == BIG_ENDIAN
-#define	cpu_to_le16(x)	NXSwapHostShortToLittle(x)
-#define	cpu_to_le32(x)	NXSwapHostLongToLittle(x)
-#define	cpu_to_le64(x)	NXSwapHostLongLongToLittle(x)
-#define	le16_to_cpu(x)	NXSwapLittleShortToHost(x)
-#define	le32_to_cpu(x)	NXSwapLittleLongToHost(x)
-#define	le64_to_cpu(x)	NXSwapLittleLongLongToHost(x)
+#define	cpu_to_le16(x)	OSSwapInt16(x)
+#define	cpu_to_le32(x)	OSSwapInt32(x)
+#define	cpu_to_le64(x)	OSSwapInt64(x)
+#define	le16_to_cpu(x)	OSSwapInt16(x)
+#define	le32_to_cpu(x)	OSSwapInt32(x)
+#define	le64_to_cpu(x)	OSSwapInt64(x)
 #else
 #error unsupported BYTE_ORDER
 #endif /* BYTE_ORDER */

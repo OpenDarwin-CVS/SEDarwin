@@ -33,7 +33,7 @@ MANOWN= $(EXPORT_OWNER)
 MANGRP= $(EXPORT_OWNER)
 BINDIR= /usr/bin
 
-DARWIN_HDRS = -I$(EXPORT_HDRS)/bsd -I$(EXPORT_HDRS)/osfmk -I$(EXPORT_HDRS)
+DARWIN_HDRS = -I$(EXPORT_HDRS)/bsd -I$(EXPORT_HDRS)/osfmk -I$(EXPORT_HDRS)/libkern -I$(EXPORT_HDRS)
 LIBMAC = -L$(DARWIN_ROOT)/libmac -lmac
 LIBEXTATTR = -L$(DARWIN_ROOT)/libextattr -lextattr
 LIBBSM = -L$(DARWIN_ROOT)/bsm/bsm/lib -lbsm
