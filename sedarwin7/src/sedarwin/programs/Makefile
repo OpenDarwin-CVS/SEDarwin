@@ -1,24 +1,24 @@
-include ../../Makeconfig
-
 SUBDIR= checkpolicy \
-	loadpolicy \
+	genhomedircon \
+	load_policy \
 	newrole \
-	relabel_gui
+	setfiles \
+	setsebool \
+	semodule \
+	semodule_expand \
+	semodule_link \
+	semodule_package \
+	relabel_gui \
+	restorecon
 
-all:
-	cd checkpolicy ; gnumake
-	cd loadpolicy ; gnumake
-	cd newrole ; gnumake
-	cd relabel_gui ; gnumake
+.PHONY: $(SUBDIR) all install clean
 
-clean:
-	cd checkpolicy ; gnumake clean
-	cd loadpolicy ; gnumake clean
-	cd newrole ; gnumake clean
-	cd relabel_gui ; gnumake clean
+all: $(SUBDIR)
 
-install:
-	cd checkpolicy ; gnumake install
-	cd loadpolicy ; gnumake install
-	cd newrole ; gnumake install
-	cd relabel_gui ; gnumake install
+$(SUBDIR):
+	$(MAKE) -w -C $@
+
+install clean:
+	for dir in $(SUBDIR); do \
+		$(MAKE) -w -C $$dir $@; \
+	done

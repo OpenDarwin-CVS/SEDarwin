@@ -1,21 +1,20 @@
 include ../../../Makeconfig
 
 POLICYCOREUTILS=../../policycoreutils
-VPATH = $(POLICYCOREUTILS)/newrole
+VPATH = $(POLICYCOREUTILS)/restorecon
 
-PROG= newrole
-MAN1= $(POLICYCOREUTILS)/newrole/newrole.1
+PROG= restorecon
+MAN8= $(POLICYCOREUTILS)/restorecon/restorecon.8
 
-OBJS= newrole.o
+OBJS= restorecon.o
 
-CFLAGS+= -DPACKAGE="\"policycoreutils\"" -DVERSION="\"1.30\""
-CFLAGS+= -DUSE_PAM
-CFLAGS+= -I$(EXPORT_HDRS)/bsd -idirafter $(EXPORT_HDRS)/osfmk
+CFLAGS+= -I$(SOURCE_ROOT)/sedarwin/compat
 CFLAGS+= -I$(SOURCE_ROOT)/sedarwin/libselinux/include
+CFLAGS+= -I$(SOURCE_ROOT)/sedarwin/libsecompat
 LDADD+= -L$(SOURCE_ROOT)/sedarwin/libselinux/src 
 LDADD+= -L$(SOURCE_ROOT)/sedarwin/libsepol/src
 LDADD+= -L$(SOURCE_ROOT)/sedarwin/libsecompat
-LDADD+= -lselinux -lsepol -lsecompat -lsecompat $(LIBMAC) -lpam
+LDADD+= -lselinux -lsepol -lsecompat $(LIBMAC)
 
 
 all: $(PROG)
@@ -23,9 +22,9 @@ all: $(PROG)
 $(PROG): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDADD)
 
-install: $(PROG) $(MAN1)
+install: $(PROG) $(MAN8)
 	install -m 555 $(PROG) $(DESTDIR)/usr/bin
-	install -m 444 $(MAN1) $(DESTDIR)/usr/share/man/man1
+	install -m 444 $(MAN8) $(DESTDIR)/usr/share/man/man8
 
 clean:
 	rm -f $(OBJS) $(PROG)
