@@ -15,6 +15,8 @@
 #include <sys/malloc.h>
 #include <sys/systm.h>
 
+#include <kern/lock.h>
+
 #include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/ss/global.h>
@@ -34,6 +36,12 @@ int security_init(void)
 	if (!preload_find_data("sebsd_policy", &policy_len, &policy_data))
 		goto loaderr;
 
+#ifdef __APPLE__
+	/* Initialize security server locks. */
+	policy_rwlock = lock_alloc(TRUE, ETAP_NO_TRACE, ETAP_NO_TRACE);
+	load_sem = mutex_alloc(ETAP_NO_TRACE);
+#endif
+
 	printf("security:  reading policy configuration\n");
 
 	rc = security_load_policy(policy_data, policy_len);
@@ -41,7 +49,7 @@ int security_init(void)
 		printf("security:  error while reading policy, cannot initialize.\n");
 		return EINVAL;
 	}
-	
+
 	return 0;
 
 loaderr:

@@ -35,35 +35,17 @@
 #include <sedarwin/avc/avc.h>
 #include <sedarwin/avc/avc_ss.h>
 #include <sys/socket.h>
+#include <kern/lock.h>
 
-#ifdef __FreeBSD__
+lock_t *policy_rwlock;
+#define POLICY_RDLOCK lock_read(policy_rwlock)
+#define POLICY_WRLOCK lock_write(policy_rwlock)
+#define POLICY_RDUNLOCK lock_read_done(policy_rwlock)
+#define POLICY_WRUNLOCK lock_write_done(policy_rwlock)
 
-#include <sys/rwlock.h>
-#include <sys/proc.h>
-
-static struct rwlock policy_rwlock;
-#define POLICY_RDLOCK rw_rlock(&policy_rwlock)
-#define POLICY_WRLOCK rw_wlock(&policy_rwlock)
-#define POLICY_RDUNLOCK rw_runlock(&policy_rwlock)
-#define POLICY_WRUNLOCK rw_wunlock(&policy_rwlock)
-
-RW_SYSINIT(policy_rwlock, &policy_rwlock, "SEBSD policy lock");
-
-static struct mtx load_sem;
-#define LOAD_LOCK mtx_lock(&load_sem)
-#define LOAD_UNLOCK mtx_unlock(&load_sem)
-
-MTX_SYSINIT(load_sem, &load_sem, "SEBSD policy load lock", MTX_DEF);
-
-#else
-/* XXX - define locking for Darwin */
-#define POLICY_RDLOCK 
-#define POLICY_WRLOCK 
-#define POLICY_RDUNLOCK
-#define POLICY_WRUNLOCK
-#define LOAD_LOCK
-#define LOAD_UNLOCK
-#endif
+mutex_t *load_sem;
+#define LOAD_LOCK mutex_lock(load_sem)
+#define LOAD_UNLOCK mutex_unlock(load_sem)
 
 struct sidtab sidtab;
 struct policydb policydb;
