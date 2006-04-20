@@ -1,0 +1,81 @@
+.TH "semanage" "8" "2005111103" "" ""
+.SH "NAME"
+semanage \- SELinux Policy Management tool
+
+.SH "SYNOPSIS"
+.B semanage {login|user|port|interface|fcontext|translation} \-l [\-n]
+.br
+.B semanage login \-{a|d|m} [\-sr] login_name
+.br
+.B semanage user \-{a|d|m} [\-LrR] selinux_name
+.br
+.B semanage port \-{a|d|m} [\-tr] [\-p protocol] port | port_range
+.br
+.B semanage interface \-{a|d|m} [\-tr] interface_spec
+.br
+.B semanage fcontext \-{a|d|m} [\-frst] file_spec
+.br
+.B semanage translation \-{a|d|m} [\-T] level
+.P
+
+This tool is used to configure SELinux policy
+
+.SH "DESCRIPTION"
+This manual page describes the
+.BR semanage
+program.
+.br
+This tool is used to configure SELinux Policy.  You can configure SELinux User Mappings, SELinux Port Mappings, SELinux Users. File Context and Network Interfaces and MLS/MCS Translations.
+
+.SH "OPTIONS"
+.TP
+.I                \-a, \-\-add        
+Add a OBJECT record NAME
+.TP
+.I                \-d, \-\-delete     
+Delete a OBJECT record NAME
+.TP
+.I                \-f, \-\-ftype
+File Type.   This is used with fcontext.
+Requires a file type as shown in the mode field by ls, e.g. use -d to match only directories or -- to match only regular files.
+.TP
+.I                \-h, \-\-help       
+display this message
+.TP
+.I                \-l, \-\-list       
+List the OBJECTS
+.TP
+.I                \-L, \-\-level
+Default SELinux Level for SELinux use, s0 Default. (MLS/MCS Systems only)
+.TP
+.I                \-m, \-\-modify     
+Modify a OBJECT record NAME
+.TP
+.I                \-n, \-\-noheading  
+Do not print heading when listing OBJECTS.
+.TP
+.I                \-p, \-\-proto
+Protocol for the specified port (tcp|udp).
+.TP
+.I                \-r, \-\-range      
+MLS/MCS Security Range (MLS/MCS Systems only)
+.TP
+.I                \-R, \-\-role
+SELinux Roles.  You must enclose multiple roles within quotes, separate by spaces. Or specify \-R multiple times.
+.TP
+.I                \-s, \-\-seuser     
+SELinux user name
+.TP
+.I                \-t, \-\-type       
+SELinux Type for the object
+.TP
+.I                \-T, \-\-trans
+SELinux Translation
+.TP
+.I                \-v, \-\-verbose    
+verbose output
+
+.SH "AUTHOR"
+This man page was written by Daniel Walsh <dwalsh@redhat.com> and
+Russell Coker <rcoker@redhat.com>.
+

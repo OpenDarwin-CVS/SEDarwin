@@ -1,0 +1,292 @@
+#! /usr/bin/env python
+# Copyright (C) 2005 Red Hat 
+# see file 'COPYING' for use and warranty information
+#
+# semanage is a tool for managing SELinux configuration files
+#
+#    This program is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License as
+#    published by the Free Software Foundation; either version 2 of
+#    the License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA     
+#                                        02111-1307  USA
+#
+#  
+import os, sys, getopt
+import seobject
+import selinux
+
+is_mls_enabled=selinux.is_selinux_mls_enabled()
+
+if __name__ == '__main__':
+
+	def usage(message = ""):
+		print '\
+semanage {login|user|port|interface|fcontext|translation} -l [-n] \n\
+semanage login -{a|d|m} [-sr] login_name\n\
+semanage user -{a|d|m} [-LrR] selinux_name\n\
+semanage port -{a|d|m} [-tr] [ -p protocol ] port | port_range\n\
+semanage interface -{a|d|m} [-tr] interface_spec\n\
+semanage fcontext -{a|d|m} [-frst] file_spec\n\
+semanage translation -{a|d|m} [-T] level\n\n\
+\
+Primary Options:\n\
+\
+	-a, --add        Add a OBJECT record NAME\n\
+	-d, --delete     Delete a OBJECT record NAME\n\
+	-m, --modify     Modify a OBJECT record NAME\n\
+	-l, --list       List the OBJECTS\n\n\
+\
+	-h, --help       Display this message\n\
+	-n, --noheading  Do not print heading when listing OBJECTS\n\n\
+\
+Object-specific Options (see above):\n\
+	-f, --ftype      File Type of OBJECT \n\
+		"" (all files) \n\
+		-- (regular file) \n\
+		-d (directory) \n\
+		-c (character device) \n\
+		-b (block device) \n\
+		-s (socket) \n\
+		-l (symbolic link) \n\
+		-p (named pipe) \n\n\
+\
+	-p, --proto      Port protocol (tcp or udp)\n\
+	-L, --level      Default SELinux Level (MLS/MCS Systems only)\n\
+	-R, --roles      SELinux Roles (ex: "sysadm_r staff_r")\n\
+	-T, --trans      SELinux Level Translation\n\n\
+\
+	-s, --seuser     SELinux User Name\n\
+	-t, --type       SELinux Type for the object\n\
+	-r, --range      MLS/MCS Security Range (MLS/MCS Systems only\n\
+'
+		print message
+		sys.exit(1)
+		
+	def errorExit(error):
+		sys.stderr.write("%s: " % sys.argv[0])
+		sys.stderr.write("%s\n" % error)
+		sys.stderr.flush()
+		sys.exit(1)
+
+	def get_options():
+		valid_option={}
+		valid_everyone=[ '-a', '--add', '-d', '--delete', '-m', '--modify', '-l', '--list', '-h', '--help', '-n', '--noheading' ]
+		valid_option["login"] = []
+		valid_option["login"] += valid_everyone + [ '-s', '--seuser', '-r', '--range']
+		valid_option["user"] = []
+		valid_option["user"] += valid_everyone + [ '-L', '--level', '-r', '--range', '-R', '--roles' ] 
+		valid_option["port"] = []
+		valid_option["port"] += valid_everyone + [ '-t', '--type', '-r', '--range', '-p', '--protocol' ] 
+		valid_option["interface"] = []
+		valid_option["interface"] += valid_everyone + [ '-t', '--type', '-r', '--range'] 
+		valid_option["fcontext"] = []
+		valid_option["fcontext"] += valid_everyone + [ '-f', '--ftype', '-s', '--seuser',  '-t', '--type', '-r', '--range'] 
+		valid_option["translation"] = []
+		valid_option["translation"] += valid_everyone + [ '-T', '--trans' ] 
+		return valid_option
+
+	#
+	# 
+	#
+	try:
+		input = sys.stdin
+		output = sys.stdout
+		serange = ""
+		port = ""
+		proto = ""
+		selevel = ""
+		setype = ""
+		ftype = ""
+		setrans = ""
+		roles = ""
+		seuser = ""
+		heading=1
+
+		add = 0
+		modify = 0
+		delete = 0
+		list = 0
+		if len(sys.argv) < 3:
+			usage("Requires 2 or more arguments")
+			
+		object = sys.argv[1]
+		option_dict=get_options()
+		if object not in option_dict.keys():
+			usage("%s not defined" % object)
+			
+		args = sys.argv[2:]
+
+		gopts, cmds = getopt.getopt(args,
+					    'adf:lhmnp:s:R:L:r:t:T:',
+					    ['add',
+					     'delete',
+					     'ftype=',
+					     'help',
+					     'list', 
+					     'modify',
+					     'noheading',
+					     'proto=',
+					     'seuser=',
+					     'range=',
+					     'level=',
+					     'roles=',
+					     'type=',
+					     'trans='
+					     ])
+		for o, a in gopts:
+			if o not in option_dict[object]:
+				sys.stderr.write("%s not valid for %s objects\n" % ( o, object) );
+				
+		for o,a in gopts:
+			if o == "-a" or o == "--add":
+				if modify or delete:
+					usage()
+				add = 1
+				
+			if o == "-d"  or o == "--delete":
+				if modify or add:
+					usage()
+				delete = 1
+			if o == "-f"  or o == "--ftype":
+				ftype=a
+			if o == "-h" or o == "--help":
+				usage()
+
+			if o == "-n" or o == "--noheading":
+				heading=0
+
+			if o == "-m"or o == "--modify":
+				if delete or add:
+					usage()
+				modify = 1
+				
+			if o == "-r" or o == '--range':
+				if is_mls_enabled == 0:
+					errorExit("range not supported on Non MLS machines")
+				serange = a
+
+			if o == "-l" or o == "--list":
+				list = 1
+
+			if o == "-L" or o == '--level':
+				if is_mls_enabled == 0:
+					errorExit("range not supported on Non MLS machines")
+				selevel = a
+
+			if o == "-p" or o == '--proto':
+				proto = a
+
+			if o == "-R" or o == '--roles':
+				roles = roles + " " + a
+
+			if o == "-s" or o == "--seuser":
+				seuser = a
+
+			if o == "-t" or o == "--type":
+				setype = a
+
+			if o == "-T" or o == "--trans":
+				setrans = a
+
+		if object == "login":
+			OBJECT = seobject.loginRecords()
+
+		if object == "user":
+			OBJECT = seobject.seluserRecords()
+
+		if object == "port":
+			OBJECT = seobject.portRecords()
+		
+		if object == "interface":
+			OBJECT = seobject.interfaceRecords()
+		
+		if object == "fcontext":
+			OBJECT = seobject.fcontextRecords()
+		
+		if object == "translation":
+			OBJECT = seobject.setransRecords()
+		
+		if list:
+			OBJECT.list(heading)
+			sys.exit(0);
+			
+		if len(cmds) != 1:
+			usage()
+
+		target = cmds[0]
+
+		if add:
+			if object == "login":
+				OBJECT.add(target, seuser, serange)
+
+			if object == "translation":
+				OBJECT.add(target, setrans)
+
+			if object == "user":
+				rlist = roles.split()
+				if len(rlist) == 0:
+					raise ValueError("You must specify a role")
+				OBJECT.add(target, rlist, selevel, serange)
+
+			if object == "port":
+				OBJECT.add(target, proto, serange, setype)
+
+			if object == "interface":
+				OBJECT.add(target, serange, setype)
+
+			if object == "fcontext":
+				OBJECT.add(target, setype, ftype, serange, seuser)
+			sys.exit(0);
+			
+		if modify:
+			if object == "login":
+				OBJECT.modify(target, seuser, serange)
+
+			if object == "translation":
+				OBJECT.modify(target, setrans)
+
+			if object == "user":
+				rlist = roles.split()
+				OBJECT.modify(target, rlist, selevel, serange)
+
+			if object == "port":
+				OBJECT.modify(target, proto, serange, setype)
+
+			if object == "interface":
+				OBJECT.modify(target, serange, setype)
+
+			if object == "fcontext":
+				OBJECT.modify(target, setype, ftype, serange, seuser)
+
+			sys.exit(0);
+
+		if delete:
+			if object == "port":
+				OBJECT.delete(target, proto)
+
+			elif object == "fcontext":
+				OBJECT.delete(target, ftype)
+
+			else:
+				OBJECT.delete(target)
+
+			sys.exit(0);
+		usage()
+			
+	except getopt.error, error:
+		errorExit("Options Error " + error.msg)
+	except ValueError, error:
+		errorExit(error.args[0])
+	except IOError, error:
+		errorExit(error.args[1])
+	except KeyboardInterrupt, error:
+		sys.exit(0)

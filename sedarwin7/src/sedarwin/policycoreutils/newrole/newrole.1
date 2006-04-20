@@ -1,0 +1,72 @@
+.TH NEWROLE "1" "October 2000" "Security Enhanced Linux" NSA
+.SH NAME
+newrole \- run a shell with a new role
+.SH SYNOPSIS
+.B newrole
+[\fB-r\fR|\fB--role\fR]
+\fIROLE\fR
+[\fB-t\fR|\fB--type\fR]
+\fITYPE\fR
+[\fB-l\fR|\fB--level\fR]
+\fILEVEL\fR [-- [\fIARGS\fR]...]
+.SH DESCRIPTION
+.PP
+Run a new shell in a new context.  The new context is derived from the 
+old context in which
+.B newrole
+is originally executed.  If the
+.B -r
+or
+.B --role
+option is specified, then the new context will have the role specified by
+\fIROLE\fR.
+If the 
+.B -t
+or
+.B --type
+option is specified, then the new context will have the type (domain)
+specified by
+\fITYPE\fR.
+If a role is specified, but no type is specified, the default type is derived
+from the specified role.  If the
+.B -l
+or
+.B --level
+option is specified, then the new context will have the sensitivity level
+specified by
+\fILEVEL\fR.
+If
+\fILEVEL\fR
+is a range, the new context will have the sensitivity level and clearance
+specified by that range.
+.PP
+Additional arguments
+.I ARGS
+may be provided after a -- option,
+in which case they are supplied to the new shell.
+In particular, an argument of -- -c will cause the next argument to be
+treated as a command by most command interpreters.
+.PP
+The new shell will be the shell specified in the user's entry in the 
+.I /etc/passwd
+file.
+.PP
+The
+.B -V
+or 
+.B --version
+shows the current version of newrole
+.PP
+.SH FILES
+/etc/passwd - user account information
+.br
+/etc/shadow - encrypted passwords and age information
+.SH SEE ALSO
+.B su
+(1),
+.B runas
+(1)
+.SH AUTHORS
+.nf
+Tim Fraser (tfraser@tislabs.com) 
+Anthony Colatrella (amcolat@epoch.ncsc.mil)

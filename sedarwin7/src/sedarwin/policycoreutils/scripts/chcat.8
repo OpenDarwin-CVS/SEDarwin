@@ -1,0 +1,54 @@
+.TH CHCAT "8" "September 2005" "chcat" "User Commands"
+.SH NAME
+chcat \- change file security category
+.SH SYNOPSIS
+.B chcat
+\fICATEGORY FILE\fR...
+.br
+.B chcat -l 
+\fICATEGORY USER\fR...
+.br
+.B chcat
+\fI[[+|-]CATEGORY],...]  FILE\fR...
+.br
+.B chcat -l 
+\fI[[+|-]CATEGORY],...]  USER\fR...
+.br
+.B chcat
+[\fI-d\fR] \fIFILE\fR...
+.br
+.B chcat -l 
+[\fI-d\fR] \fIUSER\fR...
+.br
+.B chcat
+\fI-L\fR [-l] [ USER ... ] 
+.br
+.PP
+Change/Remove the security CATEGORY for each FILE/USER.
+.PP
+Use +/- to add/remove categories from a FILE/USER.
+.PP
+.B
+Note:
+When removing a category you must specify '--' on the command line before using the -Category syntax.  This tells the command that you have finished entering options and are now specifying a category name instead.
+
+.TP
+\fB\-d\fR
+delete the category from each FILE/USER.
+.TP
+\fB\-L\fR
+list available categories.
+.TP
+\fB\-l\fR
+Tells chcat to operate on users instead of files.
+.SH "SEE ALSO"
+.TP
+chcon(1), selinux(8), semanage(8)
+.PP
+.br
+When operating on files this script wraps the chcon command.
+.SH "FILES"
+/etc/selinux/{SELINUXTYPE}/setrans.conf 
+.br
+/etc/selinux/{SELINUXTYPE}/seuser
+

@@ -1,0 +1,530 @@
+1.30 2006-03-14
+	* Updated version for release.
+
+1.29.28 2006-03-13
+	* Merged German translations (de.po) by Debian translation team from Manoj Srivastava.
+
+1.29.27 2006-03-08
+	* Merged audit2allow -R support, chcat fix, semanage MLS checks
+	  and semanage audit calls from Dan Walsh.
+
+1.29.26 2006-02-15
+	* Merged semanage bug fix patch from Ivan Gyurdiev.
+	
+1.29.25 2006-02-14
+	* Merged improve bindings patch from Ivan Gyurdiev.
+
+1.29.24 2006-02-14
+	* Merged semanage usage patch from Ivan Gyurdiev.
+	* Merged use PyList patch from Ivan Gyurdiev.
+
+1.29.23 2006-02-13
+	* Merged newrole -V/--version support from Glauber de Oliveira Costa.
+
+1.29.22 2006-02-13
+	* Merged genhomedircon prefix patch from Dan Walsh.
+
+1.29.21 2006-02-13
+	* Merged optionals in base patch from Joshua Brindle.
+
+1.29.20 2006-02-07
+	* Merged seuser/user_extra support patch to semodule_package 
+	  from Joshua Brindle.
+
+1.29.19 2006-02-06
+	* Merged getopt type fix for semodule_link/expand and sestatus
+	  from Chris PeBenito.
+
+1.29.18 2006-02-02
+	* Merged clone record on set_con patch from Ivan Gyurdiev.
+
+1.29.17 2006-01-30
+	* Merged genhomedircon fix from Dan Walsh.
+
+1.29.16 2006-01-30
+	* Merged seusers.system patch from Ivan Gyurdiev.
+	* Merged improve port/fcontext API patch from Ivan Gyurdiev.
+	* Merged genhomedircon patch from Dan Walsh.
+	
+1.29.15 2006-01-27
+	* Merged newrole audit patch from Steve Grubb.
+
+1.29.14 2006-01-27
+	* Merged seuser -> seuser local rename patch from Ivan Gyurdiev.
+
+1.29.13 2006-01-27
+	* Merged semanage and semodule access check patches from Joshua Brindle.
+
+1.29.12 2006-01-26
+	* Merged restorecon, chcat, and semanage patches from Dan Walsh.
+
+1.29.11 2006-01-25
+	* Modified newrole and run_init to use the loginuid when
+	  supported to obtain the Linux user identity to re-authenticate,
+	  and to fall back to real uid.  Dropped the use of the SELinux
+	  user identity, as Linux users are now mapped to SELinux users
+	  via seusers and the SELinux user identity space is separate.
+
+1.29.10 2006-01-20
+	* Merged semanage bug fixes from Ivan Gyurdiev.
+	* Merged semanage fixes from Russell Coker.
+	* Merged chcat.8 and genhomedircon patches from Dan Walsh.
+
+1.29.9 2006-01-19
+	* Merged chcat, semanage, and setsebool patches from Dan Walsh.
+
+1.29.8 2006-01-18
+	* Merged semanage fixes from Ivan Gyurdiev.
+	* Merged semanage fixes from Russell Coker.
+	* Merged chcat, genhomedircon, and semanage diffs from Dan Walsh.
+
+1.29.7 2006-01-13
+	* Merged newrole cleanup patch from Steve Grubb.
+	* Merged setfiles/restorecon performance patch from Russell Coker.
+	* Merged genhomedircon and semanage patches from Dan Walsh.
+
+1.29.6 2006-01-12
+	* Merged remove add_local/set_local patch from Ivan Gyurdiev.
+
+1.29.5 2006-01-05
+	* Added filename to semodule error reporting.
+	
+1.29.4 2006-01-05
+	* Merged genhomedircon and semanage patch from Dan Walsh.
+	* Changed semodule error reporting to include argv[0].
+
+1.29.3 2006-01-04
+	* Merged semanage getpwnam bug fix from Serge Hallyn (IBM).
+	* Merged patch series from Ivan Gyurdiev.
+	  This includes patches to:
+	  - cleanup setsebool
+	  - update setsebool to apply active booleans through libsemanage
+	  - update semodule to use the new semanage_set_rebuild() interface
+	  - fix various bugs in semanage
+	* Merged patch from Dan Walsh (Red Hat).
+	  This includes fixes for restorecon, chcat, fixfiles, genhomedircon,
+	  and semanage.
+
+1.29.2 2005-12-14
+	* Merged patch for chcat script from Dan Walsh.
+
+1.29.1 2005-12-08
+	* Merged fix for audit2allow long option list from Dan Walsh.
+	* Merged -r option for restorecon (alias for -R) from Dan Walsh.
+	* Merged chcat script and man page from Dan Walsh.
+
+1.28 2005-12-07
+	* Updated version for release.
+
+1.27.37 2005-12-07
+	* Clarified the genhomedircon warning message.
+
+1.27.36 2005-12-05
+	* Changed genhomedircon to warn on use of ROLE in homedir_template
+	  if using managed policy, as libsemanage does not yet support it.
+
+1.27.35 2005-12-02
+	* Merged genhomedircon bug fix from Dan Walsh.
+
+1.27.34 2005-12-02
+	* Revised semodule* man pages to refer to checkmodule and
+	  to include example sections.
+
+1.27.33 2005-12-01
+	* Merged audit2allow --tefile and --fcfile support from Dan Walsh.
+	* Merged genhomedircon fix from Dan Walsh.
+	* Merged semodule* man pages from Dan Walsh, and edited them.
+
+1.27.32 2005-12-01
+	* Changed setfiles to set the MATCHPATHCON_VALIDATE flag to
+	  retain validation/canonicalization of contexts during init.
+
+1.27.31 2005-11-29
+	* Changed genhomedircon to always use user_r for the role in the
+	  managed case since user_get_defrole is broken.
+
+1.27.30 2005-11-29
+	* Merged sestatus, audit2allow, and semanage patch from Dan Walsh.
+	* Fixed semodule -v option.
+
+1.27.29 2005-11-28
+	* Merged audit2allow python script from Dan Walsh.
+	  (old script moved to audit2allow.perl, will be removed later).
+	* Merged genhomedircon fixes from Dan Walsh.
+	* Merged semodule quieting patch from Dan Walsh
+	  (inverts default, use -v to restore original behavior).
+
+1.27.28 2005-11-15
+	* Merged genhomedircon rewrite from Dan Walsh.
+
+1.27.27 2005-11-09
+	* Merged setsebool cleanup patch from Ivan Gyurdiev.
+
+1.27.26 2005-11-09
+	* Added -B (--build) option to semodule to force a rebuild.
+
+1.27.25 2005-11-08
+	* Reverted setsebool patch to call semanage_set_reload_bools().
+	* Changed setsebool to disable policy reload and to call
+	  security_set_boolean_list to update the runtime booleans.
+
+1.27.24 2005-11-08
+	* Changed setfiles -c to use new flag to set_matchpathcon_flags()
+	  to disable context translation by matchpathcon_init().
+
+1.27.23 2005-11-07
+	* Changed setfiles for the context canonicalization support.
+
+1.27.22 2005-11-07
+	* Changed setsebool to call semanage_is_managed() interface
+	  and fall back to security_set_boolean_list() if policy is
+	  not managed.
+
+1.27.21 2005-11-07
+	* Merged setsebool memory leak fix from Ivan Gyurdiev.
+	* Merged setsebool patch to call semanage_set_reload_bools()
+	  interface from Ivan Gyurdiev.
+
+1.27.20 2005-11-04
+	* Merged setsebool patch from Ivan Gyurdiev.
+	  This moves setsebool from libselinux/utils to policycoreutils,
+	  and rewrites it to use libsemanage for permanent boolean changes.
+
+1.27.19 2005-10-25
+	* Merged semodule support for reload, noreload, and store options
+	  from Joshua Brindle.
+	* Merged semodule_package rewrite from Joshua Brindle.
+
+1.27.18 2005-10-20
+	* Cleaned up usage and error messages and releasing of memory by
+   	  semodule_* utilities.
+
+1.27.17 2005-10-20
+	* Corrected error reporting by semodule.
+
+1.27.16 2005-10-19
+	* Updated semodule_expand for change to sepol interface.
+
+1.27.15 2005-10-19
+	* Merged fixes for make DESTDIR= builds from Joshua Brindle.
+
+1.27.14 2005-10-18
+	* Updated semodule_package for sepol interface changes.
+
+1.27.13 2005-10-17
+	* Updated semodule_expand/link for sepol interface changes.
+
+1.27.12 2005-10-14
+	* Merged non-PAM Makefile support for newrole and run_init from Timothy Wood.
+
+1.27.11 2005-10-13
+	* Updated semodule_expand to use get interfaces for hidden sepol_module_package type.
+
+1.27.10 2005-10-13
+	* Merged newrole and run_init pam config patches from Dan Walsh (Red Hat).
+
+1.27.9 2005-10-13
+	* Merged fixfiles patch from Dan Walsh (Red Hat).
+
+1.27.8 2005-10-13
+	* Updated semodule for removal of semanage_strerror.
+
+1.27.7 2005-10-11
+	* Updated semodule_link and semodule_expand to use shared libsepol.
+	Fixed audit2why to call policydb_init prior to policydb_read (still
+	uses the static libsepol).
+
+1.27.6 2005-10-07
+	* Updated for changes to libsepol. 
+	Changed semodule and semodule_package to use the shared libsepol.
+	Disabled build of semodule_link and semodule_expand for now.
+	Updated audit2why for relocated policydb internal headers,
+	still needs to be converted to a shared lib interface.
+
+1.27.5 2005-10-06
+	* Fixed warnings in load_policy.
+
+1.27.4 2005-10-06
+	* Rewrote load_policy to use the new selinux_mkload_policy()
+	interface provided by libselinux.
+
+1.27.3 2005-09-28
+	* Merged patch to update semodule to the new libsemanage API
+	and improve the user interface from Karl MacMillan (Tresys).
+	* Modified semodule for the create/connect API split.
+
+1.27.2 2005-09-20
+	* Merged run_init open_init_pty bug fix from Manoj Srivastava
+	  (unblock SIGCHLD).  Bug reported by Erich Schubert.
+
+1.27.1 2005-09-20
+	* Merged error shadowing bug fix for restorecon from Dan Walsh.
+	* Merged setfiles usage/man page update for -r option from Dan Walsh.
+	* Merged fixfiles -C patch to ignore :s0 addition on update
+	  to a MCS/MLS policy from Dan Walsh.
+
+1.26 2005-09-06
+	* Updated version for release.
+
+1.25.9 2005-08-31
+	* Changed setfiles -c to translate the context to raw format
+	prior to calling libsepol.
+
+1.25.8 2005-08-31
+	* Changed semodule to report errors even without -v,
+        to detect extraneous arguments, and corrected usage message.	
+
+1.25.7 2005-08-25
+	* Merged patch for fixfiles -C from Dan Walsh.
+
+1.25.6 2005-08-22
+	* Merged fixes for semodule_link and sestatus from Serge Hallyn (IBM).
+	  Bugs found by Coverity.
+
+1.25.5 2005-08-02
+	* Merged patch to move module read/write code from libsemanage
+	  to libsepol from Jason Tang (Tresys).
+
+1.25.4 2005-07-27
+	* Changed semodule* to link with libsemanage.
+
+1.25.3 2005-07-26
+	* Merged restorecon patch from Ivan Gyurdiev.
+
+1.25.2 2005-07-11
+	* Merged load_policy, newrole, and genhomedircon patches from Red Hat.
+
+1.25.1 2005-07-06
+	* Merged loadable module support from Tresys Technology.
+
+1.24 2005-06-20
+	* Updated version for release.
+	
+1.23.11 2005-05-19
+	* Merged fixfiles and newrole patch from Dan Walsh.
+	* Merged audit2why man page from Dan Walsh.
+
+1.23.10 2005-05-16
+	* Extended audit2why to incorporate booleans and local user 
+	  settings when analyzing audit messages.
+
+1.23.9 2005-05-13
+	* Updated audit2why for sepol_ prefixes on Flask types to
+	  avoid namespace collision with libselinux, and to 
+	  include <selinux/selinux.h> now.
+
+1.23.8 2005-05-13
+	* Added audit2why utility.
+
+1.23.7 2005-04-29
+	* Merged patch for fixfiles from Dan Walsh.
+	  Allow passing -F to force reset of customizable contexts.
+
+1.23.6 2005-04-13
+	* Fixed signed/unsigned pointer bug in load_policy.
+	* Reverted context validation patch for genhomedircon.
+
+1.23.5 2005-04-12
+	* Reverted load_policy is_selinux_enabled patch from Dan Walsh.
+	  Otherwise, an initial policy load cannot be performed using
+	  load_policy, e.g. for anaconda.
+
+1.23.4 2005-04-08
+	* Merged load_policy is_selinux_enabled patch from Dan Walsh.
+	* Merged restorecon verbose output patch from Dan Walsh.
+	* Merged setfiles altroot patch from Chris PeBenito.
+	
+1.23.3 2005-03-17
+	* Merged context validation patch for genhomedircon from Eric Paris.
+
+1.23.2 2005-03-16
+	* Changed setfiles -c to call set_matchpathcon_flags(3) to
+	  turn off processing of .homedirs and .local.
+
+1.23.1 2005-03-14
+	* Merged rewrite of genhomedircon by Eric Paris.
+	* Changed fixfiles to relabel jfs since it now supports security xattrs
+	  (as of 2.6.11).  Removed reiserfs until 2.6.12 is released with 
+	  fixed support for reiserfs and selinux.
+	
+1.22 2005-03-09
+	* Updated version for release.
+
+1.21.22 2005-03-07
+	* Merged restorecon and genhomedircon patch from Dan Walsh.
+
+1.21.21 2005-02-28
+	* Merged load_policy and genhomedircon patch from Dan Walsh.
+
+1.21.20 2005-02-24
+	* Merged fixfiles and genhomedircon patch from Dan Walsh.
+
+1.21.19 2005-02-22
+	* Merged several fixes from Ulrich Drepper.
+
+1.21.18 2005-02-18
+	* Changed load_policy to fall back to the original policy upon
+	  an error from sepol_genusers().
+
+1.21.17 2005-02-17
+	* Merged new genhomedircon script from Dan Walsh.
+
+1.21.16 2005-02-17
+	* Changed load_policy to call sepol_genusers().
+
+1.21.15 2005-02-09
+	* Changed relabel Makefile target to use restorecon.
+
+1.21.14 2005-02-08
+	* Merged restorecon patch from Dan Walsh.
+
+1.21.13 2005-02-07
+	* Merged sestatus patch from Dan Walsh.
+	* Merged further change to fixfiles -C from Dan Walsh.
+
+1.21.12 2005-02-02
+	* Merged further patches for restorecon/setfiles -e and fixfiles -C. 
+
+1.21.11 2005-02-02
+	* Merged patch for fixfiles -C option from Dan Walsh.
+	* Merged patch -e support for restorecon from Dan Walsh.
+	* Merged updated -e support for setfiles from Dan Walsh.
+
+1.21.10 2005-01-31
+	* Merged patch for open_init_pty from Manoj Srivastava.
+
+1.21.9 2005-01-28
+	* Merged updated fixfiles script from Dan Walsh.
+	* Merged updated man page for fixfiles from Dan Walsh and re-added unzipped.
+	* Reverted fixfiles patch for file_contexts.local; 
+	  obsoleted by setfiles rewrite.
+	* Merged error handling patch for restorecon from Dan Walsh.
+	* Merged semi raw mode for open_init_pty helper from Manoj Srivastava.
+
+1.21.8 2005-01-28
+	* Rewrote setfiles to use matchpathcon and the new interfaces
+	  exported by libselinux (>= 1.21.5).
+
+1.21.7 2005-01-27
+	* Prevent overflow of spec array in setfiles.
+
+1.21.6 2005-01-27
+	* Merged genhomedircon STARTING_UID bug fix from Dan Walsh.
+
+1.21.5 2005-01-26
+	* Merged newrole -l support from Darrel Goeddel (TCS).
+
+1.21.4 2005-01-25
+	* Merged fixfiles patch for file_contexts.local from Dan Walsh.
+
+1.21.3 2005-01-21
+	* Fixed restorecon to not treat errors from is_context_customizable()
+	  as a customizable context.
+	* Merged setfiles/restorecon patch to not reset user field unless
+	  -F option is specified from Dan Walsh.
+
+1.21.2 2005-01-21
+	* Merged open_init_pty helper for run_init from Manoj Srivastava.
+	* Merged audit2allow and genhomedircon man pages from Manoj Srivastava.
+
+1.21.1 2005-01-19
+	* Merged customizable contexts patch for restorecon/setfiles from Dan Walsh.
+
+1.20 2005-01-06
+	* Merged fixfiles rewrite from Dan Walsh.
+	* Merged restorecon patch from Dan Walsh.
+	* Merged fixfiles and restorecon patches from Dan Walsh.
+	* Changed restorecon to ignore ENOENT errors from matchpathcon.
+	* Merged nonls patch from Chris PeBenito.
+	* Removed fixfiles.cron.
+	* Merged run_init.8 patch from Dan Walsh.
+
+1.18 2004-11-01
+	* Merged audit2allow patch from Thomas Bleher, with mods by Dan Walsh.
+	* Merged sestatus patch from Steve Grubb.
+	* Merged fixfiles patch from Dan Walsh.
+	* Added -l option to setfiles to log changes via syslog.
+	* Merged -e option to setfiles to exclude directories.
+	* Merged -R option to restorecon for recursive descent.
+	* Merged sestatus patch from Steve Grubb via Dan Walsh.
+	* Merged load_policy and fixfiles.cron patches from Dan Walsh.
+	* Merged fix for setfiles context validation patch from Colin Walters.
+	* Merged setfiles context validation patch from Colin Walters.
+	* Merged genhomedircon patch from Russell Coker.
+	* Merged restorecon patch from Russell Coker.
+
+1.16 2004-08-13
+	* Merged audit2allow fix from Tom London.
+	* Merged load_policy man page from Dan Walsh.
+	* Merged newrole bug fix from Chad Hanson.
+	* Changed load_policy to preserve booleans by default.
+	* Changed load_policy to invoke sepol_genbools() instead.
+	* Changed load_policy to also invoke security_load_booleans().
+	* Merged genhomedircon fixes from Dan Walsh.
+	* Changed restorecon to use realpath.
+	* Merged fixfiles patch from Dan Walsh.
+	* Merged genhomedircon patch from Russell Coker and Dan Walsh.
+	* Merged fixfiles patch and fixfiles.cron script from Dan Walsh.
+	* Merged stat fix for setfiles -s from Russell Coker.
+
+1.14 2004-06-25
+	* Merged fix for fixfiles.
+	* Merged enhancements to setfiles, fixfiles and restorecon from Dan Walsh.
+	* Merged updated genhomedircon script from Russell Coker.
+	* Merged run_init patch to find initrc_context from Dan Walsh.
+	* Merged fixfiles patch for /etc/selinux from Dan Walsh.
+	* Merged restorecon patch from Dan Walsh.
+	* Merged fixfiles patch from Dan Walsh.
+
+1.12 2004-05-10
+	* Merged newrole patch from Colin Walters.
+	* Merged fixfiles from Dan Walsh.
+
+1.10 2004-04-05
+	* Changed setfiles to not abort upon lsetfilecon failures.
+	* Merged sestatus from Chris PeBenito.
+	* Merged fixes for restorecon.
+	* Merged setfiles verbosity patch from Dan Walsh and Stephen Tweedie.
+	* Merged restorecon patch from Dan Walsh.
+	* Revert add_assoc change from setfiles.
+	* Moved restorecon to /sbin.
+	* Disable add_assoc in setfiles by default, use -a to enable.
+	* Merged genhomedircon patch from Dan Walsh.
+	* Merged restorecon patch from Dan Walsh.
+	* Merged setfiles buffer size change from Dan Walsh.
+	* Merged genhomedircon fix from Karl MacMillan of Tresys.
+	  This generates separate lines for each prefix.
+
+1.8 2004-03-09
+        * Merged genhomedircon patch from Karl MacMillan of Tresys.
+	* Removed checkcon script (obsoleted by restorecon -nv).
+	* Replaced restorecon script with C program from Dan Walsh.
+	  Uses the new matchpathcon function from libselinux.
+	
+1.6 2004-02-18
+	* Fixed setfiles sorting problem reported by Colin Walters. 
+	* Merged setfiles patch from Robert Bihlmeyer, amended by Russell Coker.
+	* Added scripts (checkcon, restorecon, genhomedircon) from Dan Walsh.
+	* Quiet warning about duplicate same specifications if -q is used.
+	* Fixed usage message of audit2allow.
+
+1.4 2003-12-01
+	* Merged patch from Russell Coker.
+	* Added audit2allow (formerly newrules.pl from policy).
+	* Dropped -lattr from Makefiles.
+	* Merged setfiles check type first patch by Russell Coker.
+
+1.2 2003-09-30
+	* Merged run_init close file patch from Chris PeBenito. 
+	* Merged setfiles stem compression patch by Russell Coker.
+	* Merged setfiles usage/getopt/err patch by Russell Coker.
+	* Merged setfiles altroot patch by Hardened Gentoo team. 
+	* Merged i18n patch by Dan Walsh.
+	* Changed Makefiles to allow non-root rpm builds.
+
+1.1 2003-08-13
+	* Dropped obsolete psid code from setfiles.
+
+1.0 2003-07-11
+	* Initial public release.
+

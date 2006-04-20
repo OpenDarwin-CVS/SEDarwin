@@ -1,0 +1,29 @@
+.TH LOAD_POLICY "8" "May 2003" "Security Enhanced Linux" NSA
+.SH NAME
+load_policy \- load a new policy into the kernel
+
+.SH SYNOPSIS
+.B load_policy 
+[-bq]
+.br
+.SH DESCRIPTION
+.PP
+load_policy is the tool used to load/replace the policy in the kernel.
+By default, load_policy will preserve the current policy boolean values
+when loading the policy.
+
+.SH "OPTIONS"
+.TP
+.B \-b
+reset the policy boolean values to the saved policy settings.
+.TP
+.B \-q
+suppress warning messages.
+
+.SH SEE ALSO
+.B booleans
+(8),
+.SH AUTHORS
+.nf
+This manual page was written by Dan Walsh <dwalsh@redhat.com>.
+The program was written by Stephen Smalley <sds@epoch.ncsc.mil>.

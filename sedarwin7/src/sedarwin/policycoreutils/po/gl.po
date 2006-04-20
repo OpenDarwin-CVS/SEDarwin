@@ -1,0 +1,329 @@
+#: load_policy/load_policy.c:29
+#, c-format
+msgid "usage:  %s policyfile\n"
+msgstr ""
+
+#: load_policy/load_policy.c:35
+#, c-format
+msgid "Can't open '%s':  %s\n"
+msgstr ""
+
+#: load_policy/load_policy.c:41
+#, c-format
+msgid "Can't stat '%s':  %s\n"
+msgstr ""
+
+#: load_policy/load_policy.c:48
+#, c-format
+msgid "Can't map '%s':  %s\n"
+msgstr ""
+
+#: load_policy/load_policy.c:55
+#, c-format
+msgid "%s:  security_load_policy failed\n"
+msgstr ""
+
+#: newrole/newrole.c:84
+msgid "Out of memory!\n"
+msgstr ""
+
+#: newrole/newrole.c:142 run_init/run_init.c:118
+msgid "failed to initialize PAM\n"
+msgstr ""
+
+#: newrole/newrole.c:172 run_init/run_init.c:147
+msgid "Password:"
+msgstr ""
+
+#: newrole/newrole.c:204 run_init/run_init.c:179
+msgid "Cannot find your entry in the shadow passwd file.\n"
+msgstr ""
+
+#: newrole/newrole.c:210 run_init/run_init.c:185
+msgid "getpass cannot open /dev/tty\n"
+msgstr ""
+
+#: newrole/newrole.c:279
+msgid "Sorry, newrole may be used only on a SELinux kernel.\n"
+msgstr ""
+
+#: newrole/newrole.c:292
+msgid "Error: multiple roles specified\n"
+msgstr ""
+
+#: newrole/newrole.c:301
+msgid "Error: multiple types specified\n"
+msgstr ""
+
+#: newrole/newrole.c:325
+msgid "Couldn't get default type.\n"
+msgstr ""
+
+#: newrole/newrole.c:347
+msgid "failed to get old_context.\n"
+msgstr ""
+
+#: newrole/newrole.c:365
+msgid "cannot find your entry in the passwd file.\n"
+msgstr ""
+
+#: newrole/newrole.c:374
+#, c-format
+msgid "Authenticating %s.\n"
+msgstr ""
+
+#: newrole/newrole.c:383
+#, c-format
+msgid "newrole: incorrect password for %s\n"
+msgstr ""
+
+#: newrole/newrole.c:407
+#, c-format
+msgid "failed to set new role %s\n"
+msgstr ""
+
+#: newrole/newrole.c:419
+#, c-format
+msgid "failed to set new type %s\n"
+msgstr ""
+
+#: newrole/newrole.c:431
+msgid "failed to convert new context to string\n"
+msgstr ""
+
+#: newrole/newrole.c:441
+#, c-format
+msgid "%s is not a valid context\n"
+msgstr ""
+
+#: newrole/newrole.c:454
+msgid "Warning!  Could not retrieve tty information.\n"
+msgstr ""
+
+#: newrole/newrole.c:460
+#, c-format
+msgid "Warning!  Could not open %s.\n"
+msgstr ""
+
+#: newrole/newrole.c:466
+#, c-format
+msgid "Warning!  Could not get current context for %s, not relabeling.\n"
+msgstr ""
+
+#: newrole/newrole.c:475
+#, c-format
+msgid "Warning!  Could not get new context for %s, not relabeling.\n"
+msgstr ""
+
+#: newrole/newrole.c:484
+#, c-format
+msgid "Warning!  Could not set new context for %s\n"
+msgstr ""
+
+#: newrole/newrole.c:494
+#, c-format
+msgid "newrole: failure forking: %s"
+msgstr ""
+
+#: newrole/newrole.c:510
+#, c-format
+msgid "%s changed labels.\n"
+msgstr ""
+
+#: newrole/newrole.c:534
+msgid "Could not close descriptors.\n"
+msgstr ""
+
+#: newrole/newrole.c:568 run_init/run_init.c:366
+#, c-format
+msgid "Could not set exec context to %s.\n"
+msgstr ""
+
+#. If we reach here, then we failed to exec the new shell.
+#: newrole/newrole.c:574
+msgid "failed to exec shell\n"
+msgstr ""
+
+#. USAGE_STRING describes the command-line args of this program.
+#: run_init/run_init.c:59
+msgid ""
+"USAGE: run_init <script> <args ...>\n"
+"  where: <script> is the name of the init script to run,\n"
+"         <args ...> are the arguments to that script."
+msgstr ""
+
+#: run_init/run_init.c:245
+#, c-format
+msgid "run_init: incorrect password for %s\n"
+msgstr ""
+
+#: run_init/run_init.c:275
+#, c-format
+msgid "Could not open file %s\n"
+msgstr ""
+
+#: run_init/run_init.c:301
+#, c-format
+msgid "No context in file %s\n"
+msgstr ""
+
+#: run_init/run_init.c:321
+msgid "Sorry, run_init may be used only on a SELinux kernel.\n"
+msgstr ""
+
+#: run_init/run_init.c:340
+msgid "authentication failed.\n"
+msgstr ""
+
+#: setfiles/setfiles.c:164 setfiles/setfiles.c:189 setfiles/setfiles.c:204
+#: setfiles/setfiles.c:213
+#, c-format
+msgid "%s:  insufficient memory for file label entry for %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:178
+#, c-format
+msgid "%s:  conflicting specifications for %s and %s, using %s.\n"
+msgstr ""
+
+#: setfiles/setfiles.c:247
+#, c-format
+msgid ""
+"%s:  hash table stats: %d elements, %d/%d buckets used, longest chain length "
+"%d\n"
+msgstr ""
+
+#: setfiles/setfiles.c:279
+#, c-format
+msgid "%s:  unable to stat file %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:299
+#, c-format
+msgid "%s:  unable to match %s against %s:  %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:347
+#, c-format
+msgid "ERROR: Multiple different specifications for %s  (%s and %s).\n"
+msgstr ""
+
+#: setfiles/setfiles.c:355
+#, c-format
+msgid "WARNING: Multiple same specifications for %s.\n"
+msgstr ""
+
+#: setfiles/setfiles.c:429
+#, c-format
+msgid "%s:  unable to read directory %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:458
+#, c-format
+msgid "%s:  %s matched by (%s,%s,%s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:462
+#, c-format
+msgid "%s:  %s matched by (%s,%s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:476
+#, c-format
+msgid "%s:  unable to obtain attribute for file %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:494
+#, c-format
+msgid "%s:  relabeling %s from %s to %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:512
+#, c-format
+msgid "%s:  unable to relabel %s to %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:560
+#, c-format
+msgid "usage:  %s [-dnpqsvW] spec_file pathname...\n"
+msgstr ""
+
+#: setfiles/setfiles.c:569
+#, c-format
+msgid "usage:  %s -s [-dnqvW] spec_file\n"
+msgstr ""
+
+#: setfiles/setfiles.c:575
+#, c-format
+msgid "usage:  %s [-dnpqvW] spec_file pathname...\n"
+msgstr ""
+
+#: setfiles/setfiles.c:605
+#, c-format
+msgid "%s:  no newline on line number %d (only read %s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:622
+#, c-format
+msgid "%s:  line number %d is missing fields (only read %s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:644
+#, c-format
+msgid "%s:  insufficient memory for anchored regexp on line %d\n"
+msgstr ""
+
+#: setfiles/setfiles.c:660
+#, c-format
+msgid "%s:  unable to compile regular expression %s on line number %d:  %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:675 setfiles/setfiles.c:704
+#, c-format
+msgid "%s:  invalid type specifier %s on line number %d\n"
+msgstr ""
+
+#: setfiles/setfiles.c:716
+#, c-format
+msgid "%s:  invalid context %s on line number %d\n"
+msgstr ""
+
+#: setfiles/setfiles.c:741
+#, c-format
+msgid "%s:  read %d specifications\n"
+msgstr ""
+
+#: setfiles/setfiles.c:748
+#, c-format
+msgid "%s:  insufficient memory for specifications\n"
+msgstr ""
+
+#: setfiles/setfiles.c:780
+#, c-format
+msgid "File \"%s\" not found.\n"
+msgstr ""
+
+#: setfiles/setfiles.c:803
+#, c-format
+msgid "%s:  labeling files under %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:811
+#, c-format
+msgid "%s:  error while labeling files under %s\n"
+msgstr ""
+
+#: setfiles/setfiles.c:831
+#, c-format
+msgid "%s:  Warning!  No matches for (%s, %s, %s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:836
+#, c-format
+msgid "%s:  Warning!  No matches for (%s, %s)\n"
+msgstr ""
+
+#: setfiles/setfiles.c:844
+#, c-format
+msgid "%s:  Done.\n"
+msgstr ""
