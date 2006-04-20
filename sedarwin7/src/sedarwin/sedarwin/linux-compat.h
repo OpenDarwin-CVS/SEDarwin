@@ -56,13 +56,17 @@ typedef u_int8_t  u8;
 #if !defined(BYTE_ORDER)
 #error BYTE_ORDER not defined
 #elif BYTE_ORDER == LITTLE_ENDIAN
+#define	cpu_to_le16(x)	((__uint16_t)(x))
 #define	cpu_to_le32(x)	((__uint32_t)(x))
 #define	cpu_to_le64(x)	((__uint64_t)(x))
+#define	le16_to_cpu(x)	((__uint16_t)(x))
 #define	le32_to_cpu(x)	((__uint32_t)(x))
 #define	le64_to_cpu(x)	((__uint64_t)(x))
 #elif BYTE_ORDER == BIG_ENDIAN
+#define	cpu_to_le16(x)	NXSwapHostShortToLittle(x)
 #define	cpu_to_le32(x)	NXSwapHostLongToLittle(x)
 #define	cpu_to_le64(x)	NXSwapHostLongLongToLittle(x)
+#define	le16_to_cpu(x)	NXSwapLittleShortToHost(x)
 #define	le32_to_cpu(x)	NXSwapLittleLongToHost(x)
 #define	le64_to_cpu(x)	NXSwapLittleLongLongToHost(x)
 #else

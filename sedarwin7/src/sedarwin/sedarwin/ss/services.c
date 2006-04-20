@@ -4,38 +4,48 @@
  * Authors : Stephen Smalley, <sds@epoch.ncsc.mil>
  *           James Morris <jmorris@redhat.com>
  *
- *  Copyright (C) 2003 Red Hat, Inc., James Morris <jmorris@redhat.com>
+ * Updated: Trusted Computer Solutions, Inc. <dgoeddel@trustedcs.com>
  *
- *	This program is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License version 2,
- *      as published by the Free Software Foundation.
+ *	Support for enhanced MLS infrastructure.
  *
  * Updated: Frank Mayer <mayerf@tresys.com> and Karl MacMillan <kmacmillan@tresys.com>
  *
  * 	Added conditional policy language extensions
  *
+ * This software was enhanced by SPARTA ISSO under SPAWAR contract
+ * N66001-04-C-6019 ("SEFOS").
+ *
+ * Copyright (c) 2005-2006 SPARTA, Inc.
+ * Copyright (C) 2004-2005 Trusted Computer Solutions, Inc.
  * Copyright (C) 2003 - 2004 Tresys Technology, LLC
+ * Copyright (C) 2003 Red Hat, Inc., James Morris <jmorris@redhat.com>
  *	This program is free software; you can redistribute it and/or modify
  *  	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, version 2.
- *
- * Copyright (c) 2005 SPARTA, Inc.
- *
- * This software was enhanced by SPARTA ISSO under SPAWAR contract
- * N66001-04-C-6019 ("SEFOS").
  */
 
-#include <sedarwin/linux-compat.h>
-#include <sedarwin/ss/global.h>
-#include <sedarwin/ss/policydb.h>
-#include <sedarwin/ss/services.h>
-#include <sedarwin/ss/security.h>
-#include <sedarwin/ss/mls.h>
-#include <sedarwin/ss/conditional.h>
-#include <sedarwin/avc/avc.h>
-#include <sedarwin/avc/avc_ss.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <kern/lock.h>
+
+#include <sedarwin/linux-compat.h>
+#include <sedarwin/flask.h>
+#include <sedarwin/avc/avc.h>
+#include <sedarwin/avc/avc_ss.h>
+#include <sedarwin/ss/security.h>
+#include <sedarwin/ss/context.h>
+#include <sedarwin/ss/policydb.h>
+#include <sedarwin/ss/sidtab.h>
+#include <sedarwin/ss/services.h>
+#include <sedarwin/ss/conditional.h>
+#include <sedarwin/ss/mls.h>
+
+#ifdef __linux__
+extern void selnl_notify_policyload(u32 seqno);
+#else
+#define	selnl_notify_policyload(s)
+#endif
+unsigned int policydb_loaded_version;
 
 lock_t *policy_rwlock;
 #define POLICY_RDLOCK lock_read(policy_rwlock)
@@ -59,18 +69,30 @@ int ss_initialized = 0;
  */
 static u32 latest_granting = 0;
 
+/* Forward declaration. */
+static int context_struct_to_string(struct context *context, char **scontext,
+				    u32 *scontext_len);
+
 /*
  * Return the boolean value of a constraint expression
  * when it is applied to the specified source and target
  * security contexts.
+ *
+ * xcontext is a special beast...  It is used by the validatetrans rules
+ * only.  For these rules, scontext is the context before the transition,
+ * tcontext is the context after the transition, and xcontext is the context
+ * of the process performing the transition.  All other callers of
+ * constraint_expr_eval should pass in NULL for xcontext.
  */
 static int constraint_expr_eval(struct context *scontext,
 				struct context *tcontext,
+				struct context *xcontext,
 				struct constraint_expr *cexpr)
 {
 	u32 val1, val2;
 	struct context *c;
 	struct role_datum *r1, *r2;
+	struct mls_level *l1, *l2;
 	struct constraint_expr *e;
 	int s[CEXPR_MAXDEPTH];
 	int sp = -1;
@@ -127,6 +149,52 @@ static int constraint_expr_eval(struct context *scontext,
 					break;
 				}
 				break;
+			case CEXPR_L1L2:
+				l1 = &(scontext->range.level[0]);
+				l2 = &(tcontext->range.level[0]);
+				goto mls_ops;
+			case CEXPR_L1H2:
+				l1 = &(scontext->range.level[0]);
+				l2 = &(tcontext->range.level[1]);
+				goto mls_ops;
+			case CEXPR_H1L2:
+				l1 = &(scontext->range.level[1]);
+				l2 = &(tcontext->range.level[0]);
+				goto mls_ops;
+			case CEXPR_H1H2:
+				l1 = &(scontext->range.level[1]);
+				l2 = &(tcontext->range.level[1]);
+				goto mls_ops;
+			case CEXPR_L1H1:
+				l1 = &(scontext->range.level[0]);
+				l2 = &(scontext->range.level[1]);
+				goto mls_ops;
+			case CEXPR_L2H2:
+				l1 = &(tcontext->range.level[0]);
+				l2 = &(tcontext->range.level[1]);
+				goto mls_ops;
+mls_ops:
+			switch (e->op) {
+			case CEXPR_EQ:
+				s[++sp] = mls_level_eq(l1, l2);
+				continue;
+			case CEXPR_NEQ:
+				s[++sp] = !mls_level_eq(l1, l2);
+				continue;
+			case CEXPR_DOM:
+				s[++sp] = mls_level_dom(l1, l2);
+				continue;
+			case CEXPR_DOMBY:
+				s[++sp] = mls_level_dom(l2, l1);
+				continue;
+			case CEXPR_INCOMP:
+				s[++sp] = mls_level_incomp(l2, l1);
+				continue;
+			default:
+				BUG();
+				return 0;
+			}
+			break;
 			default:
 				BUG();
 				return 0;
@@ -150,6 +218,13 @@ static int constraint_expr_eval(struct context *scontext,
 			c = scontext;
 			if (e->attr & CEXPR_TARGET)
 				c = tcontext;
+			else if (e->attr & CEXPR_XTARGET) {
+				c = xcontext;
+				if (!c) {
+					BUG();
+					return 0;
+				}
+			}
 			if (e->attr & CEXPR_USER)
 				val1 = c->user;
 			else if (e->attr & CEXPR_ROLE)
@@ -196,8 +271,24 @@ static int context_struct_compute_av(struct context *scontext,
 	struct constraint_node *constraint;
 	struct role_allow *ra;
 	struct avtab_key avkey;
-	struct avtab_datum *avdatum;
+	struct avtab_node *node;
 	struct class_datum *tclass_datum;
+	struct ebitmap *sattr, *tattr;
+	struct ebitmap_node *snode, *tnode;
+	unsigned int i, j;
+
+#ifdef __linux__
+	/*
+	 * Remap extended Netlink classes for old policy versions.
+	 * Do this here rather than socket_type_to_security_class()
+	 * in case a newer policy version is loaded, allowing sockets
+	 * to remain in the correct class.
+	 */
+	if (policydb_loaded_version < POLICYDB_VERSION_NLCLASS)
+		if (tclass >= SECCLASS_NETLINK_ROUTE_SOCKET &&
+		    tclass <= SECCLASS_NETLINK_DNRT_SOCKET)
+			tclass = SECCLASS_NETLINK_SOCKET;
+#endif
 
 	if (!tclass || tclass > policydb.p_classes.nprim) {
 		printk(KERN_ERR "security_compute_av:  unrecognized class %d\n",
@@ -219,34 +310,43 @@ static int context_struct_compute_av(struct context *scontext,
 	 * If a specific type enforcement rule was defined for
 	 * this permission check, then use it.
 	 */
-	avkey.source_type = scontext->type;
-	avkey.target_type = tcontext->type;
 	avkey.target_class = tclass;
-	avdatum = avtab_search(&policydb.te_avtab, &avkey, AVTAB_AV);
-	if (avdatum) {
-		if (avdatum->specified & AVTAB_ALLOWED)
-			avd->allowed = avtab_allowed(avdatum);
-		if (avdatum->specified & AVTAB_AUDITDENY)
-			avd->auditdeny = avtab_auditdeny(avdatum);
-		if (avdatum->specified & AVTAB_AUDITALLOW)
-			avd->auditallow = avtab_auditallow(avdatum);
+	avkey.specified = AVTAB_AV;
+	sattr = &policydb.type_attr_map[scontext->type - 1];
+	tattr = &policydb.type_attr_map[tcontext->type - 1];
+	ebitmap_for_each_bit(sattr, snode, i) {
+		if (!ebitmap_node_get_bit(snode, i))
+			continue;
+		ebitmap_for_each_bit(tattr, tnode, j) {
+			if (!ebitmap_node_get_bit(tnode, j))
+				continue;
+			avkey.source_type = i + 1;
+			avkey.target_type = j + 1;
+			for (node = avtab_search_node(&policydb.te_avtab, &avkey);
+			     node != NULL;
+			     node = avtab_search_node_next(node, avkey.specified)) {
+				if (node->key.specified == AVTAB_ALLOWED)
+					avd->allowed |= node->datum.data;
+				else if (node->key.specified == AVTAB_AUDITALLOW)
+					avd->auditallow |= node->datum.data;
+				else if (node->key.specified == AVTAB_AUDITDENY)
+					avd->auditdeny &= node->datum.data;
+			}
+
+			/* Check conditional av table for additional permissions */
+			cond_compute_av(&policydb.te_cond_avtab, &avkey, avd);
+
+		}
 	}
 
-	/* Check conditional av table for additional permissions */
-	cond_compute_av(&policydb.te_cond_avtab, &avkey, avd);
-
 	/*
-	 * Remove any permissions prohibited by the MLS policy.
-	 */
-	mls_compute_av(scontext, tcontext, tclass_datum, &avd->allowed);
-
-	/*
-	 * Remove any permissions prohibited by a constraint.
+	 * Remove any permissions prohibited by a constraint (this includes
+	 * the MLS policy).
 	 */
 	constraint = tclass_datum->constraints;
 	while (constraint) {
 		if ((constraint->permissions & (avd->allowed)) &&
-		    !constraint_expr_eval(scontext, tcontext,
+		    !constraint_expr_eval(scontext, tcontext, NULL,
 					  constraint->expr)) {
 			avd->allowed = (avd->allowed) & ~(constraint->permissions);
 		}
@@ -259,7 +359,7 @@ static int context_struct_compute_av(struct context *scontext,
 	 * pair.
 	 */
 	if (tclass == SECCLASS_PROCESS &&
-	    (avd->allowed & PROCESS__TRANSITION) &&
+	    (avd->allowed & (PROCESS__TRANSITION | PROCESS__DYNTRANSITION)) &&
 	    scontext->role != tcontext->role) {
 		for (ra = policydb.role_allow; ra; ra = ra->next) {
 			if (scontext->role == ra->role &&
@@ -267,10 +367,114 @@ static int context_struct_compute_av(struct context *scontext,
 				break;
 		}
 		if (!ra)
-			avd->allowed = (avd->allowed) & ~(PROCESS__TRANSITION);
+			avd->allowed = (avd->allowed) & ~(PROCESS__TRANSITION |
+			                                PROCESS__DYNTRANSITION);
 	}
 
 	return 0;
+}
+
+static int security_validtrans_handle_fail(struct context *ocontext,
+                                           struct context *ncontext,
+                                           struct context *tcontext,
+                                           u16 tclass)
+{
+	char *o = NULL, *n = NULL, *t = NULL;
+	u32 olen, nlen, tlen;
+
+	if (context_struct_to_string(ocontext, &o, &olen) < 0)
+		goto out;
+	if (context_struct_to_string(ncontext, &n, &nlen) < 0)
+		goto out;
+	if (context_struct_to_string(tcontext, &t, &tlen) < 0)
+		goto out;
+	audit_log("security_validate_transition:  denied for"
+	          " oldcontext=%s newcontext=%s taskcontext=%s tclass=%s",
+	          o, n, t, policydb.p_class_val_to_name[tclass-1]);
+out:
+	kfree(o);
+	kfree(n);
+	kfree(t);
+
+	if (!selinux_enforcing)
+		return 0;
+	return EPERM;
+}
+
+int security_validate_transition(u32 oldsid, u32 newsid, u32 tasksid,
+                                 u16 tclass)
+{
+	struct context *ocontext;
+	struct context *ncontext;
+	struct context *tcontext;
+	struct class_datum *tclass_datum;
+	struct constraint_node *constraint;
+	int rc = 0;
+
+	if (!ss_initialized)
+		return 0;
+
+	POLICY_RDLOCK;
+
+#ifdef __linux__
+	/*
+	 * Remap extended Netlink classes for old policy versions.
+	 * Do this here rather than socket_type_to_security_class()
+	 * in case a newer policy version is loaded, allowing sockets
+	 * to remain in the correct class.
+	 */
+	if (policydb_loaded_version < POLICYDB_VERSION_NLCLASS)
+		if (tclass >= SECCLASS_NETLINK_ROUTE_SOCKET &&
+		    tclass <= SECCLASS_NETLINK_DNRT_SOCKET)
+			tclass = SECCLASS_NETLINK_SOCKET;
+#endif
+
+	if (!tclass || tclass > policydb.p_classes.nprim) {
+		printk(KERN_ERR "security_validate_transition:  "
+		       "unrecognized class %d\n", tclass);
+		rc = EINVAL;
+		goto out;
+	}
+	tclass_datum = policydb.class_val_to_struct[tclass - 1];
+
+	ocontext = sidtab_search(&sidtab, oldsid);
+	if (!ocontext) {
+		printk(KERN_ERR "security_validate_transition: "
+		       " unrecognized SID %d\n", oldsid);
+		rc = EINVAL;
+		goto out;
+	}
+
+	ncontext = sidtab_search(&sidtab, newsid);
+	if (!ncontext) {
+		printk(KERN_ERR "security_validate_transition: "
+		       " unrecognized SID %d\n", newsid);
+		rc = EINVAL;
+		goto out;
+	}
+
+	tcontext = sidtab_search(&sidtab, tasksid);
+	if (!tcontext) {
+		printk(KERN_ERR "security_validate_transition: "
+		       " unrecognized SID %d\n", tasksid);
+		rc = EINVAL;
+		goto out;
+	}
+
+	constraint = tclass_datum->validatetrans;
+	while (constraint) {
+		if (!constraint_expr_eval(ocontext, ncontext, tcontext,
+		                          constraint->expr)) {
+			rc = security_validtrans_handle_fail(ocontext, ncontext,
+			                                     tcontext, tclass);
+			goto out;
+		}
+		constraint = constraint->next;
+	}
+
+out:
+	POLICY_RDUNLOCK;
+	return rc;
 }
 
 /**
@@ -296,8 +500,8 @@ int security_compute_av(u32 ssid,
 	int rc = 0;
 
 	if (!ss_initialized) {
-		avd->allowed = requested;
-		avd->decided = requested;
+		avd->allowed = 0xffffffff;
+		avd->decided = 0xffffffff;
 		avd->auditallow = 0;
 		avd->auditdeny = 0xffffffff;
 		avd->seqno = latest_granting;
@@ -349,7 +553,7 @@ static int context_struct_to_string(struct context *context, char **scontext, u3
 	*scontext_len += mls_compute_context_len(context);
 
 	/* Allocate space for the context; caller must free this space. */
-	scontextp = kmalloc(*scontext_len+1,GFP_ATOMIC);
+	scontextp = kmalloc(*scontext_len, GFP_ATOMIC);
 	if (!scontextp) {
 		return ENOMEM;
 	}
@@ -358,17 +562,16 @@ static int context_struct_to_string(struct context *context, char **scontext, u3
 	/*
 	 * Copy the user name, role name and type name into the context.
 	 */
-	sprintf(scontextp, "%s:%s:%s:",
+	sprintf(scontextp, "%s:%s:%s",
 		policydb.p_user_val_to_name[context->user - 1],
 		policydb.p_role_val_to_name[context->role - 1],
 		policydb.p_type_val_to_name[context->type - 1]);
 	scontextp += strlen(policydb.p_user_val_to_name[context->user - 1]) +
 	             1 + strlen(policydb.p_role_val_to_name[context->role - 1]) +
-	             1 + strlen(policydb.p_type_val_to_name[context->type - 1]) + 1;
+	             1 + strlen(policydb.p_type_val_to_name[context->type - 1]);
 
 	mls_sid_to_context(context, &scontextp);
 
-	scontextp--;
 	*scontextp = 0;
 
 	return 0;
@@ -422,18 +625,7 @@ out:
 
 }
 
-/**
- * security_context_to_sid - Obtain a SID for a given security context.
- * @scontext: security context
- * @scontext_len: length in bytes
- * @sid: security identifier, SID
- *
- * Obtains a SID associated with the security context that
- * has the string representation specified by @scontext.
- * Returns -%EINVAL if the context is invalid, -%ENOMEM if insufficient
- * memory is available, or 0 on success.
- */
-int security_context_to_sid(char *scontext, u32 scontext_len, u32 *sid)
+static int security_context_to_sid_core(char *scontext, u32 scontext_len, u32 *sid, u32 def_sid)
 {
 	char *scontext2;
 	struct context context;
@@ -524,7 +716,7 @@ int security_context_to_sid(char *scontext, u32 scontext_len, u32 *sid)
 
 	context.type = typdatum->value;
 
-	rc = mls_context_to_sid(oldc, &p, &context);
+	rc = mls_context_to_sid(oldc, &p, &context, &sidtab, def_sid);
 	if (rc)
 		goto out_unlock;
 
@@ -548,7 +740,47 @@ out:
 	return rc;
 }
 
-static inline int compute_sid_handle_invalid_context(
+/**
+ * security_context_to_sid - Obtain a SID for a given security context.
+ * @scontext: security context
+ * @scontext_len: length in bytes
+ * @sid: security identifier, SID
+ *
+ * Obtains a SID associated with the security context that
+ * has the string representation specified by @scontext.
+ * Returns -%EINVAL if the context is invalid, -%ENOMEM if insufficient
+ * memory is available, or 0 on success.
+ */
+int security_context_to_sid(char *scontext, u32 scontext_len, u32 *sid)
+{
+	return security_context_to_sid_core(scontext, scontext_len,
+	                                    sid, SECSID_NULL);
+}
+
+/**
+ * security_context_to_sid_default - Obtain a SID for a given security context,
+ * falling back to specified default if needed.
+ *
+ * @scontext: security context
+ * @scontext_len: length in bytes
+ * @sid: security identifier, SID
+ * @def_sid: default SID to assign on errror
+ *
+ * Obtains a SID associated with the security context that
+ * has the string representation specified by @scontext.
+ * The default SID is passed to the MLS layer to be used to allow
+ * kernel labeling of the MLS field if the MLS field is not present
+ * (for upgrading to MLS without full relabel).
+ * Returns -%EINVAL if the context is invalid, -%ENOMEM if insufficient
+ * memory is available, or 0 on success.
+ */
+int security_context_to_sid_default(char *scontext, u32 scontext_len, u32 *sid, u32 def_sid)
+{
+	return security_context_to_sid_core(scontext, scontext_len,
+	                                    sid, def_sid);
+}
+
+static int compute_sid_handle_invalid_context(
 	struct context *scontext,
 	struct context *tcontext,
 	u16 tclass,
@@ -563,16 +795,15 @@ static inline int compute_sid_handle_invalid_context(
 		goto out;
 	if (context_struct_to_string(newcontext, &n, &nlen) < 0)
 		goto out;
-	printk(KERN_ERR "security_compute_sid:  invalid context %s"
+	audit_log("security_compute_sid:  invalid context %s"
 		  " for scontext=%s"
 		  " tcontext=%s"
-		  " tclass=%s\n",
+		  " tclass=%s",
 		  n, s, t, policydb.p_class_val_to_name[tclass-1]);
 out:
 	kfree(s);
 	kfree(t);
 	kfree(n);
-
 	if (!selinux_enforcing)
 		return 0;
 	return EACCES;
@@ -589,7 +820,6 @@ static int security_compute_sid(u32 ssid,
 	struct avtab_key avkey;
 	struct avtab_datum *avdatum;
 	struct avtab_node *node;
-	unsigned int type_change = 0;
 	int rc = 0;
 
 	if (!ss_initialized) {
@@ -654,33 +884,23 @@ static int security_compute_sid(u32 ssid,
 	avkey.source_type = scontext->type;
 	avkey.target_type = tcontext->type;
 	avkey.target_class = tclass;
-	avdatum = avtab_search(&policydb.te_avtab, &avkey, AVTAB_TYPE);
+	avkey.specified = specified;
+	avdatum = avtab_search(&policydb.te_avtab, &avkey);
 
 	/* If no permanent rule, also check for enabled conditional rules */
 	if(!avdatum) {
-		node = avtab_search_node(&policydb.te_cond_avtab, &avkey, specified);
+		node = avtab_search_node(&policydb.te_cond_avtab, &avkey);
 		for (; node != NULL; node = avtab_search_node_next(node, specified)) {
-			if (node->datum.specified & AVTAB_ENABLED) {
+			if (node->key.specified & AVTAB_ENABLED) {
 				avdatum = &node->datum;
 				break;
 			}
 		}
 	}
 
-	type_change = (avdatum && (avdatum->specified & specified));
-	if (type_change) {
+	if (avdatum) {
 		/* Use the type from the type transition/member/change rule. */
-		switch (specified) {
-		case AVTAB_TRANSITION:
-			newcontext.type = avtab_transition(avdatum);
-			break;
-		case AVTAB_MEMBER:
-			newcontext.type = avtab_member(avdatum);
-			break;
-		case AVTAB_CHANGE:
-			newcontext.type = avtab_change(avdatum);
-			break;
-		}
+		newcontext.type = avdatum->data;
 	}
 
 	/* Check for class-specific changes. */
@@ -698,23 +918,8 @@ static int security_compute_sid(u32 ssid,
 				}
 			}
 		}
-
-		if (!type_change && !roletr) {
-			/* No change in process role or type. */
-			*out_sid = ssid;
-			goto out_unlock;
-
-		}
 		break;
 	default:
-		if (!type_change &&
-		    (newcontext.user == tcontext->user) &&
-		    mls_context_cmp(scontext, tcontext)) {
-                        /* No change in object type, owner,
-			   or MLS attributes. */
-			*out_sid = tsid;
-			goto out_unlock;
-		}
 		break;
 	}
 
@@ -994,7 +1199,11 @@ bad:
 	goto out;
 }
 
-/* extern void selinux_complete_init(void); */
+#ifdef __linux__
+extern void selinux_complete_init(void);
+#else
+#define	selinux_complete_init()
+#endif
 
 /**
  * security_load_policy - Load a security policy configuration.
@@ -1018,19 +1227,25 @@ int security_load_policy(void *data, size_t len)
 	LOAD_LOCK;
 
 	if (!ss_initialized) {
+		avtab_cache_init();
 		if (policydb_read(&policydb, fp)) {
 			LOAD_UNLOCK;
+			avtab_cache_destroy();
 			return EINVAL;
 		}
 		if (policydb_load_isids(&policydb, &sidtab)) {
 			LOAD_UNLOCK;
 			policydb_destroy(&policydb);
+			avtab_cache_destroy();
 			return EINVAL;
 		}
+		policydb_loaded_version = policydb.policyvers;
 		ss_initialized = 1;
-
+		seqno = ++latest_granting;
 		LOAD_UNLOCK;
-		/*selinux_complete_init();*/
+		selinux_complete_init();
+		avc_ss_reset(seqno);
+		selnl_notify_policyload(seqno);
 		return 0;
 	}
 
@@ -1075,7 +1290,7 @@ int security_load_policy(void *data, size_t len)
 	memcpy(&policydb, &newpolicydb, sizeof policydb);
 	sidtab_set(&sidtab, &newsidtab);
 	seqno = ++latest_granting;
-
+	policydb_loaded_version = policydb.policyvers;
 	POLICY_WRUNLOCK;
 	LOAD_UNLOCK;
 
@@ -1084,7 +1299,7 @@ int security_load_policy(void *data, size_t len)
 	sidtab_destroy(&oldsidtab);
 
 	avc_ss_reset(seqno);
-	/* selnl_notify_policyload(seqno); */
+	selnl_notify_policyload(seqno);
 
 	return 0;
 
@@ -1303,6 +1518,7 @@ int security_get_user_sids(u32 fromsid,
 	struct user_datum *user;
 	struct role_datum *role;
 	struct av_decision avd;
+	struct ebitmap_node *rnode, *tnode;
 	int rc = 0, i, j;
 
 	if (!ss_initialized) {
@@ -1326,52 +1542,51 @@ int security_get_user_sids(u32 fromsid,
 	}
 	usercon.user = user->value;
 
-	mysids = kmalloc(maxnel*sizeof(*mysids), GFP_ATOMIC);
+	mysids = kcalloc(maxnel, sizeof(*mysids), GFP_ATOMIC);
 	if (!mysids) {
 		rc = ENOMEM;
 		goto out_unlock;
 	}
-	memset(mysids, 0, maxnel*sizeof(*mysids));
 
-	for (i = ebitmap_startbit(&user->roles); i < ebitmap_length(&user->roles); i++) {
-		if (!ebitmap_get_bit(&user->roles, i))
+	ebitmap_for_each_bit(&user->roles, rnode, i) {
+		if (!ebitmap_node_get_bit(rnode, i))
 			continue;
 		role = policydb.role_val_to_struct[i];
 		usercon.role = i+1;
-		for (j = ebitmap_startbit(&role->types); j < ebitmap_length(&role->types); j++) {
-			if (!ebitmap_get_bit(&role->types, j))
+		ebitmap_for_each_bit(&role->types, tnode, j) {
+			if (!ebitmap_node_get_bit(tnode, j))
 				continue;
 			usercon.type = j+1;
-			mls_for_user_ranges(user,usercon) {
-				rc = context_struct_compute_av(fromcon, &usercon,
-							       SECCLASS_PROCESS,
-							       PROCESS__TRANSITION,
-							       &avd);
-				if (rc ||  !(avd.allowed & PROCESS__TRANSITION))
-					continue;
-				rc = sidtab_context_to_sid(&sidtab, &usercon, &sid);
-				if (rc) {
+
+			if (mls_setup_user_range(fromcon, user, &usercon))
+				continue;
+
+			rc = context_struct_compute_av(fromcon, &usercon,
+						       SECCLASS_PROCESS,
+						       PROCESS__TRANSITION,
+						       &avd);
+			if (rc ||  !(avd.allowed & PROCESS__TRANSITION))
+				continue;
+			rc = sidtab_context_to_sid(&sidtab, &usercon, &sid);
+			if (rc) {
+				kfree(mysids);
+				goto out_unlock;
+			}
+			if (mynel < maxnel) {
+				mysids[mynel++] = sid;
+			} else {
+				maxnel += SIDS_NEL;
+				mysids2 = kcalloc(maxnel, sizeof(*mysids2), GFP_ATOMIC);
+				if (!mysids2) {
+					rc = ENOMEM;
 					kfree(mysids);
 					goto out_unlock;
 				}
-				if (mynel < maxnel) {
-					mysids[mynel++] = sid;
-				} else {
-					maxnel += SIDS_NEL;
-					mysids2 = kmalloc(maxnel*sizeof(*mysids2), GFP_ATOMIC);
-					if (!mysids2) {
-						rc = ENOMEM;
-						kfree(mysids);
-						goto out_unlock;
-					}
-					memset(mysids2, 0, maxnel*sizeof(*mysids2));
-					memcpy(mysids2, mysids, mynel * sizeof(*mysids2));
-					kfree(mysids);
-					mysids = mysids2;
-					mysids[mynel++] = sid;
-				}
+				memcpy(mysids2, mysids, mynel * sizeof(*mysids2));
+				kfree(mysids);
+				mysids = mysids2;
+				mysids[mynel++] = sid;
 			}
-			mls_end_user_ranges;
 		}
 	}
 
@@ -1403,11 +1618,12 @@ static int getfilesids1(struct avtab_key *avk,
 {
 	struct getfilesids *p = args;
 	struct context fc;
+	u16 specified = avk->specified & ~(AVTAB_ENABLED|AVTAB_ENABLED_OLD);
 	int ir, iu;
 
 	if (avk->source_type != p->scon->type ||
 	    avk->target_class != p->sclass ||
-	    (avd->specified & AVTAB_AV) == 0 ||
+	    (specified & AVTAB_AV) == 0 ||
 	    (avtab_allowed(avd) & COMMON_FILE__RELABELTO) == 0)
 		return 0;
 
@@ -1431,7 +1647,8 @@ static int getfilesids1(struct avtab_key *avk,
 				    constraint != NULL;
 				    constraint = constraint->next) {
 					if ((constraint->permissions & COMMON_FILE__RELABELTO) &&
-					    !constraint_expr_eval(p->scon, &fc, constraint->expr))
+					    !constraint_expr_eval(p->scon, &fc,
+					    NULL, constraint->expr))
 						break;
 				}
 
@@ -1630,6 +1847,23 @@ int security_get_bool_string(int *len, char *out)
 	return err;
 }
 
+int security_get_bool(char *name, int *value, int *pending)
+{
+	int i;
+	POLICY_RDLOCK;
+
+	for (i = 0; i < policydb.p_bools.nprim; i++)
+		if (!strcmp(name, policydb.p_bool_val_to_name[i])) {
+			*pending = policydb.bool_val_to_struct[i]->pending;
+			*value = policydb.bool_val_to_struct[i]->state;
+			POLICY_RDUNLOCK;
+			return (0);
+		}
+
+	POLICY_RDUNLOCK;
+	return (ENOENT);
+}
+
 static __unused int security_get_bools(int *len, char ***names, int **values)
 {
 	int i, rc = ENOMEM;
@@ -1644,12 +1878,11 @@ static __unused int security_get_bools(int *len, char ***names, int **values)
 		goto out;
 	}
 
-	*names = (char**)kmalloc(sizeof(char*) * *len, GFP_ATOMIC);
+       *names = kcalloc(*len, sizeof(char*), GFP_ATOMIC);
 	if (!*names)
 		goto err;
-	memset(*names, 0, sizeof(char*) * *len);
 
-	*values = (int*)kmalloc(sizeof(int) * *len, GFP_ATOMIC);
+       *values = kcalloc(*len, sizeof(int), GFP_ATOMIC);
 	if (!*values)
 		goto err;
 
@@ -1657,7 +1890,7 @@ static __unused int security_get_bools(int *len, char ***names, int **values)
 		size_t name_len;
 		(*values)[i] = policydb.bool_val_to_struct[i]->state;
 		name_len = strlen(policydb.p_bool_val_to_name[i]) + 1;
-		(*names)[i] = (char*)kmalloc(sizeof(char) * name_len, GFP_ATOMIC);
+               (*names)[i] = kmalloc(sizeof(char) * name_len, GFP_ATOMIC);
 		if (!(*names)[i])
 			goto err;
 		strncpy((*names)[i], policydb.p_bool_val_to_name[i], name_len);
@@ -1670,11 +1903,9 @@ out:
 err:
 	if (*names) {
 		for (i = 0; i < *len; i++)
-			if ((*names)[i])
-				kfree((*names)[i]);
+			kfree((*names)[i]);
 	}
-	if (*values)
-		kfree(*values);
+	kfree(*values);
 	goto out;
 }
 
@@ -1728,23 +1959,6 @@ int security_set_bool(char *name, int value)
 	return (ENOENT);
 }
 
-int security_get_bool(char *name, int *value, int *pending)
-{
-	int i;
-	POLICY_RDLOCK;
-
-	for (i = 0; i < policydb.p_bools.nprim; i++)
-		if (!strcmp(name, policydb.p_bool_val_to_name[i])) {
-			*pending = policydb.bool_val_to_struct[i]->pending;
-			*value = policydb.bool_val_to_struct[i]->state;
-			POLICY_RDUNLOCK;
-			return (0);
-		}
-
-	POLICY_RDUNLOCK;
-	return (ENOENT);
-}
-
 static __unused int security_set_bools(int len, int *values)
 {
 	int i, rc = 0;
@@ -1785,7 +1999,7 @@ out:
 	POLICY_WRUNLOCK;
 	if (!rc) {
 		avc_ss_reset(seqno);
-		/*selnl_notify_policyload(seqno);*/
+		selnl_notify_policyload(seqno);
 	}
 	return rc;
 }

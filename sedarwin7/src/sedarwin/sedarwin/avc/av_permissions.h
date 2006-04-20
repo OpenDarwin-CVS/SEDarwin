@@ -505,6 +505,7 @@
 #define PROCESS__SIGINH                           0x0000000000100000UL
 #define PROCESS__SETRLIMIT                        0x0000000000200000UL
 #define PROCESS__RLIMITINH                        0x0000000000400000UL
+#define PROCESS__DYNTRANSITION                    0x0000000000800000UL
 
 #define IPC__WRITE                                0x0000000000000020UL
 #define IPC__UNIX_WRITE                           0x0000000000000100UL
