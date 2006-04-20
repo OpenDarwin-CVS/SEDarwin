@@ -12,9 +12,6 @@
 #define	SEBSDCALL_GET_BOOL		9
 #define	SEBSDCALL_SET_BOOL		10
 #define	SEBSDCALL_COMMIT_BOOLS		11
-#define	SEBSDCALL_GETUSERSIDS		6
-#define	SEBSDCALL_GETFILESIDS           5
-#define	SEBSDCALL_CHANGE_SID            4
 
 #define	SEBSDCALL_NUM			7
 
@@ -38,6 +35,11 @@ struct security_response {
 struct sebsd_get_bools {
 	int	 len;
 	char	*out;
+};
+
+struct lp_args {
+        void    *data;
+        size_t   len;
 };
 
 #endif /* _SEBSD_SYSCALLS_H_ */

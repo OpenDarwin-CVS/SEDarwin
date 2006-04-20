@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002 Networks Associates Technology, Inc.
- * Copyright (c) 2005, 2006 SPARTA, Inc.
+ * Copyright (c) 2005-2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -55,13 +55,12 @@
 
 extern unsigned int policydb_loaded_version;
 
-#if 0
 /*
  * Sysctl handler for security.mac.sebsd.sids
  * Lists the SIDs currently active in the security server
  */
 static int
-sysctl_list_sids(SYSCTL_HANDLER_ARGS)
+sysctl_list_sids SYSCTL_HANDLER_ARGS
 {
 	const int linesize = 128;	/* conservative */
 	int i, count, error, len;
@@ -71,7 +70,7 @@ sysctl_list_sids(SYSCTL_HANDLER_ARGS)
 	char *scontext;
 
 	count = sidtab.nel;
-	MALLOC(buffer, char *, linesize, M_TEMP, M_WAITOK);
+	buffer = sebsd_malloc(linesize, M_TEMP, M_WAITOK);
 	len = snprintf(buffer, linesize, "\n    SID   Context\n");
 	error = SYSCTL_OUT(req, buffer, len);
 	if (error)
@@ -98,10 +97,9 @@ sysctl_list_sids(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, "", 1);
 out:
-	FREE(buffer, M_TEMP);
+	sebsd_free(buffer, M_TEMP);
 	return (error);
 }
-#endif
 
 /*
  * Sysctl handler for security.mac.sebsd.auditing.  Get or set whether the
@@ -167,13 +165,11 @@ sysctl_sebsd_enforcing SYSCTL_HANDLER_ARGS
 	return (0);
 }
 
-#if 0
-/*
- * Sysctl handler for security.mac.sebsd.user_sids.  Lists the SIDs currently
- * available for transition to by a given "context\0username\0".
- */
+#define SEBSD_GETUSERSIDS	1
+#define SEBSD_GETFILESIDS	2
+
 static int
-sysctl_user_sids(SYSCTL_HANDLER_ARGS)
+sebsd_get_sids(int function, struct sysctl_req *req)
 {
 	u_int32_t n, nsids, scontext_len;
 	u_int32_t *sids, sid;
@@ -193,19 +189,29 @@ sysctl_user_sids(SYSCTL_HANDLER_ARGS)
 		error = EINVAL;
 		goto out;
 	}
-	len = strlen(context);
-	if (len + 1 >= req->newlen) {
-		error = EINVAL;
-		goto out;
-	}
-	username = context + len + 1;
 	/*
 	 * XXX We need POLICY_RDLOCK here, but it's not exported!
 	 */
+	len = strlen(context);
 	error = security_context_to_sid(context, len + 1, &sid);
 	if (error)
 		goto out;
-	error = security_get_user_sids(sid, username, &sids, &nsids);
+	switch (function) {
+	case SEBSD_GETUSERSIDS:
+		if (len + 1 >= req->newlen) {
+			error = EINVAL;
+			goto out2;
+		}
+		username = context + len + 1;
+		error = security_get_user_sids(sid, username, &sids, &nsids);
+		break;
+	case SEBSD_GETFILESIDS:
+		error = security_get_file_sids(sid, SECCLASS_FILE, &sids,
+		    &nsids);
+		break;
+	default:
+		error = EINVAL;
+	}
 	if (error)
 		goto out;
 	for (n = 0; n < nsids; n++) {
@@ -227,11 +233,33 @@ out:
 }
 
 /*
+ * Sysctl handler for security.mac.sebsd.user_sids.  Lists the SIDs currently
+ * available for transition to by a given "context\0username\0".
+ */
+static int
+sysctl_user_sids SYSCTL_HANDLER_ARGS
+{
+
+	return (sebsd_get_sids(SEBSD_GETUSERSIDS, req));
+}
+
+/*
+ * Sysctl handler for security.mac.sebsd.file_sids.  Lists the file
+ * SIDs available for a given "context\0".
+ */
+static int
+sysctl_file_sids SYSCTL_HANDLER_ARGS
+{
+
+	return (sebsd_get_sids(SEBSD_GETFILESIDS, req));
+}
+
+/*
  * Sysctl handler for security.mac.sebsd.change_sid
  * Report the SID to relabel to given input "scontext\0tcontext\0",tclass
  */
 static int
-sysctl_change_sid(SYSCTL_HANDLER_ARGS)
+sysctl_change_sid SYSCTL_HANDLER_ARGS
 {
 	u_int32_t newcontext_len;
 	u_int32_t sid, tsid, newsid;
@@ -284,7 +312,7 @@ out:
  * given input "scontext\0tcontext\0", tclass, av.
  */
 static int
-sysctl_compute_av(SYSCTL_HANDLER_ARGS)
+sysctl_compute_av SYSCTL_HANDLER_ARGS
 {
 	u_int32_t sid, tsid;
 	u_int16_t tclass;
@@ -333,7 +361,6 @@ out:
 	sebsd_free(scontext, M_SEBSD);
 	return (error);
 }
-#endif
 
 SYSCTL_DECL(_security_mac);
 SYSCTL_NODE(_security_mac, OID_AUTO, sebsd, CTLFLAG_RW, 0,
@@ -341,19 +368,20 @@ SYSCTL_NODE(_security_mac, OID_AUTO, sebsd, CTLFLAG_RW, 0,
 
 SYSCTL_INT(_security_mac_sebsd, OID_AUTO, verbose, CTLFLAG_RW,
     &sebsd_verbose, 0, " SEBSD Verbose Debug Stuff");
-#if 0
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, sids, CTLTYPE_STRING|CTLFLAG_RD,
     NULL, 0, sysctl_list_sids, "A", "SEBSD SIDs");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, user_sids, CTLTYPE_STRING |
     CTLFLAG_RW | CTLFLAG_ANYBODY, NULL, 0, sysctl_user_sids, "A",
     "SEBSD transitionable user SIDs");
+SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, file_sids, CTLTYPE_STRING |
+    CTLFLAG_RW | CTLFLAG_ANYBODY, NULL, 0, sysctl_file_sids, "A",
+    "SEBSD transitionable file SIDs");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, change_sid, CTLTYPE_STRING |
     CTLFLAG_RW | CTLFLAG_ANYBODY, NULL, 0, sysctl_change_sid, "A",
     "SEBSD (tty) SID relabel to perform along with transition");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, compute_av, CTLTYPE_STRING |
     CTLFLAG_RW | CTLFLAG_ANYBODY, NULL, 0, sysctl_compute_av, "A",
     "SEBSD access vector decision query");
-#endif
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, auditing, CTLTYPE_INT |
     CTLFLAG_RW, NULL, 0, sysctl_sebsd_auditing, "I", "SEBSD avc auditing");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, enforcing, CTLTYPE_INT |
@@ -367,6 +395,11 @@ sebsd_register_sysctls()
 {
 	sysctl_register_oid(&sysctl__security_mac_sebsd);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_verbose);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_sids);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_user_sids);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_file_sids);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_change_sid);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_compute_av);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_auditing);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_enforcing);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_policyvers);
