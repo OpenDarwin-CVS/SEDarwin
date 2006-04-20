@@ -3,15 +3,14 @@
 selinuxenabled \- tool to be used within shell scripts to determine if selinux is enabled
 .SH "SYNOPSIS"
 .B selinuxenabled
-.br
-Command exits with status 0 if selinux is enabled -256 if it is not enabled.
 
 .SH "DESCRIPTION"
 .B selinuxenabled
-Indicates whether SELinux is enabled or disabled.
+Indicates whether SELinux is enabled or disabled. It exits with status 0 
+if SELinux is enabled and 1 if it is not enabled.
 
 .SH AUTHOR	
-	Dan Walsh, <dwalsh@redhat.com>
+Dan Walsh, <dwalsh@redhat.com>
 
 .SH "SEE ALSO"
-.BR setenforce"(8)", getenforce"(8)"
+setenforce(8), getenforce(8)

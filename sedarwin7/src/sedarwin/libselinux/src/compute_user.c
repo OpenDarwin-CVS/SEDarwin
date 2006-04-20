@@ -1,111 +1,116 @@
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <asm/page.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include "policy.h"
 #include <limits.h>
-#include <selinux/context.h>
-#include <selinux/flask.h>
-#include <selinux/av_permissions.h>
+
+int security_compute_user_raw(security_context_t scon,
+                              const char *user,
+                              security_context_t **con)
+{
+        char *arguments, *contexts, *s, **contextarray;
+        ssize_t arguments_len;
+        size_t contexts_len, n;
+        int error;
+
+        arguments_len = asprintf(&arguments, "%s%c%s%c", scon, 0,
+            user, 0);
+        if (arguments_len == -1)
+                return (-1);
+bigger:
+        contexts_len = 0;
+        if (sysctlbyname("security.mac.sebsd.user_sids", NULL, &contexts_len,
+            arguments, arguments_len) == -1) {
+                free(arguments);
+                return (-1);
+        }
+        contexts = malloc(contexts_len);
+        if (contexts == NULL) {
+                free(arguments);
+                return (-1);
+        }
+        error = sysctlbyname("security.mac.sebsd.user_sids", contexts,
+            &contexts_len, arguments, arguments_len);
+        /*
+         * We could possibly race and not have a large enough space
+         * for the current set of contexts.
+         */
+        if (error == -1 && errno == ENOMEM) {
+                free(contexts);
+                goto bigger;
+        }
+        free(arguments);
+        if (error == -1) {
+                free(contexts);
+                return (-1);
+        }
+        n = 0;
+        for (s = contexts; s < &contexts[contexts_len - 1]; s += strlen(s) + 1)
+                n++;
+        if (!n) {
+                free(contexts);
+                return (-1);
+        }
+        contextarray = calloc(n + 1, sizeof(char *));
+        if (contextarray == NULL) {
+                free(contexts);
+                return (-1);
+        }
+        n = 0;
+        for (s = contexts; s < &contexts[contexts_len - 1];
+            s += strlen(s) + 1) {
+                contextarray[n] = strdup(s);
+                /* upon failure here, just free everything */
+                if (contextarray[n] == NULL) {
+                        while (n > 0) 
+                                free(contextarray[--n]);
+			free(contextarray);
+			free(contexts);
+			return (-1);
+                }
+                n++;
+        }
+	free(contexts);
+	contextarray[n] = NULL;
+        *con = contextarray;
+        return (0);
+}	
+hidden_def(security_compute_user_raw)
 
 int security_compute_user(security_context_t scon,
-			  const char *user,
-			  security_context_t **con)
+                          const char *user,
+                          security_context_t **con)
 {
-	context_t cs;
-	security_context_t ucon;
-	struct av_decision avd;
-	char path[PATH_MAX];
-	char **ary;
-	char *buf, *ptr;
-	size_t size;
-	int fd, ret;
-	unsigned int i, nel;
+	int ret;
+	security_context_t rscon = scon;
 
-	snprintf(path, sizeof path, "%s/user", selinux_mnt);
-	fd = open(path, O_RDWR);
-	if (fd < 0)
+	if (context_translations && trans_to_raw_context(scon, &rscon))
 		return -1;
 
-	size = PAGE_SIZE;
-	buf = malloc(size);
-	if (!buf) {
-		ret = -1;
-		goto out;
-	}
-	snprintf(buf, size, "%s %s", scon, user);
+ 	ret = security_compute_user_raw(rscon, user, con);
 
-	ret = write(fd, buf, strlen(buf));
-	if (ret < 0) 
-		goto out2;
-
-	memset(buf, 0, size);
-	ret = read(fd, buf, size-1);
-	if (ret < 0)
-		goto out2;
-
-	if (sscanf(buf, "%u", &nel) != 1) {
-		ret = -1;
-		goto out2;
-	}
-
-	/* Manually check and insert the context with the same domain
-	   to address the current bug in the kernel code that is omitting
-	   such entries, until we can fix the kernel code. */
-	cs = context_new(scon);
-	if (!cs) {
-		ret = -1;
-		goto out2;
-	}
-
-	if (context_user_set(cs, user)) {
-		ret = -1;
-		goto out3;
-	}
-	ucon = context_str(cs);
-
-	ary = malloc((nel+2)*sizeof(char*));
-	if (!ary) {
-		ret = -1;
-		goto out3;
-	}
-
-	i = 0;
-	ret = security_compute_av(scon, ucon, SECCLASS_PROCESS, PROCESS__TRANSITION, &avd);
-	if (!ret && (avd.allowed & PROCESS__TRANSITION)) {
-		ary[i] = strdup(ucon);
-		if (!ary[i]) {
-			ret = -1;
-			freeconary(ary);
-			goto out3;
+	if (context_translations) {
+		freecon(rscon);
+		if (!ret) {
+			security_context_t *ptr, tmpcon;
+			for (ptr = *con; *ptr; ptr++) {
+				if (raw_to_trans_context(*ptr, &tmpcon)) {
+					freeconary(*con);
+					*con = NULL;
+					return -1;
+				}
+				freecon(*ptr);
+				*ptr = tmpcon;
+			}
 		}
-		i++;
-		nel++;
 	}
 
-	ptr = buf + strlen(buf) + 1;
-	for (; i < nel; i++) {
-		ary[i] = strdup(ptr);
-		if (!ary[i]) {
-			freeconary(ary);
-			ret = -1;
-			goto out3;
-		}
-		ptr += strlen(ptr) + 1;
-	}
-	ary[nel] = NULL;
-	*con = ary;
-	ret = 0;
-out3:
-	context_free(cs);
-out2:
-	free(buf);
-out:
-	close(fd);
 	return ret;
 }
+hidden_def(security_compute_user)

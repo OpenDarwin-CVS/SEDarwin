@@ -1,4 +1,4 @@
-#include <selinux/context.h>
+#include "context_internal.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +15,8 @@ typedef struct {
 
 /*
  * Allocate a new context, initialized from str.  There must be 3 or
- * 4 colon-separated components and no whitespace.
+ * 4 colon-separated components and no whitespace in any component other
+ * than the MLS component.
  */
 context_t
 context_new(const char *str)
@@ -25,14 +26,18 @@ context_new(const char *str)
         context_t result = (context_t) malloc(sizeof(context_s_t));
         const char *p,*tok;
         
+	if (result)
+		result->ptr = n;
+	else
+		free(n);
         if ( n == 0 || result == 0 ) { goto err; }
         n->current_str = n->component[0] = n->component[1] = n->component[2] =
                 n->component[3] = 0;
-        result->ptr = n;
         for ( i = count = 0, p = str; *p; p++ ) {
                 switch ( *p ) { 
                 case ':': count++; break;
-                case '\n': case '\t': case '\r': case ' ': goto err; /* sanity check */
+                case '\n': case '\t': case '\r': goto err; /* sanity check */
+                case ' ': if (count < 3) goto err; /* sanity check */
                 }
         }
 	/*
@@ -64,6 +69,7 @@ context_new(const char *str)
         context_free(result);
         return 0;
 }
+hidden_def(context_new)
 
 static void 
 conditional_free(char** v)
@@ -95,6 +101,7 @@ context_free(context_t context)
                 free(context);
         }
 }
+hidden_def(context_free)
 
 /*
  * Return a pointer to the string value of the context.
@@ -114,36 +121,40 @@ context_str(context_t context)
         }
         n->current_str = malloc(total);
         if ( n->current_str != 0 ) {
-                strcpy(n->current_str,n->component[0]);
-                strcat(n->current_str,":");
-                strcat(n->current_str,n->component[1]);
-                strcat(n->current_str,":");
-                strcat(n->current_str,n->component[2]);
-                if ( n->component[3] ) {
-                        strcat(n->current_str,":");
-                        strcat(n->current_str,n->component[3]);
-                }
+                char *cp = n->current_str;
+
+		cp = stpcpy(cp, n->component[0]);
+		for (i = 1; i < 4; i++) {
+			if (n->component[i]) {
+				*cp++ = ':';
+				cp = stpcpy(cp, n->component[i]);
+			}
+		}
         }
         return n->current_str;
 }
+hidden_def(context_str)
 
 /* Returns nonzero iff failed */
 
 static int set_comp(context_private_t* n,int index, const char *str)
 {
-        char *t = (char*) malloc(strlen(str)+1);
+	char *t = NULL;
         const char *p;
-        if ( !t ) { return 1; }
-        for ( p = str; *p; p++ ) {
-                if ( *p == '\t' || *p == ' ' || *p == '\n' || *p == '\r' ||
-                     *p == ':' ) {
-                        free(t);
-                        return 1;
-                }
-        }
+	if (str) {
+		t = (char*) malloc(strlen(str)+1);
+		if ( !t ) { return 1; }
+		for ( p = str; *p; p++ ) {
+			if ( *p == '\t' || *p == '\n' || *p == '\r' ||
+			     ((*p == ':' || *p == ' ') && index != COMP_RANGE) ) {
+				free(t);
+				return 1;
+			}
+		}
+		strcpy(t,str);
+	}
         conditional_free(&n->component[index]);
         n->component[index] = t;
-        strcpy(t,str);
         return 0;
 }
 
@@ -152,7 +163,8 @@ const char * context_ ## name ## _get(context_t context) \
 { \
         context_private_t *n = context->ptr; \
         return n->component[tag]; \
-}
+} \
+hidden_def(context_ ## name ## _get)
 
 def_get(type,COMP_TYPE)
 def_get(user,COMP_USER)
@@ -163,105 +175,10 @@ def_get(role,COMP_ROLE)
 int context_ ## name ## _set(context_t context, const char* str) \
 { \
         return set_comp(context->ptr,tag,str);\
-}
+} \
+hidden_def(context_ ## name ## _set)
 
 def_set(type,COMP_TYPE)
 def_set(role,COMP_ROLE)
 def_set(user,COMP_USER)
-
-int context_range_set(context_t context,const char* str)
-{
-        context_private_t *n = context->ptr;
-        if ( ! n->component[COMP_RANGE] ) {
-                return 0;
-        } else {
-                return set_comp(n,COMP_RANGE,str);
-        }
-}
-
-#ifdef L1TEST
-
-#include "testutils.c"
-
-main()
-{
-        context_t c1,c2;
-        c1 = context_new("user:role:type:levellow-levelhigh");
-        c2 = context_new("user2:role2:type2");
-
-        /* see if strings come back unchanged */
-
-        if ( strcmp(context_str(c1),"user:role:type:levellow-levelhigh") ) {
-                test_fail("context_str c1");
-        }
-        if ( strcmp(context_str(c2),"user2:role2:type2") ) {
-                test_fail("context_str c2");
-        }
-
-        /* get components */
-
-        if ( strcmp(context_role_get(c1),"role") ) {
-                test_fail("context_role_get(c1)");
-        }
-        if ( strcmp(context_user_get(c1),"user") ) {
-                test_fail("context_user_get(c1)");
-        }
-        if ( strcmp(context_type_get(c1),"type") ) {
-                test_fail("context_type_get(c1)");
-        }
-        if ( strcmp(context_range_get(c1),"levellow-levelhigh" ) ) {
-                test_fail("context_range_get(c1)");
-        }
-        if ( strcmp(context_role_get(c2),"role2") ) {
-                test_fail("context_role_get(c2)");
-        }
-        if ( strcmp(context_user_get(c2),"user2") ) {
-                test_fail("context_user_get(c2)");
-        }
-        if ( strcmp(context_type_get(c2),"type2") ) {
-                test_fail("context_type_get(c2)");
-        }
-        if ( context_range_get(c2) != 0 ) {
-                test_fail("context_range_get(c2)");
-        }
-
-        /* Set components */
-
-        if ( context_type_set(c1,"newtype1") ||
-             strcmp(context_type_get(c1),"newtype1") ) {
-                test_fail("context_type_set(c1)");
-        }
-        if ( context_range_set(c1,"newrange1") ||
-             strcmp(context_range_get(c1),"newrange1") ) {
-                test_fail("context_range_set(c1)");
-        }
-        if ( context_role_set(c1,"newrole1") ||
-             strcmp(context_role_get(c1),"newrole1") ) {
-                test_fail("context_role_set(c1)");
-        }
-        if ( context_user_set(c1,"newuser1") ||
-             strcmp(context_user_get(c1),"newuser1") ) {
-                test_fail("context_user_set(c1)");
-        }
-
-        /* check trying to set a component with whitespace */
-
-        if ( !context_type_set(c1,"new type 1") ) {
-                test_fail("context_type_set with whitespace");
-        }
-
-        /* check trying to set with a colon */
-
-        if ( !context_range_set(c1,"newrange:1") ) {
-                test_fail("context_type_set with colon");
-        }
-
-        /* check new value */
-
-        if ( strcmp(context_str(c1),"newuser1:newrole1:newtype1:newrange1") ) {
-                test_fail("second context_str(c1)");
-        }
-
-        test_print_report();
-}
-#endif
+def_set(range,COMP_RANGE)

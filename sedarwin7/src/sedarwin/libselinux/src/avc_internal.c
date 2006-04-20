@@ -16,7 +16,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <asm/types.h>
+//#include <asm/types.h>
 #include <linux/netlink.h>
 #include "selinux_netlink.h"
 #include "avc_internal.h"
@@ -69,7 +69,6 @@ int avc_netlink_open(int blocking) {
 	
   memset(&addr, 0, len);
   addr.nl_family = AF_NETLINK;
-  addr.nl_pid = getpid();
   addr.nl_groups = SELNL_GRP_AVC;
 	
   if (bind(fd, (struct sockaddr *)&addr, len) < 0) {
@@ -86,13 +85,17 @@ void avc_netlink_close(void) {
 }
 
 int avc_netlink_check_nb(void) {
-  int rc = 0;
+  int rc;
+  struct sockaddr_nl nladdr;
+  socklen_t nladdrlen = sizeof nladdr;
   char buf[1024];
   struct nlmsghdr *nlh;
 
   while (1) {
-    rc = recvfrom(fd, buf, sizeof(buf), 0, NULL, NULL);
+    rc = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&nladdr, &nladdrlen);
     if (rc < 0) {
+      if (errno == EINTR)
+	continue;
       if (errno != EAGAIN) {
 	avc_log("%s:  socket error during read: %d\n", avc_prefix, errno);
       } else {
@@ -102,6 +105,19 @@ int avc_netlink_check_nb(void) {
       goto out;
     }
 
+    if (nladdrlen != sizeof nladdr) {
+      avc_log("%s:  warning: netlink address truncated, len %d?\n", 
+	      avc_prefix, nladdrlen);
+      rc = -1;
+      goto out;
+    }
+
+    if (nladdr.nl_pid) {
+      avc_log("%s:  warning: received spoofed netlink packet from: %d\n", 
+	      avc_prefix, nladdr.nl_pid);
+      continue;
+    }
+
     if (rc == 0) {
       avc_log("%s:  warning: received EOF on socket\n", avc_prefix);
       goto out;
@@ -109,7 +125,7 @@ int avc_netlink_check_nb(void) {
 		
     nlh = (struct nlmsghdr *)buf;
 		
-    if (nlh->nlmsg_flags & MSG_TRUNC || nlh->nlmsg_len > rc) {
+    if (nlh->nlmsg_flags & MSG_TRUNC || nlh->nlmsg_len > (unsigned)rc) {
       avc_log("%s:  warning: incomplete netlink message\n", avc_prefix);
       goto out;
     }
@@ -162,14 +178,31 @@ int avc_netlink_check_nb(void) {
 /* run routine for the netlink listening thread */
 void avc_netlink_loop(void) {
   int ret;
+  struct sockaddr_nl nladdr;
+  socklen_t nladdrlen = sizeof nladdr;
   char buf[1024];
   struct nlmsghdr *nlh;
 	
   while (1) {
-    ret = recvfrom(fd, buf, sizeof(buf), 0, NULL, NULL);
+    ret = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&nladdr, &nladdrlen);
     if (ret < 0) {
+      if (errno == EINTR)
+	continue;
       avc_log("%s:  netlink thread: recvfrom: error %d\n", avc_prefix, errno);
       goto out;
+    }
+
+    if (nladdrlen != sizeof nladdr) {
+      avc_log("%s:  warning: netlink address truncated, len %d?\n", 
+	      avc_prefix, nladdrlen);
+      ret = -1;
+      goto out;
+    }
+
+    if (nladdr.nl_pid) {
+      avc_log("%s:  warning: received spoofed netlink packet from: %d\n", 
+	      avc_prefix, nladdr.nl_pid);
+      continue;
     }
 		
     if (ret == 0) {
@@ -179,7 +212,7 @@ void avc_netlink_loop(void) {
 		
     nlh = (struct nlmsghdr *)buf;
 		
-    if (nlh->nlmsg_flags & MSG_TRUNC || nlh->nlmsg_len > ret) {
+    if (nlh->nlmsg_flags & MSG_TRUNC || nlh->nlmsg_len > (unsigned) ret) {
       avc_log("%s:  netlink thread: incomplete netlink message\n", avc_prefix);
       goto out;
     }
@@ -227,5 +260,4 @@ void avc_netlink_loop(void) {
   avc_netlink_trouble = 1;
   avc_log("%s:  netlink thread: errors encountered, terminating\n",
 	  avc_prefix);
-  avc_log("%s:  AVC disabled: denying all access requests!\n", avc_prefix);
 }

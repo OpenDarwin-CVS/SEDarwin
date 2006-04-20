@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include <selinux/avc.h>
 #include "avc_sidtab.h"
 #include "avc_internal.h"
@@ -20,7 +20,7 @@ static inline unsigned sidtab_hash(security_context_t key) {
 	val = 0;
 	keyp = (char*)key;
 	size = strlen(keyp);
-	for (p = keyp; (p - keyp) < size; p++)
+	for (p = keyp; (unsigned int)(p - keyp) < size; p++)
 		val = (val << 4 | (val >> (8*sizeof(unsigned int)-4))) ^ (*p);
 	return val & (SIDTAB_SIZE - 1);
 }
@@ -58,6 +58,7 @@ sidtab_insert(struct sidtab *s, security_context_t ctx)
 	newctx = (security_context_t)strdup(ctx);
 	if (!newctx) {
 		rc = -1;
+		avc_free(newnode);
 		goto out;
 	}
 

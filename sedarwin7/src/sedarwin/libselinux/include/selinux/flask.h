@@ -58,6 +58,7 @@
 #define SECCLASS_NETLINK_DNRT_SOCKET                     51
 #define SECCLASS_DBUS                                    52
 #define SECCLASS_NSCD                                    53
+#define SECCLASS_ASSOCIATION                             54
 
 /*
  * Security identifier indices for initial entities

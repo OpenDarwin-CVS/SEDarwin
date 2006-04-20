@@ -2,14 +2,117 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <regex.h>
+#include <stdarg.h>
 #include "policy.h"
+#include "context_internal.h"
+
+static void 
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+default_printf(const char *fmt, ...) 
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+}
+
+/* If MLS is disabled, strip any MLS level field from the context.
+   This allows file_contexts with MLS levels to be processed on
+   a non-MLS system that otherwise has the same policy. */
+static inline int STRIP_LEVEL(char **context, int mls_enabled)
+{
+	char *str;
+	context_t con;
+	int rc = -1;
+
+	if (mls_enabled)
+		return 0;
+
+	con = context_new(*context);
+	if (!con)
+		return rc;
+
+	if (context_range_set(con,NULL))
+		goto out;
+
+	str = context_str(con);
+	if (!str)
+		goto out;
+
+	str = strdup(str);
+	if (!str)
+		goto out;
+
+	free(*context);
+	*context = str;
+	rc = 0;
+out:
+	context_free(con);
+	return rc;
+}
+static void 
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+(*myprintf)(const char *fmt, ...) = &default_printf;
+
+void set_matchpathcon_printf(void (*f)(const char *fmt, ...))
+{
+	if (f)
+		myprintf = f;
+	else
+		myprintf = &default_printf;
+}
+
+static int (*myinvalidcon)(const char *p, unsigned l, char *c) = NULL;
+
+void set_matchpathcon_invalidcon(int (*f)(const char *p, unsigned l, char *c))
+{
+	myinvalidcon = f;
+}
+
+static int default_canoncon(const char *path, unsigned lineno, char **context)
+{
+	char *tmpcon;
+	if (security_canonicalize_context(*context, &tmpcon) < 0) {
+		if (errno == ENOENT)
+			return 0;
+		if (lineno)
+			myprintf("%s:  line %u has invalid context %s\n", path, lineno, *context);
+		else
+			myprintf("%s:  invalid context %s\n", path, *context);
+		return 1;
+	}
+	free(*context);
+	*context = tmpcon;
+	return 0;
+}
+
+static int (*mycanoncon)(const char *p, unsigned l, char **c) = &default_canoncon;
+
+void set_matchpathcon_canoncon(int (*f)(const char *p, unsigned l, char **c))
+{
+	if (f)
+		mycanoncon = f;
+	else
+		mycanoncon = &default_canoncon;
+}
+
+static unsigned int myflags;
+
+void set_matchpathcon_flags(unsigned int flags)
+{
+	myflags = flags;
+}
 
 /*
  * A file security context specification.
@@ -18,6 +121,7 @@ typedef struct spec {
 	char *regex_str;	/* regular expession string for diagnostic messages */
 	char *type_str;		/* type string for diagnostic messages */
 	char *context;		/* context string */
+	int context_valid;      /* context string has been validated/canonicalized */
 	regex_t regex;		/* compiled regular expression */
 	mode_t mode;		/* mode format value */
 	int matches;		/* number of matching pathnames */
@@ -89,10 +193,12 @@ static int find_stem_from_spec(const char **buf)
 	}
 	if(num_stems == alloc_stems)
 	{
+		stem_t *tmp_arr;
 		alloc_stems = alloc_stems * 2 + 16;
-		stem_arr = realloc(stem_arr, sizeof(stem_t) * alloc_stems);
-		if(!stem_arr)
+		tmp_arr = realloc(stem_arr, sizeof(stem_t) * alloc_stems);
+		if(!tmp_arr)
 			return -1;
+		stem_arr = tmp_arr;
 	}
 	stem_arr[num_stems].len = stem_len;
 	stem_arr[num_stems].buf = malloc(stem_len + 1);
@@ -132,7 +238,7 @@ static int find_stem_from_file(const char **buf)
  * Sorting occurs based on hasMetaChars
  */
 static spec_t *spec_arr;
-static int nspec;
+static unsigned int nspec;
 
 /*
  * An association between an inode and a 
@@ -144,6 +250,184 @@ typedef struct file_spec {
 	char *file;		/* full pathname for diagnostic messages about conflicts */
 	struct file_spec *next;	/* next association in hash bucket chain */
 } file_spec_t;
+
+/*
+ * The hash table of associations, hashed by inode number.
+ * Chaining is used for collisions, with elements ordered
+ * by inode number in each bucket.  Each hash bucket has a dummy 
+ * header.
+ */
+#define HASH_BITS 16
+#define HASH_BUCKETS (1 << HASH_BITS)
+#define HASH_MASK (HASH_BUCKETS-1)
+static file_spec_t *fl_head;
+
+/*
+ * Try to add an association between an inode and
+ * a specification.  If there is already an association
+ * for the inode and it conflicts with this specification,
+ * then use the specification that occurs later in the
+ * specification array.
+ */
+int matchpathcon_filespec_add(ino_t ino, int specind, const char *file)
+{
+	file_spec_t *prevfl, *fl;
+	int h, no_conflict, ret;
+	struct stat sb;
+
+	if (!fl_head) {
+		fl_head = malloc(sizeof(file_spec_t)*HASH_BUCKETS);
+		if (!fl_head)
+			goto oom;
+		memset(fl_head, 0, sizeof(file_spec_t)*HASH_BUCKETS);
+	}
+
+	h = (ino + (ino >> HASH_BITS)) & HASH_MASK;
+	for (prevfl = &fl_head[h], fl = fl_head[h].next; fl;
+	     prevfl = fl, fl = fl->next) {
+		if (ino == fl->ino) {
+			ret = lstat(fl->file, &sb);
+			if (ret < 0 || sb.st_ino != ino) {
+				fl->specind = specind;
+				free(fl->file);
+				fl->file = malloc(strlen(file) + 1);
+				if (!fl->file)
+					goto oom;
+				strcpy(fl->file, file);
+				return fl->specind;
+
+			}
+
+			no_conflict = (strcmp(spec_arr[fl->specind].context,spec_arr[specind].context) == 0);
+			if (no_conflict)
+				return fl->specind;
+
+			myprintf("%s:  conflicting specifications for %s and %s, using %s.\n",
+				__FUNCTION__, file, fl->file,
+				((specind > fl->specind) ? spec_arr[specind].
+				 context : spec_arr[fl->specind].context));
+			fl->specind =
+			    (specind >
+			     fl->specind) ? specind : fl->specind;
+			free(fl->file);
+			fl->file = malloc(strlen(file) + 1);
+			if (!fl->file)
+				goto oom;
+			strcpy(fl->file, file);
+			return fl->specind;
+		}
+
+		if (ino > fl->ino)
+			break;
+	}
+
+	fl = malloc(sizeof(file_spec_t));
+	if (!fl)
+		goto oom;
+	fl->ino = ino;
+	fl->specind = specind;
+	fl->file = malloc(strlen(file) + 1);
+	if (!fl->file)
+		goto oom_freefl;
+	strcpy(fl->file, file);
+	fl->next = prevfl->next;
+	prevfl->next = fl;
+	return fl->specind;
+oom_freefl:
+	free(fl);
+oom:
+	myprintf("%s:  insufficient memory for file label entry for %s\n",
+		 __FUNCTION__, file);
+	return -1;
+}
+
+/*
+ * Evaluate the association hash table distribution.
+ */
+void matchpathcon_filespec_eval(void)
+{
+	file_spec_t *fl;
+	int h, used, nel, len, longest;
+
+	if (!fl_head)
+		return;
+
+	used = 0;
+	longest = 0;
+	nel = 0;
+	for (h = 0; h < HASH_BUCKETS; h++) {
+		len = 0;
+		for (fl = fl_head[h].next; fl; fl = fl->next) {
+			len++;
+		}
+		if (len)
+			used++;
+		if (len > longest)
+			longest = len;
+		nel += len;
+	}
+
+	myprintf
+	    ("%s:  hash table stats: %d elements, %d/%d buckets used, longest chain length %d\n",
+	     __FUNCTION__, nel, used, HASH_BUCKETS, longest);
+}
+
+/*
+ * Destroy the association hash table.
+ */
+void matchpathcon_filespec_destroy(void)
+{
+	file_spec_t *fl, *tmp;
+	int h;
+
+	if (!fl_head)
+		return;
+
+	for (h = 0; h < HASH_BUCKETS; h++) {
+		fl = fl_head[h].next;
+		while (fl) {
+			tmp = fl;
+			fl = fl->next;
+			free(tmp->file);
+			free(tmp);
+		}
+		fl_head[h].next = NULL;
+	}
+	free(fl_head);
+	fl_head = NULL;
+}
+
+/*
+ * Warn about duplicate specifications.
+ */
+static void nodups_specs(const char *path)
+{
+	unsigned int ii, jj;
+	struct spec *curr_spec;
+
+	for (ii = 0; ii < nspec; ii++) {
+		curr_spec = &spec_arr[ii];
+		for (jj = ii + 1; jj < nspec; jj++) { 
+			if ((!strcmp(spec_arr[jj].regex_str, curr_spec->regex_str))
+									&&
+				(!spec_arr[jj].mode || !curr_spec->mode 
+				 || spec_arr[jj].mode == curr_spec->mode)) {
+				if (strcmp(spec_arr[jj].context, curr_spec->context)) {
+					myprintf(
+					"%s: Multiple different specifications for %s  (%s and %s).\n",
+						path, curr_spec->regex_str, 
+						spec_arr[jj].context,
+						curr_spec->context);
+				}
+				else {
+					myprintf(
+					"%s: Multiple same specifications for %s.\n",
+						path, curr_spec->regex_str);
+				}
+			}
+		}
+	}
+}
 
 /* Determine if the regular expression specification has any meta characters. */
 static void spec_hasMetaChars(struct spec *spec)
@@ -185,19 +469,258 @@ static void spec_hasMetaChars(struct spec *spec)
 	}
 	return;
 }
+static int process_line( const char *path, const char *prefix, char *line_buf, int pass, unsigned lineno, int mls_enabled) {
+	int items, len, regerr;
+	char *buf_p;
+	char *regex, *type, *context;
+	const char *reg_buf;
+	char *anchored_regex;
+	len = strlen(line_buf);
+	if (line_buf[len - 1] == '\n')
+		line_buf[len - 1] = 0;
+	buf_p = line_buf;
+	while (isspace(*buf_p))
+		buf_p++;
+	/* Skip comment lines and empty lines. */
+	if (*buf_p == '#' || *buf_p == 0)
+		return 0;
+	/* XXXSEBSD
+           Allocate space for regex, type, and context. We do this only to
+	   minimize diffs with stock SELinux code which uses %as in the 
+           sscanf() format string rather than using something reasonable like
+           strtok() or strsep(). We additionally just assume that no substring
+           of line_buf can be longer than line_buf itself for this allocation.
+	 */
+	regex = (char *)malloc(strlen(line_buf) + 1);
+	if (regex == NULL)
+	 return(-1); 
 
-static int matchpathcon_init(void)
+	type = (char *)malloc(strlen(line_buf) + 1);
+	if (type == NULL)
+	{
+	  free(regex);
+	  return(-1);
+	}
+
+	context = (char *)malloc(strlen(line_buf) + 1);
+	if (context == NULL)
+	{
+	  free(regex);
+	  free(type);
+	  return(-1);
+	}
+	
+	items =
+		sscanf(line_buf, "%s %s %s", regex, type,
+		       context);
+	if (items < 2) {
+		myprintf("%s:  line %d is missing fields, skipping\n", path, lineno); 
+		free(regex);
+		free(type);
+		free(context);
+		return 0;
+	} else if (items == 2) {
+		/* The type field is optional. */
+		free(context);
+		context = type;
+		type = 0;
+	}
+
+	reg_buf = regex;
+	len = get_stem_from_spec(reg_buf);
+	if (len && prefix && strncmp(prefix, regex, len)) {
+		/* Stem of regex does not match requested prefix, discard. */
+		free(regex);
+		free(type);
+		free(context);
+		return 0;
+	}
+
+	if (pass == 1) {
+		/* On the second pass, compile and store the specification in spec. */
+		char *cp;
+		spec_arr[nspec].stem_id = find_stem_from_spec(&reg_buf);
+		spec_arr[nspec].regex_str = regex;
+		
+		/* Anchor the regular expression. */
+		len = strlen(reg_buf);
+		cp = anchored_regex = malloc(len + 3);
+		if (!anchored_regex) {
+			free(regex);
+			free(type);
+			free(context);
+			return -1;
+		}
+		/* Create ^...$ regexp.  */
+		*cp++ = '^';
+		memcpy(cp, reg_buf, len);
+		cp += len;
+		*cp++ = '$';
+		*cp = '\0';
+		
+		/* Compile the regular expression. */
+		regerr =
+			regcomp(&spec_arr[nspec].regex,
+				anchored_regex,
+				REG_EXTENDED | REG_NOSUB);
+		if (regerr != 0) {
+			size_t errsz = 0;
+			char *errbuf = NULL;
+			errsz = regerror(regerr, &spec_arr[nspec].regex, 
+					 errbuf, errsz);
+			if (errsz)
+				errbuf = malloc(errsz);
+			if (errbuf)
+				(void) regerror(regerr, 
+						&spec_arr[nspec].regex, 
+						errbuf, errsz);
+			myprintf("%s:  line %d has invalid regex %s:  %s\n", path, lineno, anchored_regex, (errbuf ? errbuf : "out of memory")); 
+			free(anchored_regex);
+			free(regex);
+			free(type);
+			free(context);
+			return 0;
+		}
+		free(anchored_regex);
+		
+		/* Convert the type string to a mode format */
+		spec_arr[nspec].type_str = type;
+		spec_arr[nspec].mode = 0;
+		if (!type)
+			goto skip_type;
+		len = strlen(type);
+		if (type[0] != '-' || len != 2) {
+			myprintf("%s:  line %d has invalid file type %s\n", path, lineno, type); 
+			free(regex);
+			free(type);
+			free(context);
+			return 0;
+		}
+		switch (type[1]) {
+		case 'b':
+			spec_arr[nspec].mode = S_IFBLK;
+			break;
+		case 'c':
+			spec_arr[nspec].mode = S_IFCHR;
+			break;
+		case 'd':
+			spec_arr[nspec].mode = S_IFDIR;
+			break;
+		case 'p':
+			spec_arr[nspec].mode = S_IFIFO;
+			break;
+		case 'l':
+			spec_arr[nspec].mode = S_IFLNK;
+			break;
+		case 's':
+			spec_arr[nspec].mode = S_IFSOCK;
+			break;
+		case '-':
+			spec_arr[nspec].mode = S_IFREG;
+			break;
+		default:
+			myprintf("%s:  line %d has invalid file type %s\n", path, lineno, type); 
+			free(regex);
+			free(type);
+			free(context);
+			return 0;
+		}
+		
+	skip_type:
+		if (strcmp(context, "<<none>>")) {
+			char *tmpcon = NULL;
+
+			if (myflags & MATCHPATHCON_NOTRANS)
+				goto skip_trans;
+
+			if (context_translations) {
+				if (raw_to_trans_context(context, &tmpcon)) {
+					myprintf("%s: line %u has invalid "
+					         "context %s\n",
+					         path, lineno, context);
+					free(regex);
+					free(type);
+					free(context);
+					return 0;
+				}
+				free(context);
+				context = tmpcon;
+			} else {
+				if (STRIP_LEVEL(&context, mls_enabled)) {
+					free(regex);
+					free(type);
+					free(context);
+					return -1;
+				}
+			}
+
+skip_trans:
+			if (myflags & MATCHPATHCON_VALIDATE) {
+				if (myinvalidcon) {
+					/* Old-style validation of context. */
+					if (myinvalidcon(path, lineno, context)) {
+						free(regex);
+						free(type);
+						free(context);
+						return 0;
+					}
+				} else {
+					/* New canonicalization of context. */
+					if (mycanoncon(path, lineno, &context)) {
+						free(regex);
+						free(type);
+						free(context);
+						return 0;
+					}
+				}
+				spec_arr[nspec].context_valid = 1;
+			}
+		}
+
+		spec_arr[nspec].context = context;
+		
+		/* Determine if specification has 
+		 * any meta characters in the RE */
+		spec_hasMetaChars(&spec_arr[nspec]);
+	}
+	
+	nspec++;
+	if (pass == 0) {
+		free(regex);
+		if (type)
+			free(type);
+		free(context);
+	}
+	return 0;
+}
+
+int matchpathcon_init_prefix(const char *path, const char *prefix)
 {
 	FILE *fp;
-	char line_buf[BUFSIZ + 1], *buf_p;
-	char *regex, *type, *context;
-	char *anchored_regex;
-	int items, len, lineno, pass, regerr, i, j;
-	spec_t *spec_copy;
+	FILE *localfp = NULL;
+	FILE *homedirfp = NULL;
+	char local_path[PATH_MAX + 1];
+	char homedir_path[PATH_MAX + 1];
+	char *line_buf = NULL;
+	size_t line_len = 0;
+	unsigned int lineno, pass, i, j, maxnspec;
+	spec_t *spec_copy=NULL;
+	int status=-1;
+	int mls_enabled=is_selinux_mls_enabled();
 
 	/* Open the specification file. */
-	if ((fp = fopen(selinux_file_context_path(), "r")) == NULL)
+	if (!path)
+		path = selinux_file_context_path();
+	if ((fp = fopen(path, "r")) == NULL)
 		return -1;
+
+	if ((myflags & MATCHPATHCON_BASEONLY) == 0) {
+		snprintf(homedir_path, sizeof(homedir_path), "%s.homedirs", path);
+		homedirfp = fopen(homedir_path, "r");
+
+		snprintf(local_path, sizeof(local_path), "%s.local", path);
+		localfp = fopen(local_path, "r");
+	}
 
 	/* 
 	 * Perform two passes over the specification file.
@@ -207,138 +730,49 @@ static int matchpathcon_init(void)
 	 * The second pass performs detailed validation of the input
 	 * and fills in the spec array.
 	 */
+	maxnspec = UINT_MAX / sizeof(spec_t);
 	for (pass = 0; pass < 2; pass++) {
 		lineno = 0;
 		nspec = 0;
-		while (fgets(line_buf, sizeof line_buf, fp)) {
-			lineno++;
-			len = strlen(line_buf);
-			if (line_buf[len - 1] != '\n') {
-				errno = EINVAL;
-				return -1;
-			}
-			line_buf[len - 1] = 0;
-			buf_p = line_buf;
-			while (isspace(*buf_p))
-				buf_p++;
-			/* Skip comment lines and empty lines. */
-			if (*buf_p == '#' || *buf_p == 0)
-				continue;
-			items =
-			    sscanf(line_buf, "%as %as %as", &regex, &type,
-				   &context);
-			if (items < 2) {
-				errno = EINVAL;
-				return -1;
-			} else if (items == 2) {
-				/* The type field is optional. */
-				free(context);
-				context = type;
-				type = 0;
-			}
-
-			if (pass == 1) {
-				/* On the second pass, compile and store the specification in spec. */
-				const char *reg_buf = regex;
-				spec_arr[nspec].stem_id = find_stem_from_spec(&reg_buf);
-				spec_arr[nspec].regex_str = regex;
-
-				/* Anchor the regular expression. */
-				len = strlen(reg_buf);
-				anchored_regex = malloc(len + 3);
-				if (!anchored_regex)
-					return -1;
-				sprintf(anchored_regex, "^%s$", reg_buf);
-
-				/* Compile the regular expression. */
-				regerr =
-				    regcomp(&spec_arr[nspec].regex,
-					    anchored_regex,
-					    REG_EXTENDED | REG_NOSUB);
-				free(anchored_regex);
-				if (regerr < 0) {
-					errno = EINVAL;
-					return -1;
-				}
-
-				/* Convert the type string to a mode format */
-				spec_arr[nspec].type_str = type;
-				spec_arr[nspec].mode = 0;
-				if (!type)
-					goto skip_type;
-				len = strlen(type);
-				if (type[0] != '-' || len != 2) {
-					errno = EINVAL;
-					return -1;
-				}
-				switch (type[1]) {
-				case 'b':
-					spec_arr[nspec].mode = S_IFBLK;
-					break;
-				case 'c':
-					spec_arr[nspec].mode = S_IFCHR;
-					break;
-				case 'd':
-					spec_arr[nspec].mode = S_IFDIR;
-					break;
-				case 'p':
-					spec_arr[nspec].mode = S_IFIFO;
-					break;
-				case 'l':
-					spec_arr[nspec].mode = S_IFLNK;
-					break;
-				case 's':
-					spec_arr[nspec].mode = S_IFSOCK;
-					break;
-				case '-':
-					spec_arr[nspec].mode = S_IFREG;
-					break;
-				default:
-					errno = EINVAL;
-					return -1;
-				}
-
-			      skip_type:
-
-				spec_arr[nspec].context = context;
-
-				if (strcmp(context, "<<none>>")) {
-					if (security_check_context(context) < 0 && errno != ENOENT) {
-						errno = EINVAL;
-						return -1;
-					}
-				}
-
-				/* Determine if specification has 
-				 * any meta characters in the RE */
-				spec_hasMetaChars(&spec_arr[nspec]);
-			}
-
-			nspec++;
-			if (pass == 0) {
-				free(regex);
-				if (type)
-					free(type);
-				free(context);
-			}
+		while (getline(&line_buf, &line_len, fp) > 0 && nspec < maxnspec) {
+			if (process_line(path, prefix, line_buf, pass, ++lineno, mls_enabled) != 0)
+				goto finish;
 		}
+		lineno = 0;
+		if (homedirfp) 
+			while (getline(&line_buf, &line_len, homedirfp) > 0 && nspec < maxnspec) {
+				if (process_line(homedir_path, prefix, line_buf, pass, ++lineno, mls_enabled) != 0)
+					goto finish;
+			}
+
+		lineno = 0;
+		if (localfp) 
+			while (getline(&line_buf, &line_len, localfp) > 0 && nspec < maxnspec) {
+				if (process_line(local_path, prefix, line_buf, pass, ++lineno, mls_enabled) != 0)
+					goto finish;
+			}
 
 		if (pass == 0) {
-			if (nspec == 0)
-				return -1;
+			if (nspec == 0) {
+				status = 0;
+				goto finish;
+			}
 			if ((spec_arr = malloc(sizeof(spec_t) * nspec)) ==
 			    NULL)
-				return -1;
-			bzero(spec_arr, sizeof(spec_t) * nspec);
+				goto finish;
+			memset(spec_arr, '\0', sizeof(spec_t) * nspec);
+			maxnspec = nspec;
 			rewind(fp);
+			if (homedirfp) rewind(homedirfp);
+			if (localfp) rewind(localfp);
 		}
 	}
-	fclose(fp);
+	free(line_buf);
 
 	/* Move exact pathname specifications to the end. */
 	spec_copy = malloc(sizeof(spec_t) * nspec);
 	if (!spec_copy)
-		return -1;
+		goto finish;
 	j = 0;
 	for (i = 0; i < nspec; i++) {
 		if (spec_arr[i].hasMetaChars)
@@ -351,19 +785,31 @@ static int matchpathcon_init(void)
 	free(spec_arr);
 	spec_arr = spec_copy;
 
-	return 0;
+	nodups_specs(path);
+
+	status = 0;
+ finish:
+	fclose(fp);
+	if (spec_arr != spec_copy) free(spec_arr);
+	if (homedirfp) fclose(homedirfp);
+	if (localfp) fclose(localfp);
+	return status;
+}
+hidden_def(matchpathcon_init_prefix)
+
+int matchpathcon_init(const char *path)
+{
+	return matchpathcon_init_prefix(path, NULL);
 }
 
-
-int matchpathcon(const char *name, 
-		 mode_t mode,
-		 security_context_t *con)
+static int matchpathcon_common(const char *name, 
+			       mode_t mode)
 {
 	int i, ret, file_stem;
 	const char *buf = name;
 
 	if (!nspec) {
-		ret = matchpathcon_init();
+		ret = matchpathcon_init_prefix(NULL, NULL);
 		if (ret < 0)
 			return ret;
 		if (!nspec) {
@@ -373,6 +819,8 @@ int matchpathcon(const char *name,
 	}
 
 	file_stem = find_stem_from_file(&buf);
+
+	mode &= S_IFMT;
 
 	/* 
 	 * Check for matching specifications in reverse order, so that
@@ -409,9 +857,80 @@ int matchpathcon(const char *name,
 
 	spec_arr[i].matches++;
 
+	return i;
+
+}
+
+int matchpathcon(const char *name, 
+		 mode_t mode,
+		 security_context_t *con)
+{
+	int i = matchpathcon_common(name, mode);
+
+	if (i < 0)
+		return -1;
+
+	if (strcmp(spec_arr[i].context, "<<none>>") == 0) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	if (!spec_arr[i].context_valid) {
+		if (myinvalidcon) {
+			/* Old-style validation of context. */
+			if (myinvalidcon("file_contexts", 0, spec_arr[i].context))
+				goto bad;
+		} else {
+			/* New canonicalization of context. */
+			if (mycanoncon("file_contexts", 0, &spec_arr[i].context))
+				goto bad;
+		}
+		spec_arr[i].context_valid = 1;
+	}
+
 	*con = strdup(spec_arr[i].context);
 	if (!(*con))
 		return -1;
+
 	return 0;
+
+bad:
+	errno = EINVAL;
+	return -1;
 }
 
+int matchpathcon_index(const char *name, 
+		       mode_t mode,
+		       security_context_t *con)
+{
+	int i = matchpathcon_common(name, mode);
+
+	if (i < 0)
+		return -1;
+
+	*con = strdup(spec_arr[i].context);
+	if (!(*con))
+		return -1;
+
+	return i;
+}
+
+void matchpathcon_checkmatches(char *str)
+{
+	unsigned int i;
+	for (i = 0; i < nspec; i++) {
+		if (spec_arr[i].matches == 0) {
+			if (spec_arr[i].type_str) {
+				myprintf
+					("%s:  Warning!  No matches for (%s, %s, %s)\n",
+					 str, spec_arr[i].regex_str,
+					 spec_arr[i].type_str, spec_arr[i].context);
+			} else {
+				myprintf
+					("%s:  Warning!  No matches for (%s, %s)\n",
+					 str, spec_arr[i].regex_str,
+					 spec_arr[i].context);
+			}
+		}
+	}
+}

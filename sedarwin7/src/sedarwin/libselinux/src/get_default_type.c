@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <selinux/get_default_type.h>
+#include "get_default_type_internal.h"
 
 static int find_default_type (FILE* fp, const char* role, char** type);
 
@@ -33,9 +33,9 @@ static int find_default_type (FILE* fp,
     int found = 0;
 
     len = strlen(role);
-    while (!feof (fp))
+    while (!feof_unlocked (fp))
     {
-        if (!fgets (buf, sizeof buf, fp))
+        if (!fgets(buf, sizeof buf, fp))
 		return -1;
 	if (buf[strlen(buf)-1])
 		buf[strlen(buf)-1] = 0;

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <selinux/selinux.h>
 
-void usage(char *progname) 
+void usage(const char *progname) 
 {
 	fprintf(stderr, "usage:  %s -a or %s boolean...\n", progname, progname);
 	exit(1);
@@ -22,19 +22,32 @@ int main(int argc, char **argv)
 		case 'a':
 			if (argc > 2)
 				usage(argv[0]);
+			if (is_selinux_enabled() <= 0) {
+				fprintf(stderr, "%s:  SELinux is disabled\n", 
+					argv[0]);
+				return 1;
+			}
+			errno = 0;
 			rc = security_get_boolean_names(&names, &len);
 			if (rc) {
-				fprintf(stderr, "%s:  Unable to get boolean names:  %s\n", argv[0], strerror(errno));
-				exit(1);
+				fprintf(stderr, 
+				    "%s:  Unable to get boolean names:  %s\n", 
+				    argv[0], strerror(errno));
+				return 1;
 			}
 			if (!len) {
 				printf("No booleans\n");
-				exit(0);
+				return 0;
 			}
 			break;
 		default:
 			usage(argv[0]);
 		}
+	}
+
+	if (is_selinux_enabled() <= 0) {
+		fprintf(stderr, "%s:  SELinux is disabled\n", argv[0]);
+		return 1;
 	}
 
 	if (!len) {
@@ -44,13 +57,13 @@ int main(int argc, char **argv)
 		names = malloc(sizeof(char *)*len);
 		if (!names) {
 			fprintf(stderr, "%s:  out of memory\n", argv[0]);
-			exit(2);
+			return 2;
 		}
 		for (i = 0; i < len; i++) {
 			names[i] = strdup(argv[i+1]);
 			if (!names[i]) {
 				fprintf(stderr, "%s:  out of memory\n", argv[0]);
-				exit(2);
+				return 2;
 			}
 		}
 	}
@@ -65,18 +78,24 @@ int main(int argc, char **argv)
 		}
 		pending = security_get_boolean_pending(names[i]);
 		if (pending < 0) {
-			fprintf(stderr, "Error getting active value for %s\n",
+			fprintf(stderr, "Error getting pending value for %s\n",
 				names[i]);
 			rc = -1;
 			goto out;
 		}
-		printf("%s --> active: %d pending: %d\n", names[i],
-		       active, pending);
+		if (pending != active) {
+			printf("%s --> %s pending: %s\n", names[i],
+			       ( active ? "on" : "off"),
+			       ( pending ? "on" : "off"));
+		} else {
+			printf("%s --> %s\n", names[i],
+			       ( active ? "on" : "off"));
+		}
 	}
 
 out:
 	for (i = 0; i < len; i++)
 		free(names[i]);
 	free(names);
-	exit(rc);
+	return rc;
 }

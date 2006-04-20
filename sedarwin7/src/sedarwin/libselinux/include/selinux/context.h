@@ -1,6 +1,11 @@
 #ifndef _SELINUX_CONTEXT_H_
 #define _SELINUX_CONTEXT_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /*
  * Functions to deal with security contexts in user space.
  */
@@ -39,5 +44,9 @@ extern int context_type_set(context_t,const char*);
 extern int context_range_set(context_t,const char*);
 extern int context_role_set(context_t,const char*);
 extern int context_user_set(context_t,const char*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

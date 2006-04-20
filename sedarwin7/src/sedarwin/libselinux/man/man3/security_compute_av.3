@@ -15,6 +15,8 @@ the SE Linux policy database in the kernel.
 .BI "int security_compute_relabel(security_context_t "scon ", security_context_t "tcon ", security_class_t "tclass ", security_context_t *" newcon );
 .sp
 .BI "int security_compute_user(security_context_t "scon ", const char *" username ", security_context_t **" con );
+.sp
+.BI "int checkPasswdAccess(access_vector_t " requested );
 
 .SH "DESCRIPTION"
 .B security_compute_av
@@ -41,6 +43,9 @@ label for the tty at login time, but can be used for other things.
 is used to determine the set of user contexts that can be reached from a
 source context. Is mainly used by
 .B get_ordered_context_list.
+
+.B checkPasswdAccess
+This functions is a helper functions that allows you to check for a permission in the passwd class. checkPasswdAccess uses getprevcon() for the source and target security contexts.
 
 .SH "RETURN VALUE"
 0 for success and on error -1 is returned.

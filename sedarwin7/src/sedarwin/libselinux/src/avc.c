@@ -9,20 +9,157 @@
  */
 #include <sys/types.h>
 #include <errno.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <selinux/flask.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include <selinux/avc.h>
 #include "avc_sidtab.h"
 #include "avc_internal.h"
 #include <selinux/av_permissions.h>
-#include <selinux/class_to_string.h>
-#include <selinux/common_perm_to_string.h>
-#include <selinux/av_inherit.h>
-#include <selinux/av_perm_to_string.h>
+
+
+/* The following code looks complicated, but it really is not.  What it
+   does is to generate two variables.  The first is basically a struct
+   of arrays.  The second is the real array of structures which would
+   have used string pointers.  But instead it now uses an offset value
+   into the first structure.  Strings are accessed indirectly by an
+   explicit addition of the string index and the base address of the
+   structure with the strings (all type safe).  The advantage is that
+   there are no relocations necessary in the array with the data as it
+   would be the case with string pointers.  This has advantages at
+   load time, the data section is smaller, and it is read-only.  */
+#define L1(line) L2(line)
+#define L2(line) str##line
+static const union av_perm_to_string_data
+{
+  struct {
+#define S_(c, v, s) char L1(__LINE__)[sizeof(s)];
+#include "av_perm_to_string.h"
+#undef  S_
+  };
+  char str[0];
+} av_perm_to_string_data =
+{
+  {
+#define S_(c, v, s) s,
+#include "av_perm_to_string.h"
+#undef  S_
+  }
+};
+static const struct av_perm_to_string
+{
+  u16 tclass;
+  u16 nameidx;
+  u32 value;
+} av_perm_to_string[] =
+{
+#define S_(c, v, s) { c, offsetof(union av_perm_to_string_data, L1(__LINE__)), v },
+#include "av_perm_to_string.h"
+#undef  S_
+};
+#undef L1
+#undef L2
+
+
+#define L1(line) L2(line)
+#define L2(line) str##line
+static const union class_to_string_data
+{
+  struct {
+#define S_(s) char L1(__LINE__)[sizeof(s)];
+#include "class_to_string.h"
+#undef  S_
+  };
+  char str[0];
+} class_to_string_data =
+{
+  {
+#define S_(s) s,
+#include "class_to_string.h"
+#undef  S_
+  }
+};
+static const u16 class_to_string[] =
+{
+#define S_(s) offsetof(union class_to_string_data, L1(__LINE__)),
+#include "class_to_string.h"
+#undef  S_
+};
+#undef L1
+#undef L2
+
+static const union common_perm_to_string_data
+{
+  struct {
+#define L1(line) L2(line)
+#define L2(line) str##line
+#define S_(s) char L1(__LINE__)[sizeof(s)];
+#define TB_(s)
+#define TE_(s)
+#include "common_perm_to_string.h"
+#undef  S_
+#undef L1
+#undef L2
+  };
+  char str[0];
+} common_perm_to_string_data =
+{
+  {
+#define S_(s) s,
+#include "common_perm_to_string.h"
+#undef  S_
+#undef TB_
+#undef TE_
+  }
+};
+static const union common_perm_to_string
+{
+  struct {
+#define TB_(s) struct {
+#define TE_(s) } s##_part;
+#define S_(s) u16 L1(__LINE__)
+#define L1(l) L2(l)
+#define L2(l) field_##l;
+#include "common_perm_to_string.h"
+#undef TB_
+#undef TE_
+#undef S_
+#undef L1
+#undef L2
+  };
+  u16 data[0];
+} common_perm_to_string =
+{
+  {
+#define TB_(s) {
+#define TE_(s) },
+#define S_(s) offsetof(union common_perm_to_string_data, L1(__LINE__)),
+#define L1(line) L2(line)
+#define L2(line) str##line
+#include "common_perm_to_string.h"
+#undef TB_
+#undef TE_
+#undef S_
+#undef L1
+#undef L2
+  }
+};
+
+static const struct av_inherit
+{
+    u16 tclass;
+    u16 common_pts_idx;
+    u32 common_base;
+} av_inherit[] = {
+#define S_(c, i, b) { c, offsetof(union common_perm_to_string, common_##i##_perm_to_string_part)/sizeof(u16), b },
+#include "av_inherit.h"
+#undef S_
+};
 
 #define AVC_CACHE_SLOTS		512
 #define AVC_CACHE_MAXNODES	410
@@ -74,7 +211,7 @@ static struct sidtab avc_sidtab;
 static inline int avc_hash(security_id_t ssid, 
 			   security_id_t tsid, security_class_t tclass)
 {
-  return ((unsigned)ssid ^ ((unsigned)tsid<<2) ^ tclass)
+  return ((uintptr_t)ssid ^ ((uintptr_t)tsid<<2) ^ tclass)
     & (AVC_CACHE_SLOTS - 1);
 }
 
@@ -180,7 +317,8 @@ int avc_init(const char *prefix,
 
   rc = avc_netlink_open(avc_using_threads);
   if (rc < 0) {
-    avc_log("%s:  can't open netlink socket: %d\n", avc_prefix, errno);
+    avc_log("%s:  can't open netlink socket: %d (%s)\n", avc_prefix,
+	    errno, strerror(errno));
     goto out;
   }
   if (avc_using_threads) {
@@ -235,11 +373,13 @@ void avc_av_stats(void)
 	  avc_cache.active_nodes, 
 	  slots_used, AVC_CACHE_SLOTS, max_chain_len);
 }
+hidden_def(avc_av_stats)
 
 static inline struct avc_node *avc_reclaim_node(void)
 {
   struct avc_node *prev, *cur;
-  int hvalue, try;
+  int try;
+  u_int32_t hvalue;
 
   hvalue = avc_cache.lru_hint;
   for (try = 0; try < 2; try++) {
@@ -482,6 +622,7 @@ void avc_cleanup(void)
 
   avc_release_lock(avc_lock);
 }
+hidden_def(avc_cleanup)
 
 int avc_reset(void)
 {
@@ -527,6 +668,7 @@ int avc_reset(void)
   errno = errsave;
   return rc;
 }
+hidden_def(avc_reset)
 
 void avc_destroy(void)
 {
@@ -628,9 +770,9 @@ static inline int check_avc_ratelimit(void)
  */
 static void avc_dump_av(security_class_t tclass, access_vector_t av)
 {
-  char **common_pts = 0;
-  u_int32_t common_base = 0;
-  int i, i2, perm;
+  const u16 *common_pts_idx = 0;
+  u_int32_t common_base = 0, perm;
+  unsigned int i, i2;
 
   if (av == 0) {
     log_append(avc_audit_buf, " null");
@@ -639,7 +781,7 @@ static void avc_dump_av(security_class_t tclass, access_vector_t av)
 
   for (i = 0; i < ARRAY_SIZE(av_inherit); i++) {
     if (av_inherit[i].tclass == tclass) {
-      common_pts = av_inherit[i].common_pts;
+      common_pts_idx = &common_perm_to_string.data[av_inherit[i].common_pts_idx];
       common_base = av_inherit[i].common_base;
       break;
     }
@@ -649,8 +791,11 @@ static void avc_dump_av(security_class_t tclass, access_vector_t av)
   i = 0;
   perm = 1;
   while (perm < common_base) {
-    if (perm & av)
-      log_append(avc_audit_buf, " %s", common_pts[i]);
+    if (perm & av) {
+      log_append(avc_audit_buf, " %s",
+                 common_perm_to_string_data.str + common_pts_idx[i]);
+      av &= ~perm;
+    }
     i++;
     perm <<= 1;
   }
@@ -662,12 +807,17 @@ static void avc_dump_av(security_class_t tclass, access_vector_t av)
 	    (av_perm_to_string[i2].value == perm))
 	  break;
       }
-      if (i2 < ARRAY_SIZE(av_perm_to_string))
-	log_append(avc_audit_buf, " %s", av_perm_to_string[i2].name);
+      if (i2 < ARRAY_SIZE(av_perm_to_string)) {
+	log_append(avc_audit_buf, " %s",
+                   av_perm_to_string_data.str + av_perm_to_string[i2].nameidx);
+	av &= ~perm;
+      }
     }
     i++;
     perm <<= 1;
   }
+  if (av)
+    log_append(avc_audit_buf, " 0x%x", av);
   log_append(avc_audit_buf, " }");
 }
 
@@ -693,7 +843,8 @@ static void avc_dump_query(security_id_t ssid, security_id_t tsid,
     log_append(avc_audit_buf, " tsid=%p", tsid);
 
   avc_release_lock(avc_lock);
-  log_append(avc_audit_buf, " tclass=%s", class_to_string[tclass]);
+  log_append(avc_audit_buf, " tclass=%s",
+	     class_to_string_data.str + class_to_string[tclass]);
 }
 
 void avc_audit(security_id_t ssid, security_id_t tsid,
@@ -736,6 +887,7 @@ void avc_audit(security_id_t ssid, security_id_t tsid,
 
   avc_release_lock(avc_log_lock);
 }
+hidden_def(avc_audit)
 
 int avc_has_perm_noaudit(security_id_t ssid, 
 			   security_id_t tsid,
@@ -750,16 +902,8 @@ int avc_has_perm_noaudit(security_id_t ssid,
   access_vector_t denied;
   struct avc_entry_ref ref;
 
-  if (avc_using_threads) {
-    if (avc_netlink_trouble) {
-      errno = EINVAL;
-      rc = -1;
-      goto out;
-    }
-  } else {
-    rc = avc_netlink_check_nb();
-    if (rc)
-      goto out;
+  if (!avc_using_threads) {
+    (void) avc_netlink_check_nb();
   }
 
   if (!aeref) {
@@ -790,15 +934,15 @@ int avc_has_perm_noaudit(security_id_t ssid,
       if ((ssid->refcnt <= 0) || (tsid->refcnt <= 0)) {
 	errno = EINVAL;
 	rc = -1;
-	goto out2;
+	goto out;
       }
       rc = security_compute_av(ssid->ctx, tsid->ctx, tclass,
 			       requested, &entry.avd);
       if (rc)
-	goto out2;
+	goto out;
       rc = avc_insert(ssid,tsid,tclass,&entry,aeref);
       if (rc)
-	goto out2;
+	goto out;
     }
     ae = aeref->ae;
   }
@@ -813,17 +957,17 @@ int avc_has_perm_noaudit(security_id_t ssid,
     rc = -1;
   }
 
- out2:
-  avc_release_lock(avc_lock);
  out:
+  avc_release_lock(avc_lock);
   return rc;
 }
+hidden_def(avc_has_perm_noaudit)
 
 int avc_has_perm(security_id_t ssid, security_id_t tsid, 
 		 security_class_t tclass, access_vector_t requested,
                  struct avc_entry_ref *aeref, void *auditdata)
 {
-  struct av_decision avd = {0};
+  struct av_decision avd = {0,0,0,0,0};
   int rc;
 
   rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, aeref, &avd);
@@ -853,6 +997,7 @@ int avc_add_callback(int (*callback)(u_int32_t event, security_id_t ssid,
   c->events = events;
   c->ssid = ssid;
   c->tsid = tsid;
+  c->tclass = tclass;
   c->perms = perms;
   c->next = avc_callbacks;
   avc_callbacks = c;
@@ -1104,3 +1249,116 @@ int avc_ss_set_auditdeny(security_id_t ssid, security_id_t tsid,
 		       ssid, tsid, tclass, perms, seqno, 0);
 }
 
+/* Other exported functions that use the string tables,
+   formerly in helpers.c. */
+
+#include <ctype.h>
+
+#define NCLASSES ARRAY_SIZE(class_to_string)
+#define NVECTORS ARRAY_SIZE(av_perm_to_string)
+
+security_class_t string_to_security_class(const char *s)
+{
+	unsigned int val;
+
+	if (isdigit(s[0])) {
+		val = atoi(s);
+		if (val > 0 && val < NCLASSES)
+			return val;
+	} else { 
+		for (val = 0; val < NCLASSES; val++) {
+			if (strcmp(s, (class_to_string_data.str
+                                       + class_to_string[val])) == 0)
+				return val;
+		}
+	}
+	
+	return 0;
+}
+
+access_vector_t string_to_av_perm(
+	security_class_t tclass,
+	const char *s)
+{
+        const u16       *common_pts_idx = 0;
+        access_vector_t perm, common_base = 0;
+        unsigned int       i;
+ 
+ 
+        for (i = 0; i < ARRAY_SIZE(av_inherit); i++) {
+                if (av_inherit[i].tclass == tclass) {
+                        common_pts_idx = &common_perm_to_string.data[av_inherit[i].common_pts_idx];
+                        common_base = av_inherit[i].common_base;
+                        break;
+                }
+        }
+
+	i = 0;
+	perm = 1;
+	while (perm < common_base) {
+		if (strcmp(s, common_perm_to_string_data.str + common_pts_idx[i]) == 0)
+			return perm;
+		perm <<= 1;
+		i++;
+	}
+
+	for (i = 0; i < NVECTORS; i++) {
+		if ((av_perm_to_string[i].tclass == tclass) &&
+		    (strcmp(s, (av_perm_to_string_data.str
+                                + av_perm_to_string[i].nameidx)) == 0))
+			return av_perm_to_string[i].value;
+	}
+	
+	return 0;
+}
+
+void print_access_vector(
+        security_class_t tclass,
+        access_vector_t av)
+{
+        const u16       *common_pts_idx = 0;
+        access_vector_t common_base = 0;
+        unsigned int             i, i2, perm;
+ 
+ 
+        if (av == 0) {
+                printf(" null");
+                return;
+        }
+
+        for (i = 0; i < ARRAY_SIZE(av_inherit); i++) {
+                if (av_inherit[i].tclass == tclass) {
+                        common_pts_idx = &common_perm_to_string.data[av_inherit[i].common_pts_idx];
+                        common_base = av_inherit[i].common_base;
+                        break;
+                }
+        }
+
+        printf(" {");
+        i = 0;  
+        perm = 1;
+        while (perm < common_base) {
+                if (perm & av)
+                        printf(" %s", common_perm_to_string_data.str + common_pts_idx[i]);
+                i++;
+                perm <<= 1;
+        }
+
+        while (i < sizeof(access_vector_t) * 8) {
+                if (perm & av) {
+                        for (i2 = 0; i2 < NVECTORS; i2++) {
+                                if ((av_perm_to_string[i2].tclass == tclass) &&
+                                    (av_perm_to_string[i2].value == perm))
+                                        break;
+                        }
+                        if (i2 < NVECTORS)
+                                printf(" %s",
+                                       av_perm_to_string_data.str
+                                       + av_perm_to_string[i2].nameidx);
+                }
+                i++;
+                perm <<= 1;
+        }
+ 
+        printf(" }");
+}

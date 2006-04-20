@@ -1,13 +1,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include <stdlib.h>
 #include <errno.h>
-#include <asm/page.h>
 #include "policy.h"
 
-int getprevcon(security_context_t *context)
+int getprevcon_raw(security_context_t *context)
 {
 	char *buf;
 	size_t size;
@@ -18,7 +17,7 @@ int getprevcon(security_context_t *context)
 	if (fd < 0)
 		return -1;
 
-	size = PAGE_SIZE;
+	size = getpagesize();
 	buf = malloc(size);
 	if (!buf) {
 		ret = -1;
@@ -42,3 +41,24 @@ out:
 	close(fd);
 	return ret;
 }
+hidden_def(getprevcon_raw)
+
+int getprevcon(security_context_t *context)
+{
+	int ret;
+	security_context_t rcontext;
+
+ 	ret = getprevcon_raw(&rcontext);
+
+	if (context_translations && !ret) {
+		if (raw_to_trans_context(rcontext, context)) {
+			*context = NULL;
+			ret = -1;
+		}
+		freecon(rcontext);
+	} else if (!ret)
+		*context = rcontext;
+
+	return ret;
+}
+hidden_def(getprevcon)

@@ -1,0 +1,73 @@
+# Installation directories.
+PREFIX ?= $(DESTDIR)/usr
+LIBDIR ?= $(PREFIX)/lib
+SHLIBDIR ?= $(DESTDIR)/lib
+INCLUDEDIR ?= $(PREFIX)/include
+PYLIBVER ?= python2.4
+PYINC ?= /usr/include/$(PYLIBVER)
+PYLIB ?= /usr/lib/$(PYLIBVER)
+PYTHONLIBDIR ?= $(LIBDIR)/$(PYLIBVER)
+
+LIBVERSION = 1
+
+LIBA=libselinux.a 
+TARGET=libselinux.so
+SWIGIF= selinuxswig.i
+SWIGCOUT= selinuxswig_wrap.c
+SWIGLOBJ:= $(patsubst %.c,%.lo,$(SWIGCOUT)) 
+SWIGSO=_selinux.so
+SWIGFILES=$(SWIGSO) selinux.py 
+LIBSO=$(TARGET).$(LIBVERSION)
+OBJS= $(patsubst %.c,%.o,$(filter-out $(SWIGCOUT),$(wildcard *.c))) 
+LOBJS= $(patsubst %.c,%.lo,$(filter-out $(SWIGCOUT),$(wildcard *.c)))
+CFLAGS ?= -Wall -W -Wundef -Wmissing-noreturn -Wmissing-format-attribute
+override CFLAGS += -I../include -I$(INCLUDEDIR) -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+RANLIB=ranlib
+
+SWIG = swig -Wall -python -o $(SWIGCOUT) -outdir ./
+
+all: $(LIBA) $(LIBSO) $(SWIGSO)
+
+$(LIBA):  $(OBJS)
+	$(AR) rcs $@ $^
+	$(RANLIB) $@
+
+$(SWIGLOBJ): $(SWIGCOUT)
+	$(CC) $(CFLAGS) -I$(PYINC) -fpic -DSHARED -c -o $@ $<
+
+$(SWIGSO): $(SWIGLOBJ)
+	$(CC) $(LDFLAGS) -shared -o $@ $< -L. -lselinux -L$(LIBDIR) -Wl,-soname,$@
+
+$(LIBSO): $(LOBJS)
+	$(CC) $(LDFLAGS) -shared -o $@ $^ -ldl -lsepol -L$(LIBDIR) -Wl,-soname,$(LIBSO),-z,defs
+	ln -sf $@ $(TARGET) 
+
+%.o:  %.c policy.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.lo:  %.c policy.h
+	$(CC) $(CFLAGS) -fpic -DSHARED -c -o $@ $<
+
+$(SWIGCOUT): $(SWIGIF)
+	$(SWIG) $^
+
+swigify: $(SWIGIF)
+	$(SWIG) $^
+
+install: all install-pywrap
+	test -d $(LIBDIR) || install -m 755 -d $(LIBDIR)
+	install -m 644 $(LIBA) $(LIBDIR)
+	test -d $(SHLIBDIR) || install -m 755 -d $(SHLIBDIR)
+	install -m 755 $(LIBSO) $(SHLIBDIR)
+	cd $(LIBDIR) && ln -sf ../../`basename $(SHLIBDIR)`/$(LIBSO) $(TARGET)
+
+install-pywrap: 
+	test -d $(PYTHONLIBDIR)/site-packages || install -m 755 -d $(PYTHONLIBDIR)/site-packages
+	install -m 755 $(SWIGFILES) $(PYTHONLIBDIR)/site-packages
+
+relabel:
+	/sbin/restorecon $(SHLIBDIR)/$(LIBSO)
+
+clean: 
+	-rm -f $(OBJS) $(LOBJS) $(LIBA) $(LIBSO) $(SWIGLOBJ) $(SWIGSO) $(TARGET) 
+

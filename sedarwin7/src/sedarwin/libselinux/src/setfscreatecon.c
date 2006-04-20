@@ -1,9 +1,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 
-int setfscreatecon(char *context)
+int setfscreatecon_raw(char *context)
 {
 	int fd;
 	ssize_t ret;
@@ -20,4 +20,21 @@ int setfscreatecon(char *context)
 		return -1;
 	else
 		return 0;
+}
+hidden_def(setfscreatecon_raw)
+
+int setfscreatecon(char *context)
+{
+	int ret;
+	security_context_t rcontext = context;
+
+	if (context_translations && trans_to_raw_context(context, &rcontext))
+		return -1;
+
+ 	ret = setfscreatecon_raw(rcontext);
+
+	if (context_translations)
+		freecon(rcontext);
+
+	return ret;
 }

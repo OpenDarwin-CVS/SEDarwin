@@ -1,4 +1,4 @@
-.TH  "selinux"  "8"  "11 Aug 2004" "dwalsh@redhat.com" "SELinux Command Line documentation"
+.TH  "selinux"  "8"  "29 Apr 2005" "dwalsh@redhat.com" "SELinux Command Line documentation"
 
 .SH "NAME"
 selinux \- NSA Security-Enhanced Linux (SELinux)
@@ -14,9 +14,13 @@ Based Access Control, and Multi-Level Security.  Background
 information and technical documentation about SELinux can be found at
 http://www.nsa.gov/selinux.
 
-The /etc/selinux/config configuration file controls whether SELinux is
+The
+.I /etc/selinux/config
+configuration file controls whether SELinux is
 enabled or disabled, and if enabled, whether SELinux operates in
-permissive mode or enforcing mode.  The SELINUX variable may be set to
+permissive mode or enforcing mode.  The
+.B SELINUX
+variable may be set to
 any one of disabled, permissive, or enforcing to select one of these
 options.  The disabled option completely disables the SELinux kernel
 and application code, leaving the system running without any SELinux
@@ -30,7 +34,9 @@ operation from proceeding past the first denial and because some
 application code will fall back to a less privileged mode of operation
 if denied access.
 
-The /etc/selinux/config configuration file also controls what policy
+The
+.I /etc/selinux/config
+configuration file also controls what policy
 is active on the system.  SELinux allows for multiple policies to be
 installed on the system, but only one policy may be active at any
 given time.  At present, two kinds of SELinux policy exist: targeted
@@ -43,66 +49,35 @@ tailored to its operation.  The strict policy is designed as a policy
 where all processes are partitioned into fine-grained security domains
 and confined by policy.  It is anticipated in the future that other
 policies will be created (Multi-Level Security for example).  You can
-define which policy you will run by setting the SELINUXTYPE
-environment variable within /etc/selinux/config.  The corresponding
+define which policy you will run by setting the
+.B SELINUXTYPE
+environment variable within
+.I /etc/selinux/config.
+The corresponding
 policy configuration for each such policy must be installed in the
 /etc/selinux/SELINUXTYPE/ directories.
 
 A given SELinux policy can be customized further based on a set of
 compile-time tunable options and a set of runtime policy booleans.
-system-config-securitylevel allows customization of these booleans and
-tunables.
+.B system-config-securitylevel
+allows customization of these booleans and tunables.
 
+.br
+Many domains that are protected by SELinux also include selinux man pages explainging how to customize their policy.  
+
+.SH FILE LABELING
+
+All files, directories, devices ... have a security context/label associated with them.  These context are stored in the extended attributes of the file system.
+Problems with SELinux often arise from the file system being mislabeled. This can be caused by booting the machine with a non selinux kernel.  If you see an error message containing file_t, that is usually a good indicator that you have a serious problem with file system labeling.  
+.br 
+The best way to relabel the file system is to create the flag file /.autorelabel and reboot.  system-config-securitylevel, also has this capability.  The restorcon/fixfiles commands are also available for relabeling files. 
+  
 .SH AUTHOR	
 This manual page was written by Dan Walsh <dwalsh@redhat.com>.
 
 .SH "SEE ALSO"
-.BR setsebool"(8)", selinuxenabled"(8)", booleans"(8)"
+booleans(8), setsebool(8), selinuxenabled(8), togglesebool(8), restorecon(8), setfiles(8), ftpd_selinux(8), named_selinux(8), rsync_selinux(8), httpd_selinux(8), nfs_selinux(8), samba_selinux(8), kerberos_selinux(8), nis_selinux(8), ypbind_selinux(8)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+.SH FILES
+/etc/selinux/config

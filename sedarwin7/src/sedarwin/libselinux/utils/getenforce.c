@@ -9,23 +9,23 @@ int main(int argc __attribute__((unused)), char **argv)
 
 	rc = is_selinux_enabled();
 	if (rc < 0) {
-		fprintf(stderr, "%s:  is_selinux_enabled() failed\n", argv[0]);
-		exit(2);
+		fputs("getenforce:  is_selinux_enabled() failed", stderr);
+		return 2;
 	}
 	if (rc == 1) { 
 		rc = security_getenforce();
 		if (rc < 0) {
-			fprintf(stderr, "%s:  getenforce() failed\n", argv[0]);
-			exit(2);
+			fputs("getenforce:  getenforce() failed", stderr);
+			return 2;
 		}
 
 		if (rc)
-			printf("Enforcing\n");
+			puts("Enforcing");
 		else
-			printf("Permissive\n");
+			puts("Permissive");
 	} else {
-		printf("Disabled\n");
+		puts("Disabled");
 	}
 	
-	exit(0);
+	return 0;
 }

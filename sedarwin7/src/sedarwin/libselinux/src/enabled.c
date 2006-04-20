@@ -1,58 +1,26 @@
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
-#include <asm/page.h>
 #include <stdio.h>
 #include "policy.h"
 
 int is_selinux_enabled(void)
 {
-	char *buf;
-	size_t size;
-	int fd;
-	ssize_t ret;
-	int enabled = 0;
-	security_context_t con;
+	int error, i;
+	size_t isize = sizeof(i);
 
-	fd = open("/proc/filesystems", O_RDONLY);
-	if (fd < 0)
-		return -1;
-
-	size = PAGE_SIZE;
-	buf = malloc(size);
-	if (!buf) {
-		enabled = -1;
-		goto out;
-	}
-		
-	memset(buf, 0, size);
-
-	ret = read(fd, buf, size - 1);
-	if (ret < 0) {
-		enabled = -1;
-		goto out2;
-	}
-
-	if (!strstr(buf, "selinuxfs"))
-		goto out2;
-
-	enabled = 1;
-
-	if (getcon(&con) == 0) {
-		if (!strcmp(con, "kernel"))
-			enabled = 0;
-		freecon(con);
-	}
-out2:
-	free(buf);
-out:
-	close(fd);
-	return enabled;
+	/* We don't care about the actual value. */
+	error = sysctlbyname("security.mac.sebsd.enforcing",
+	    &i, &isize, NULL, 0);
+	return (!error || errno != ENOENT);
 }
+hidden_def(is_selinux_enabled)
 
 /*
  * Function: is_selinux_mls_enabled()
@@ -61,23 +29,10 @@ out:
  */
 int is_selinux_mls_enabled(void)
 {
-	char buf[20], path[PATH_MAX];
-	int fd, ret, enabled = 0;
+	int i = 0;
+	size_t isize = sizeof(i);
 
-	snprintf(path, sizeof path, "%s/mls", selinux_mnt);
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return enabled;
-
-	memset(buf, 0, sizeof buf);
-
-	ret = read(fd, buf, sizeof buf-1);
-	close(fd);
-	if (ret < 0)
-		return enabled;
-
-	if (!strcmp(buf, "1"))
-		enabled = 1;
-
-	return enabled;
+	sysctlbyname("security.mac.sebsd.mls", &i, &isize, NULL, 0);
+	return (i == 1);
 }
+hidden_def(is_selinux_mls_enabled);

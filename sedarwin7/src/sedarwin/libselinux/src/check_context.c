@@ -1,26 +1,45 @@
+#include <unistd.h>
 #include <sys/types.h>
-#include <errno.h>
-#include <limits.h>
-#include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
-#include <mach/mach.h>
-#include <mach/security.h>
-#include <selinux/selinux.h>
-#include <sedarwin/sebsd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#include "selinux_internal.h"
+#include "policy.h"
+#include <limits.h>
+
+int security_check_context_raw(security_context_t con)
+{
+	char path[PATH_MAX];
+	int fd, ret;
+
+	snprintf(path, sizeof path, "%s/context", selinux_mnt);
+	fd = open(path, O_RDWR);
+	if (fd < 0)
+		return -1;
+
+	ret = write(fd, con, strlen(con)+1);
+	close(fd);
+	if (ret < 0)
+		return -1;
+	return 0;
+}
+hidden_def(security_check_context_raw)
 
 int security_check_context(security_context_t con)
 {
-	kern_return_t kr;
-	char *buf;
+	int ret;
+	security_context_t rcon = con;
 
-	if (asprintf(&buf, "%s/%s", SEBSD_ID_STRING, con) == -1)
-		return (-1);
+	if (context_translations && trans_to_raw_context(con, &rcon))
+		return -1;
 
-	kr = mac_check_name_port_access(mach_task_self(), buf, mach_task_self(),
-	    "file", "read");
-	free(buf);
-	if (kr == KERN_INVALID_ARGUMENT)
-		return (-1);
-	else
-		return (0);
+ 	ret = security_check_context_raw(rcon);
+
+	if (context_translations)
+		freecon(rcon);
+
+	return ret;
 }
+hidden_def(security_check_context)

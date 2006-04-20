@@ -1,19 +1,15 @@
 include ../../../Makeconfig
 
-PROG= sebsd_newrole
-MAN1= sebsd_newrole.1
-
-OBJS= sebsd_newrole.o
-
-CFLAGS+= $(DARWIN_HDRS)
+CFLAGS+= -I$(EXPORT_HDRS)/bsd -idirafter $(EXPORT_HDRS)/osfmk
 CFLAGS+= -I$(SOURCE_ROOT)/sedarwin
 
 # Installation directories.
 PREFIX = $(DESTDIR)/usr
 BINDIR = $(PREFIX)/bin
 
-override CFLAGS += -I../include
-LDLIBS += -L../src -lselinux $(LIBMAC) -lmac
+override CFLAGS += -I../include 
+LDLIBS += -L../src -L../../libsepol/src -L../../libsecompat
+LDLIBS += -lselinux -lsepol -lsecompat $(LIBMAC)
 
 SRCS= getfilecon.c getsebool.c getcon.c \
       setfilecon.c setsebool.c togglesebool.c

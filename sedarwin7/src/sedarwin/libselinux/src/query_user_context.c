@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <selinux/selinux.h>
-#include <selinux/context.h>
+#include "selinux_internal.h"
+#include "context_internal.h"
 #include <selinux/get_context_list.h>
 
 /* context_menu - given a list of contexts, presents a menu of security contexts
@@ -23,7 +23,8 @@ static int context_menu (security_context_t *list)
     {
         printf ("Enter number of choice: ");
         fflush (stdin);
-        fgets (response, sizeof (response), stdin);
+        if (fgets (response, sizeof (response), stdin) == NULL)
+		continue;
         fflush (stdin);
         choice = strtol (response, NULL, 10);
     }
@@ -50,7 +51,8 @@ int query_user_context (security_context_t *list,
     if (list[1]) {
             printf ("Do you want to choose a different one? [n]");
             fflush (stdin);
-            fgets (response, sizeof (response), stdin);
+            if (fgets (response, sizeof (response), stdin) == NULL)
+		return -1;
             fflush (stdin);
 
             if ((response[0] == 'y') || (response[0] == 'Y'))
@@ -74,7 +76,7 @@ int query_user_context (security_context_t *list,
     return 0;
 }
 
-
+#ifdef notyet
 /* get_field - given fieldstr - the "name" of a field, query the user 
  *             and set the new value of the field
  */
@@ -86,9 +88,11 @@ static void get_field (const char* fieldstr, char* newfield, int newfieldlen)
     {
         printf ("\tEnter %s ", fieldstr);
         fflush (stdin);
-        fgets (newfield, newfieldlen, stdin);
+        if (fgets (newfield, newfieldlen, stdin) == NULL)
+	    continue;
         fflush (stdin);
-        newfield[strlen(newfield)-1] = '\0';
+	if (newfield[strlen(newfield)-1] == '\n')
+	    newfield[strlen(newfield)-1] = '\0';
  
         if (strlen(newfield) == 0)  
         {
@@ -100,7 +104,6 @@ static void get_field (const char* fieldstr, char* newfield, int newfieldlen)
         }
     }
 }
-
 
 /* manual_user_enter_context - provides a way for a user to manually enter a
  *                     context in case the policy doesn't allow a list
@@ -130,13 +133,18 @@ int manual_user_enter_context (const char *user, security_context_t *newcon)
       new_context = context_new ("user:role:type:level");
     else
       new_context = context_new ("user:role:type");
+
+    if(!new_context)
+      return -1;
   
     while (!done)
     {
         printf ("Would you like to enter a security context? [y]");
-        fgets (response, sizeof(response), stdin);
-        if ((response[0] == 'n') || (response[0] == 'N'))
+        if (fgets (response, sizeof(response), stdin) == NULL
+            || (response[0] == 'n') || (response[0] == 'N')) {
+            context_free(new_context);
             return -1;
+	}
  
         /* Allow the user to enter each field of the context individually */
         if (context_user_set (new_context, user))
@@ -168,6 +176,11 @@ int manual_user_enter_context (const char *user, security_context_t *newcon)
 
         /* Get the string value of the context and see if it is valid. */
         user_context = context_str(new_context);
+        if(!user_context)
+        {
+            context_free (new_context);
+            return -1;
+        }
         if (!security_check_context(user_context))
             done = 1;
         else 
@@ -176,5 +189,9 @@ int manual_user_enter_context (const char *user, security_context_t *newcon)
 
     *newcon = strdup(user_context);
     context_free (new_context);
+    if(!(*newcon))
+        return -1;
     return 0;
 }
+#endif
+

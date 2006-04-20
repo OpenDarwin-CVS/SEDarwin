@@ -1,49 +1,49 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <selinux/selinux.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <asm/page.h>
+#include "selinux_internal.h"
 #include "policy.h"
+#include <sys/mac.h>
+
+int getexeccon_raw(security_context_t *context)
+{
+        int   r = 1;
+        mac_t mac;
+        char *string;
+
+	if (mac_prepare(&mac, "sebsd"))
+		return r;
+	
+        if (mac_get_proc(mac) ||
+            mac_to_text(mac, &string))
+                goto out;
+
+        *context = strdup(string + strlen("sebsd/"));
+        free(string);
+        r = 0;
+out:
+        mac_free(mac);
+        return r;
+}
+hidden_def(getexeccon_raw)
 
 int getexeccon(security_context_t *context)
 {
-	char *buf;
-	size_t size;
-	int fd;
-	ssize_t ret;
+	int ret;
+	security_context_t rcontext;
 
-	fd = open("/proc/self/attr/exec", O_RDONLY);
-	if (fd < 0)
-		return -1;
+ 	ret = getexeccon_raw(&rcontext);
 
-	size = PAGE_SIZE;
-	buf = malloc(size);
-	if (!buf) {
-		ret = -1;
-		goto out;
-	}
-	memset(buf, 0, size);
+	if (context_translations && !ret) {
+		if (raw_to_trans_context(rcontext, context)) {
+			*context = NULL;
+			ret = -1;
+		}
+		freecon(rcontext);
+	} else if (!ret)
+		*context = rcontext;
 
-	ret = read(fd, buf, size-1);
-	if (ret < 0)
-		goto out2;
-
-	if (ret == 0) {
-		*context = NULL;
-		goto out2;
-	}
-
-	*context = strdup(buf);
-	if (!(*context)) {
-		ret = -1;
-		goto out2;
-	}
-	ret = 0;
-out2:			
-	free(buf);
-out:
-	close(fd);
 	return ret;
 }

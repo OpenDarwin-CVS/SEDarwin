@@ -5,12 +5,92 @@
 #include <string.h>
 #include <ctype.h>
 #include <pwd.h>
-#include <selinux/selinux.h>
-#include <selinux/context.h>
-#include <selinux/get_context_list.h>
+#include "selinux_internal.h"
+#include "context_internal.h"
+#include "get_context_list_internal.h"
 
-#define USERPRIORITY 1
-#define SYSTEMPRIORITY 2
+int get_default_context_with_role(const char* user, 
+				  const char *role,
+				  security_context_t fromcon,
+				  security_context_t *newcon)
+{
+    security_context_t *conary;
+    char **ptr;
+    context_t con;
+    const char *role2;
+    int rc;
+
+    rc = get_ordered_context_list(user, fromcon, &conary);
+    if (rc <= 0)
+	    return -1;
+
+    for (ptr = conary; *ptr; ptr++) {
+	    con = context_new(*ptr);
+	    if (!con)
+		    continue;
+	    role2 = context_role_get(con);
+	    if (role2 && !strcmp(role, role2)) {
+		    context_free(con);
+		    break;
+	    }
+	    context_free(con);
+    }
+
+    rc = -1;
+    if (!(*ptr))
+	    goto out;
+    *newcon = strdup(*ptr);
+    if (!(*newcon))
+	    goto out;
+    rc = 0;
+out:
+    freeconary(conary);
+    return rc;
+}
+hidden_def(get_default_context_with_role)
+
+int get_default_context_with_rolelevel(const char* user, 
+				       const char *role,
+				       const char *level,
+				       security_context_t fromcon,
+				       security_context_t *newcon) 
+{
+
+    int rc=0;
+    int freefrom = 0;
+    context_t con;
+    char *newfromcon;
+    if (!level) 
+	    return get_default_context_with_role(user, role, fromcon, newcon);
+	
+    if (!fromcon) {
+	    rc = getcon(&fromcon);
+	    if (rc < 0)
+		    return rc;
+	    freefrom = 1;
+    }
+    
+    rc = -1;
+    con=context_new(fromcon);
+    if (!con)
+	    goto out;
+    
+    if (context_range_set(con, level))
+	    goto out;
+    
+    newfromcon = context_str(con);
+    if (!newfromcon)
+	    goto out;
+    
+    rc = get_default_context_with_role(user, role, newfromcon, newcon);
+    
+out:
+    context_free(con);
+    if (freefrom) 
+	    freecon(fromcon);
+    return rc;
+
+}
 
 int get_default_context(const char* user, 
 			security_context_t fromcon,
@@ -24,338 +104,170 @@ int get_default_context(const char* user,
 	    return -1;
 
     *newcon = strdup(conary[0]);
+    freeconary(conary);
     if (!(*newcon))
 	    return -1;
-    freeconary(conary);
     return 0;
 }
-    
-/* find_line - Seach for an entry in 'infile' that matches the context 'con'
-               stripped of the user identity.  If an entry is found, the 
-	       remainder of the line is stored in line.  A 0 is returned if 
-	       an entry is found, and a 1 is returned otherwise.
-*/
-static int find_line (FILE *infile, security_context_t con, char *line, 
-                      size_t length)
+
+static int find_partialcon(security_context_t *list,
+			   unsigned int nreach,
+			   char *part)
 {
-    char *current_line;
-    char *ptr, *ptr2 = NULL;
-    int found = 0;
-    char *cc_str = 0;
-    size_t cc_len = 0;
+	const char *conrole, *contype;
+	char *partrole, *parttype, *ptr;
+	context_t con;
+	unsigned int i;
 
-    /* Skip the user field. */
-    cc_str = index(con, ':');
-    if (!cc_str)
-	    return -1;
-    cc_str++;
-    cc_len = strlen(cc_str);
-    if (!cc_len)
-	    return -1;
-
-    current_line = malloc (length);
-    if (!current_line)
-	    return (-1);
-
-    while (!feof (infile)) {
-	if (!fgets(current_line, length, infile)) {
-		free(current_line);
-		return -1;
-	}
-	if (current_line[strlen(current_line) - 1])
-		current_line[strlen(current_line) - 1] = 0;
-            
-	/* Skip leading whitespace before the partial context. */
-	ptr = current_line;
-        while (*ptr && isspace(*ptr))
+	partrole = part;
+	ptr = part;
+	while (*ptr && !isspace(*ptr) && *ptr != ':')
 		ptr++;
+	if (*ptr != ':')
+		return -1;
+	*ptr++ = 0;
+	parttype = ptr;
+	while (*ptr && !isspace(*ptr) && *ptr != ':')
+		ptr++;
+	*ptr = 0;
 
-        if (!(*ptr))
-		continue;
-
-	/* Find the end of the partial context. */
-	ptr2 = ptr;
-	while (*ptr2 && !isspace(*ptr2))
-		ptr2++;
-	if (!(*ptr2))
-		continue;
-
-	if (strncmp (cc_str, ptr, cc_len) == 0) {
-		found = 1;
-		break;
+	for (i = 0; i < nreach; i++) {
+		con = context_new(list[i]);
+		if (!con)
+			return -1;
+		conrole = context_role_get(con);
+		contype = context_type_get(con);
+		if (!conrole || !contype) {
+			context_free(con);
+			return -1;
+		}
+		if (!strcmp(conrole, partrole) && !strcmp(contype, parttype)) {
+			context_free(con);
+			return i;
+		}
+		context_free(con);
 	}
+
+	return -1;
+}
+
+static int get_context_order(FILE *fp, 
+			     security_context_t fromcon, 
+			     security_context_t *reachable, 
+			     unsigned int nreach,
+			     unsigned int *ordering,
+			     unsigned int *nordered)
+{
+    char *start, *end = NULL;
+    char *line = NULL;
+    size_t line_len = 0;
+    ssize_t len;
+    int found = 0;
+    const char *fromrole, *fromtype;
+    char *linerole, *linetype;
+    unsigned int i;
+    context_t con;
+    int rc;
+
+    errno = -EINVAL;
+
+    /* Extract the role and type of the fromcon for matching.
+       User identity and MLS range can be variable. */
+    con = context_new(fromcon);
+    if (!con)
+	    return -1;
+    fromrole = context_role_get(con);
+    fromtype = context_type_get(con);
+    if (!fromrole || !fromtype) {
+	    context_free(con);
+	    return -1;
+    }
+
+    while ((len = getline(&line, &line_len, fp)) > 0) {
+	    if (line[len - 1] == '\n')
+		    line[len - 1] = 0;
+
+	    /* Skip leading whitespace. */
+	    start = line;
+	    while (*start && isspace(*start))
+		    start++;
+	    if (!(*start))
+		    continue;
+
+	    /* Find the end of the (partial) fromcon in the line. */
+	    end = start;
+	    while (*end && !isspace(*end))
+		    end++;
+	    if (!(*end))
+		    continue;
+
+	    /* Check for a match. */
+	    linerole = start;
+	    while (*start && !isspace(*start) && *start != ':')
+		    start++;
+	    if (*start != ':')
+		    continue;
+	    *start = 0;
+	    linetype = ++start;
+	    while (*start && !isspace(*start) && *start != ':')
+		    start++;
+	    if (!(*start))
+		    continue;
+	    *start = 0;
+	    if (!strcmp(fromrole, linerole) && !strcmp(fromtype, linetype)) {
+		    found = 1;
+		    break;
+	    }
     }
 
     if (!found) {
-	    free(current_line);
-	    return -1;
+	    errno = ENOENT;
+	    rc = -1;
+	    goto out;
     }
 
-    /* Skip whitespace. */
-    while (*ptr2 && isspace(*ptr2))
-	    ptr2++;
-    if (!(*ptr2)) {
-	    free(current_line);
-	    return -1;
-    }
-
-    /* Copy the remainder of the line. */
-    strncpy(line, ptr2, length - 1);
-    line[length-1] = 0;
-    free (current_line);
-    return 0;
-}
-         
-
-/* list_from_string - given a string, and a user name, pull out the partial
-                      security contexts from the string and combine with the 
-                      username to make a full security context.  Each security
-                      context will be checked, and if valid, stored in 
-		      pri_list.  The number of elements stored in pri_list 
-		      is returned.
-*/
-static int list_from_string (char *instr, const char *user, 
-                             security_context_t *pri_list, 
-                             int pri_length)
-{
-    char *ptr, *ptr2;
-    size_t length;
-    security_context_t current_context;
-    size_t current_context_len;
-    int count = 0;
-
-    ptr = instr;
-    while (*ptr && (count < pri_length))
-    { 
+    start = ++end;
+    while (*start) {
         /* Skip leading whitespace */
-        while (*ptr && isspace(*ptr))
-		ptr++;
-	if (!(*ptr))
-		return count;
+        while (*start && isspace(*start))
+		start++;
+	if (!(*start))
+		break;
 
         /* Find the end of this partial context. */
-        ptr2 = ptr;
-        while (*ptr2 && !isspace(*ptr2))
-		ptr2++;
+        end = start;
+        while (*end && !isspace(*end))
+		end++;
+	if (*end)
+		*end++ = 0;
 
-	/* Generate a full context with the user identity. */
-        length = ptr2  - ptr;
-	current_context_len = length + strlen (user) + 2;
-	current_context = (security_context_t)malloc(current_context_len);
-	if (current_context == NULL)
-		return count;
-
-	strcpy (current_context, user);
-	strcat (current_context, ":");
-	strncat (current_context, ptr, length);
-	current_context[current_context_len-1] = '\0';
-
-	/* Check the validity of the context, i.e. user->role,
-	   role->domain authorizations. */
-	if (!security_check_context(current_context)) {
-		pri_list[count] = current_context;
-                count++;
+	/* Check for a match in the reachable list. */
+	rc = find_partialcon(reachable, nreach, start);
+	if (rc < 0) {
+		/* No match, skip it. */
+		start = end;
+		continue;
 	}
-	else
-		freecon(current_context);
-	
-	ptr += length;
+
+	/* If a match is found and the entry is not already ordered
+	   (e.g. due to prior match in prior config file), then set
+	   the ordering for it. */
+	i = rc;
+	if (ordering[i] == nreach)
+		ordering[i] = (*nordered)++;
+	start = end;
     }
 
-    return count;
+    rc = 0;
+
+out:
+    context_free(con);
+    free(line);
+    return rc;
 }
 
-
-/* get_context_list - given starting (from) context and a user name,
-                      stores in pri_list a list of contexts based on 
-                      configuration information from infile.  The int 
-                      pri_length is the maximum number of contexts that will  
-                      fit in pri_list.  Returns the number of contexts stored 
-                      in pri_list or -1 on error.
-*/
-static int get_context_list (FILE *infile, security_context_t fromcon, 
-                             const char *user, security_context_t *pri_list, 
-                             int pri_length)
-{
-    int ret_val = 0;        /* Used for return values                    */
-    char line[255];         /* The line from the configuration file that
-                               matches the current sid                   */
-
-    /* Find the line in infile that matches fromcon */
-    ret_val = find_line (infile, fromcon, line, sizeof line);
-    if (ret_val)
-	    return -1;
-
-    /* Get the contexts from this line */
-    ret_val = list_from_string (line, user, pri_list, pri_length);
-    return ret_val;
-}
-
-
-/* get_config_priority - given a context and a username, get the context priority 
-                         list for that user and place it in pri_list.  The  
-                         maximum number of elements allowed is pri_length.  
-                         If which equals USERPRIORITY, the list will come
-                         from the user's .default_contexts file.  If which 
-                         equals SYSTEMPRIORITY, the list will come from the
-                         system configuration file.  The number of contexts placed
-                         in pri_list is returned.
- */
-static int get_config_priority (security_context_t fromcon, const char *user, 
-                         security_context_t *pri_list, int pri_length, int which,
-                         int default_user_flag)
-{
-    FILE *config_file;    /* The configuration file                    */
-    char *fname = 0;      /* The name of the user's configuration file */
-    size_t fname_len;     /* The length of fname                       */
-    int retval;           /* The return value                          */
-
-    if (which == USERPRIORITY)
-    {
-	    char *user_contexts_path = selinux_user_contexts_path();
-	    fname_len = strlen(user_contexts_path) + strlen(user) + 2;
-	    fname = malloc (fname_len);
-	    if (!fname) 
-		    return -1;
-	    retval = snprintf (fname, fname_len, "%s/%s", user_contexts_path, user);
-	    if (retval < 0 || (size_t)retval >= fname_len) {
-		    free(fname);
-		    return -1;
-	    }
-	    config_file = fopen (fname, "r");
-	    free (fname);
-    }
-    else if (which == SYSTEMPRIORITY)
-    {
-        config_file = fopen (selinux_default_context_path(), "r");
-    }
-    else
-    {
-        /* Bad which value */
-        return -1;
-    }
-
-    if (!config_file)
-    {
-        return -1;
-    }
-    if (default_user_flag)
-        retval = get_context_list (config_file, fromcon, 
-                                   SELINUX_DEFAULTUSER, pri_list, 
-                                   pri_length);
-    else
-        retval = get_context_list (config_file, fromcon, user, pri_list, 
-                                   pri_length);
-    fclose (config_file);
-    return retval;
-}
-
-
-/* insert - given a list, a position pos, and a context, inserts the context into the 
-            list at pos.  Returns 0 on success, -1 on failure.
- */
-static inline int insert (security_context_t *ordered_list, int length, int pos, 
-			  security_context_t new_item)
-{
-    int ret_val = -1;
-
-    if ((pos < length) && (pos >= 0))
-    {
-        ordered_list[pos] = strdup(new_item);
-        ret_val = 0;
-    }
-
-    return ret_val;
-}
-
-
-/* complete_ordered_list - given an ordered_list of contexts and a position, 
-                           insert all the contexts in init_list that are not 
-			   yet in ordered_list into ordered_list
- */
-static int complete_ordered_list (security_context_t *ordered_list, int *pos, 
-                                  security_context_t *init_list, int *bitmap, 
-                                  int length)
-{
-    int i;
-    int ret_val = 0;
-    int count = *pos;
-
-    if (*pos) {
-      /* If there were any reachable contexts in default_contexts, then omit 
-	 any reachable contexts that were not found in default_contexts,
-	 as these are typically not contexts that we want to be visible to the
-	 user anyway. */
-      return *pos;
-    }
-
-    for (i = 0; i < length; i++)
-    {
-        if (!bitmap[i])
-        {
-            ret_val = insert (ordered_list, length, *pos, init_list[i]);
-            if (!ret_val)
-            {
-                /* Mark that we have already used this context */
-                bitmap[i] = 1;
-                (*pos)++;
-                count++;
-            }
-        }
-    }
-
-    return count;
-}
-
-
-/* locate - given a list, and a context, return the position of the context in the list 
- */
-static inline int locate (security_context_t *list, int list_len, security_context_t element)
-{
-    int i;
-
-    for (i = 0; i < list_len; i++)
-	    if (!strcmp(list[i],element))
-		return i;
-
-    return -1;
-}
-
-
-/* add_priority_list - given an ordered list of contexts ordered_list, a current
-                       position pos, the total list of contexts total_list, and a 
-                       priority list pri_list add the contexts from pri_list that 
-                       are in total_list, but are not yet in ordered list. 
-                       Return 0 on success.
- */
-static int add_priority_list (security_context_t *ordered_list, 
-                              security_context_t *total_list,
-                              int *bitmap, int length, security_context_t *pri_list,
-                              int pri_length, int *pos)
-{
-    int i;
-    int location;
-    int ret_val = 0;
-
-    for (i = 0; i < pri_length; i++)
-    {
-        location = locate (total_list, length, pri_list[i]);
-        if ((location >= 0) && (location < length) && (!bitmap[location]))
-        {
-            ret_val = insert (ordered_list, length, *pos, pri_list[i]);
-            if (ret_val)
-                return ret_val;
-
-            /* Mark that we have already used this context. */
-            bitmap[location] = 1;
-            (*pos)++;
-        }
-    }
-    return ret_val;
-}
-
-int get_failsafe_context(const char* user, 
-			 security_context_t *newcon)
+static int get_failsafe_context(const char* user, 
+				security_context_t *newcon)
 {
 	FILE *fp;
 	char buf[255], *ptr;
@@ -375,9 +287,13 @@ int get_failsafe_context(const char* user,
 	if (buf[plen-1] == '\n') 
 		buf[plen-1] = 0;
 
+#ifdef notyet
  retry:
+#endif
 	nlen = strlen(user)+1+plen+1;
 	*newcon = malloc(nlen);
+	if(!(*newcon))
+		return -1;
 	rc = snprintf(*newcon, nlen, "%s:%s", user, ptr);
 	if (rc < 0 || (size_t) rc >= nlen) {
 		free(*newcon);
@@ -385,6 +301,7 @@ int get_failsafe_context(const char* user,
 		return -1;
 	}
 
+#ifdef notyet
 	/* If possible, check the context to catch
 	   errors early rather than waiting until the
 	   caller tries to use setexeccon on the context.
@@ -399,31 +316,101 @@ int get_failsafe_context(const char* user,
 		}
 		return -1;
 	}
-
+#endif
+	
 	return 0;
+}
+
+struct context_order {
+	security_context_t con;
+	unsigned int order;
+};
+
+static int order_compare(const void *A, const void *B) 
+{
+	const struct context_order *c1 = A, *c2 = B;
+	if (c1->order < c2->order)
+		return -1;
+	else if (c1->order > c2->order)
+		return 1;
+	return strcmp(c1->con, c2->con);
+}
+
+int get_ordered_context_list_with_level (const char *user, 
+					 const char *level, 
+					 security_context_t fromcon, 
+					 security_context_t **list)
+{
+    int rc;
+    int freefrom = 0;
+    context_t con;
+    char *newfromcon;
+
+    if (!level) 
+	    return get_ordered_context_list (user, fromcon, list);
+
+    if (!fromcon) {
+	rc = getcon(&fromcon);
+	if (rc < 0)
+		return rc;
+	freefrom = 1;
+    }
+
+    rc = -1;
+    con=context_new(fromcon);
+    if (!con)
+	    goto out;
+
+    if (context_range_set(con, level))
+	    goto out;
+
+    newfromcon = context_str(con);
+    if (!newfromcon)
+	    goto out;
+
+    rc = get_ordered_context_list (user, newfromcon, list);
+
+out:
+    context_free(con);
+    if (freefrom) 
+	    freecon(fromcon);
+    return rc;
+}
+hidden_def(get_ordered_context_list_with_level)
+
+int get_default_context_with_level(const char *user, 
+				   const char *level,
+				   security_context_t fromcon,
+				   security_context_t *newcon)
+{
+    security_context_t *conary;
+    int rc;
+
+    rc = get_ordered_context_list_with_level(user, level, fromcon, &conary);
+    if (rc <= 0)
+	    return -1;
+
+    *newcon = strdup(conary[0]);
+    freeconary(conary);
+    if (!(*newcon))
+	    return -1;
+    return 0;
 }
 
 int get_ordered_context_list (const char *user, 
 			      security_context_t fromcon, 
 			      security_context_t **list)
 {
-    security_context_t *init_list=0, *ordered_list;
+    security_context_t *reachable = NULL;
+    unsigned int *ordering = NULL;
+    struct context_order *co = NULL;
     char **ptr;
-    int rc;
-    int *bitmap = 0;            /* An array matching the initial sid list.
-                                   Each int corresponds to a sid in the 
-                                   initial sid list.  The int will be 1 if 
-                                   the corresponding sid has already been 
-                                   placed into the ordered list, 0 otherwise */
-    int i;                      /* An index into an array                    */
-    security_context_t *pri_list;    /* The priority sid list obtained from a 
-                                   config file                               */
-    int init_len;
-    int pri_length;             /* The maximum length of the priority list   */
-    int config_length;          /* The actual length of the priority list    */
-    int pos = 0;                /* The current position in the ordered list  */
-    int default_user_flag = 0;  /* True if the default user is being used    */
-    int freefrom = 0;
+    int rc = 0;
+    unsigned int nreach = 0, nordered = 0, freefrom = 0, i;
+    FILE *fp;
+    char *fname = NULL;
+    size_t fname_len;
+    const char *user_contexts_path = selinux_user_contexts_path();
 
     if (!fromcon) {
 	    /* Get the current context and use it for the starting context */
@@ -433,97 +420,116 @@ int get_ordered_context_list (const char *user,
 	    freefrom = 1;
     }
 
-    rc = security_compute_user(fromcon, user, &init_list);
+    /* Determine the set of reachable contexts for the user. */
+    rc = security_compute_user(fromcon, user, &reachable);
     if (rc < 0) {
 	    /* Retry with the default SELinux user identity. */
-	    rc = security_compute_user(fromcon, 
-				       SELINUX_DEFAULTUSER, &init_list);
+	    user = SELINUX_DEFAULTUSER;
+	    rc = security_compute_user(fromcon, user, &reachable);
 	    if (rc < 0)
 		    goto failsafe;
-            default_user_flag = 1;
     }
-    init_len = 0;
-    for (ptr = init_list; *ptr; ptr++) 
-	    init_len++;
-
-    if (!init_len)
+    nreach = 0;
+    for (ptr = reachable; *ptr; ptr++) 
+	    nreach++;
+    if (!nreach)
 	    goto failsafe;
 
-    ordered_list = malloc((init_len+1)*sizeof(security_context_t));
-    if (!ordered_list) {
-	    rc = -1;
-	    goto out2;
+    /* Initialize ordering array. */
+    ordering = malloc(nreach * sizeof(unsigned int));
+    if (!ordering)
+	    goto oom_order;
+    for (i = 0; i < nreach; i++)
+	    ordering[i] = nreach;
+
+    /* Determine the ordering to apply from the optional per-user config
+       and from the global config. */
+    fname_len = strlen(user_contexts_path) + strlen(user) + 2;
+    fname = malloc(fname_len);
+    if (!fname)
+	    goto oom_order;
+    snprintf(fname, fname_len, "%s%s", user_contexts_path, user);
+    fp = fopen(fname, "r");
+    if (fp) {
+	    rc = get_context_order(fp, fromcon, reachable, nreach, ordering, &nordered);
+	    fclose(fp);
+	    if (rc < 0 && errno != ENOENT) {
+		    fprintf(stderr, "%s:  error in processing configuration file %s\n", __FUNCTION__, fname);
+		    /* Fall through, try global config */
+	    }
     }
-    for (i = 0; i <= init_len; i++)
-	    ordered_list[i] = 0;
-
-    /* Initialize priority list */
-    pri_length = 25;
-    pri_list = malloc ((pri_length+1) *sizeof(security_context_t));
-    if (!pri_list) {
-	    rc = -1;
-	    goto out3;
+    free(fname);
+    fp = fopen(selinux_default_context_path(), "r");
+    if (fp) {
+	    rc = get_context_order(fp, fromcon, reachable, nreach, ordering, &nordered);
+	    fclose(fp);
+	    if (rc < 0 && errno != ENOENT) {
+		    fprintf(stderr, "%s:  error in processing configuration file %s\n", __FUNCTION__, selinux_default_context_path());
+		   /* Fall through */
+	    }
     }
-    for (i = 0; i <= pri_length; i++)
-	    pri_list[i] = 0;
- 
-    /* Initialize bitmap */
-    bitmap = (int *)malloc (init_len*sizeof(int));
-    if (!bitmap) {
-	    rc = -1;
-	    goto out4;
+
+    /* Apply the ordering. */
+    if (nordered) {
+	    co = malloc(nreach * sizeof(struct context_order));
+	    if (!co)
+		    goto oom_order;
+	    for (i = 0; i < nreach; i++) {
+		    co[i].con = reachable[i];
+		    co[i].order = ordering[i];
+	    }
+	    qsort(co, nreach, sizeof(struct context_order), order_compare);
+	    for (i = 0; i < nreach; i++)
+		    reachable[i] = co[i].con;
+	    free(co);
     }
-    for (i = 0; i < init_len; i++)
-        bitmap[i] = 0;
 
-    /* get the user's default context list; the contexts from here should go
-       first in the ordered list */
-    config_length = get_config_priority (fromcon, user, pri_list,
-                                         pri_length, USERPRIORITY,
-                                         default_user_flag);
-    add_priority_list (ordered_list, init_list, bitmap, init_len, pri_list,
-                       config_length, &pos);
+    /* Return the ordered list. 
+       If we successfully ordered it, then only report the ordered entries
+       to the caller.  Otherwise, fall back to the entire reachable list. */
+    if (nordered && nordered < nreach) {
+	    for (i = nordered; i < nreach; i++)
+		    free(reachable[i]);
+	    reachable[nordered] = NULL;
+	    rc = nordered;
+    } else {
+	    rc = nreach;
+    }
 
-    /* get the contexts from the system config file and add to ordered_list */
-    config_length = get_config_priority (fromcon, user, pri_list,
-                                         pri_length, SYSTEMPRIORITY,
-                                         default_user_flag);
-    add_priority_list (ordered_list, init_list, bitmap, init_len, pri_list,
-                       config_length, &pos);
+out:
+    *list = reachable;
 
-    /* finish up the list with the rest of the reachable contexts */
-    rc = complete_ordered_list (ordered_list, &pos, init_list, bitmap, 
-				init_len);
-
-    free (bitmap);
-
-out4:
-    freeconary(pri_list);
-
-out3:
-    if (rc < 0)
-	    freeconary(ordered_list);
-    else 
-	    *list = ordered_list;
-
-out2:
-    if (init_list)
-	    freeconary(init_list);
-
+    free(ordering);
     if (freefrom)
 	    freecon(fromcon);
 
     return rc;
 
 failsafe:
-    ordered_list = malloc(2*sizeof(security_context_t));
-    if (!ordered_list) {
+    /* Unable to determine a reachable context list, try to fall back to
+       the "failsafe" context to at least permit root login
+       for emergency recovery if possible. */
+    freeconary(reachable);
+    reachable = malloc(2*sizeof(security_context_t));
+    if (!reachable) {
 	    rc = -1;
-	    goto out2;
+	    goto out;
     }
-    ordered_list[0] = ordered_list[1] = 0;
-    rc = get_failsafe_context(user, &ordered_list[0]);
-    if (rc == 0)
-	    rc = 1;
-    goto out3;
+    reachable[0] = reachable[1] = 0;
+    rc = get_failsafe_context(user, &reachable[0]);
+    if (rc < 0) {
+	    freeconary(reachable);
+	    reachable = NULL;
+	    goto out;
+    }
+    rc = 1; /* one context in the list */
+    goto out;
+
+oom_order:
+    /* Unable to order context list due to OOM condition.
+       Fall back to unordered reachable context list. */
+    fprintf(stderr, "%s:  out of memory, unable to order list\n", __FUNCTION__);
+    rc = nreach;
+    goto out;
 }
+hidden_def(get_ordered_context_list)

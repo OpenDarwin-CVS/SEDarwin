@@ -8,13 +8,12 @@ getsebool \- get SELinux boolean value(s)
 
 .SH "DESCRIPTION"
 .B getsebool 
-reports the current state of either a particular SELinux boolean or
-all SELinux booleans.  The state consists of two values, the active
-value and the pending value.  The active value indicates the value
-that is presently applied to the policy.  The pending value indicates
+reports where a particular SELinux boolean or
+all SELinux booleans are on or off
+In certain situations a boolean can be in one state with a pending 
+change to the other state.  getsebool will report this as a pending change.
+The pending value indicates
 the value that will be applied upon the next boolean commit.
-Typically, these values will be the same; they only differ when in the
-middle of a boolean change transaction.
 
 The setting of boolean values occurs in two stages; first the pending
 value is changed, then the booleans are committed, causing their
@@ -31,6 +30,5 @@ Show all SELinux booleans.
 This manual page was written by Dan Walsh <dwalsh@redhat.com>.
 The program was written by Tresys Technology.
 
-
 .SH "SEE ALSO"
-.BR setsebool"(8)", booleans"(8)"
+setsebool(8), booleans(8)

@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <selinux/selinux.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /*
  * SID format and operations
@@ -361,5 +365,9 @@ void avc_av_stats(void);
  * is used to print the message.
  */
 void avc_sid_stats(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SELINUX_AVC_H_ */

@@ -7,6 +7,7 @@
 
 #include <selinux/selinux.h>
 #include <selinux/avc.h>
+#include "dso.h"
 
 struct sidtab_node {
   struct security_id sid_s;
@@ -23,16 +24,16 @@ struct sidtab {
   unsigned nel;
 };
 
-int sidtab_init(struct sidtab *s);
-int sidtab_insert(struct sidtab *s, security_context_t ctx);
-void sidtab_remove(struct sidtab *s, security_id_t sid);
-security_id_t sidtab_claim_sid(struct sidtab *s);
+int sidtab_init(struct sidtab *s) hidden;
+int sidtab_insert(struct sidtab *s, security_context_t ctx) hidden;
+void sidtab_remove(struct sidtab *s, security_id_t sid) hidden;
+security_id_t sidtab_claim_sid(struct sidtab *s) hidden;
 
 int sidtab_context_to_sid(struct sidtab *s,
 			  security_context_t ctx,
-			  security_id_t *sid);
+			  security_id_t *sid) hidden;
 
-void sidtab_sid_stats(struct sidtab *s, char *buf, int buflen);
-void sidtab_destroy(struct sidtab *s);
+void sidtab_sid_stats(struct sidtab *s, char *buf, int buflen) hidden;
+void sidtab_destroy(struct sidtab *s) hidden;
 
 #endif	/* _SELINUX_AVC_SIDTAB_H_ */

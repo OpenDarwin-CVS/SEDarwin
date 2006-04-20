@@ -1,3 +1,359 @@
+1.30 2006-03-14
+	* Updated version for release.
+
+1.29.8 2006-02-27
+	* Altered rpm_execcon fallback logic for permissive mode to also
+	  handle case where /selinux/enforce is not available.
+
+1.29.7 2006-01-20
+	* Merged install-pywrap Makefile patch from Joshua Brindle.
+
+1.29.6 2006-01-18
+	* Merged pywrap Makefile patch from Dan Walsh.
+
+1.29.5 2006-01-11
+	* Added getseuser test program.
+
+1.29.4 2006-01-06
+	* Added format attribute to myprintf in matchpathcon.c and
+	  removed obsoleted rootlen variable in init_selinux_config().
+
+1.29.3 2006-01-04
+	* Merged several fixes and improvements from Ulrich Drepper
+	  (Red Hat), including:
+	  - corrected use of getline
+	  - further calls to __fsetlocking for local files
+	  - use of strdupa and asprintf
+	  - proper handling of dirent in booleans code
+	  - use of -z relro
+	  - several other optimizations
+	* Merged getpidcon python wrapper from Dan Walsh (Red Hat).
+
+1.29.2 2005-12-14
+	* Merged call to finish_context_translations from Dan Walsh.
+	  This eliminates a memory leak from failing to release memory
+	  allocated by libsetrans.
+
+1.29.1 2005-12-08
+	* Merged patch for swig interfaces from Dan Walsh.
+
+1.28 2005-12-07
+	* Updated version for release.
+
+1.27.28 2005-12-01
+	* Added MATCHPATHCON_VALIDATE flag for set_matchpathcon_flags() and
+	  modified matchpathcon implementation to make context validation/
+	  canonicalization optional at matchpathcon_init time, deferring it
+	  to a successful matchpathcon by default unless the new flag is set
+	  by the caller.
+
+1.27.27 2005-12-01
+	* Added matchpathcon_init_prefix() interface, and
+	  reworked matchpathcon implementation to support selective
+	  loading of file contexts entries based on prefix matching
+	  between the pathname regex stems and the specified path
+	  prefix (stem must be a prefix of the specified path prefix).
+
+1.27.26 2005-11-29
+	* Merged getsebool patch from Dan Walsh.
+
+1.27.25 2005-11-29
+	* Added -f file_contexts option to matchpathcon util.
+	  Fixed warning message in matchpathcon_init().
+
+1.27.24 2005-11-29
+	* Merged Makefile python definitions patch from Dan Walsh.
+
+1.27.23 2005-11-28
+	* Merged swigify patch from Dan Walsh.
+
+1.27.22 2005-11-15
+	* Merged make failure in rpm_execcon non-fatal in permissive mode
+	  patch from Ivan Gyurdiev.
+
+1.27.21 2005-11-08
+	* Added MATCHPATHCON_NOTRANS flag for set_matchpathcon_flags()
+	  and modified matchpathcon_init() to skip context translation
+	  if it is set by the caller.
+
+1.27.20 2005-11-07
+	* Added security_canonicalize_context() interface and
+	  set_matchpathcon_canoncon() interface for obtaining
+	  canonical contexts.  Changed matchpathcon internals
+	  to obtain canonical contexts by default.  Provided
+	  fallback for kernels that lack extended selinuxfs context
+	  interface.
+
+1.27.19 2005-11-04
+	* Merged seusers parser changes from Ivan Gyurdiev.
+	* Merged setsebool to libsemanage patch from Ivan Gyurdiev.
+	* Changed seusers parser to reject empty fields.
+
+1.27.18 2005-11-03
+	* Merged seusers empty level handling patch from Jonathan Kim (TCS).
+
+1.27.17 2005-10-27
+	* Changed default entry for seusers to use __default__ to avoid
+	  ambiguity with users named "default".
+
+1.27.16 2005-10-27
+	* Fixed init_selinux_config() handling of missing /etc/selinux/config
+	  or missing SELINUXTYPE= definition.
+	* Merged selinux_translations_path() patch from Dan Walsh.
+
+1.27.15 2005-10-25
+	* Added hidden_proto/def for get_default_context_with_role.
+
+1.27.14 2005-10-25
+	* Merged selinux_path() and selinux_homedir_context_path()
+	  functions from Joshua Brindle.
+	
+1.27.13 2005-10-19
+	* Merged fixes for make DESTDIR= builds from Joshua Brindle.
+
+1.27.12 2005-10-18
+	* Merged get_default_context_with_rolelevel and man pages from
+	  Dan Walsh (Red Hat).
+
+1.27.11 2005-10-18
+	* Updated call to sepol_policydb_to_image for sepol changes.
+
+1.27.10 2005-10-17
+	* Changed getseuserbyname to ignore empty lines and to handle
+	no matching entry in the same manner as no seusers file.
+
+1.27.9 2005-10-13
+	* Changed selinux_mkload_policy to try downgrading the
+	latest policy version available to the kernel-supported version.
+
+1.27.8 2005-10-11
+	* Changed selinux_mkload_policy to fall back to the maximum
+	policy version supported by libsepol if the kernel policy version
+	falls outside of the supported range.
+
+1.27.7 2005-10-06
+	* Changed getseuserbyname to fall back to the Linux username and
+	NULL level if seusers config file doesn't exist unless 
+	REQUIRESEUSERS=1 is set in /etc/selinux/config.
+	* Moved seusers.conf under $SELINUXTYPE and renamed to seusers.
+
+1.27.6 2005-10-06
+	* Added selinux_init_load_policy() function as an even higher level
+	interface for the initial policy load by /sbin/init.  This obsoletes
+	the load_policy() function in the sysvinit-selinux.patch. 
+
+1.27.5 2005-10-06
+	* Added selinux_mkload_policy() function as a higher level interface
+	for loading policy than the security_load_policy() interface.
+
+1.27.4 2005-10-05
+	* Merged fix for matchpathcon (regcomp error checking) from Johan
+	Fischer.  Also added use of regerror to obtain the error string
+	for inclusion in the error message.
+
+1.27.3 2005-10-03
+	* Changed getseuserbyname to not require (and ignore if present)
+	the MLS level in seusers.conf if MLS is disabled, setting *level
+	to NULL in this case.
+
+1.27.2 2005-09-30
+	* Merged getseuserbyname patch from Dan Walsh.
+
+1.27.1 2005-09-19
+	* Merged STRIP_LEVEL patch for matchpathcon from Dan Walsh.  
+	  This allows file_contexts with MLS fields to be processed on 
+	  non-MLS-enabled systems with policies that are otherwise 
+	  identical (e.g. same type definitions).
+	* Merged get_ordered_context_list_with_level() function from
+	  Dan Walsh, and added get_default_context_with_level().
+	  This allows MLS level selection for users other than the
+	  default level.
+
+1.26 2005-09-06
+	* Updated version for release.
+	
+1.25.7 2005-09-01
+	* Merged modified form of patch to avoid dlopen/dlclose by
+	the static libselinux from Dan Walsh.  Users of the static libselinux
+	will not have any context translation by default.
+
+1.25.6 2005-08-31
+	* Added public functions to export context translation to
+	users of libselinux (selinux_trans_to_raw_context,
+	selinux_raw_to_trans_context).
+
+1.25.5 2005-08-26
+	* Remove special definition for context_range_set; use
+	common code.
+
+1.25.4 2005-08-25
+	* Hid translation-related symbols entirely and ensured that 
+	raw functions have hidden definitions for internal use.
+	* Allowed setting NULL via context_set* functions.
+	* Allowed whitespace in MLS component of context.
+	* Changed rpm_execcon to use translated functions to workaround
+	lack of MLS level on upgraded systems.
+
+1.25.3 2005-08-23
+	* Merged context translation patch, originally by TCS,
+	  with modifications by Dan Walsh (Red Hat).
+
+1.25.2 2005-08-11
+	* Merged several fixes for error handling paths in the
+	  AVC sidtab, matchpathcon, booleans, context, and get_context_list
+	  code from Serge Hallyn (IBM).   Bugs found by Coverity.
+
+1.25.1 2005-08-10
+	* Removed setupns; migrated to pam.
+	* Merged patches to rename checkPasswdAccess() from Joshua Brindle.
+	  Original symbol is temporarily retained for compatibility until 
+	  all callers are updated.
+
+1.24 2005-06-20
+	* Updated version for release.
+	
+1.23.12 2005-06-13
+	* Merged security_setupns() from Chad Sellers.
+
+1.23.11 2005-05-19
+	* Merged avcstat and selinux man page from Dan Walsh.
+	* Changed security_load_booleans to process booleans.local 
+	  even if booleans file doesn't exist.
+	
+1.23.10 2005-04-29
+	* Merged set_selinuxmnt patch from Bill Nottingham (Red Hat).
+
+1.23.9 2005-04-26
+	* Rewrote get_ordered_context_list and helpers, including
+	  changing logic to allow variable MLS fields.
+	
+1.23.8 2005-04-25
+	* Merged matchpathcon and man page patch from Dan Walsh.
+
+1.23.7 2005-04-12
+	* Changed boolean functions to return -1 with errno ENOENT 
+	  rather than assert on a NULL selinux_mnt (i.e. selinuxfs not
+	  mounted).
+
+1.23.6 2005-04-08
+	* Fixed bug in matchpathcon_filespec_destroy.
+	
+1.23.5 2005-04-05
+	* Fixed bug in rpm_execcon error handling path.
+
+1.23.4 2005-04-04
+	* Merged fix for set_matchpathcon* functions from Andreas Steinmetz.
+	* Merged fix for getconlist utility from Andreas Steinmetz.
+
+1.23.3 2005-03-29
+	* Merged security_set_boolean_list patch from Dan Walsh.
+	  This introduces booleans.local support for setsebool.
+
+1.23.2 2005-03-17
+	* Merged destructors patch from Tomas Mraz.
+
+1.23.1 2005-03-16
+	* Added set_matchpathcon_flags() function for setting flags
+	  controlling operation of matchpathcon.  MATCHPATHCON_BASEONLY
+	  means only process the base file_contexts file, not 
+	  file_contexts.homedirs or file_contexts.local, and is for use by
+	  setfiles -c.
+	* Updated matchpathcon.3 man page.
+
+1.22 2005-03-09
+	* Updated version for release.
+
+1.21.13 2005-03-08
+	* Fixed bug in matchpathcon_filespec_add() - failure to clear fl_head.
+
+1.21.12 2005-03-01
+	* Changed matchpathcon_common to ignore any non-format bits in the mode.
+
+1.21.11 2005-02-22
+	* Merged several fixes from Ulrich Drepper.
+
+1.21.10 2005-02-17
+	* Merged matchpathcon patch for file_contexts.homedir from Dan Walsh.
+	* Added selinux_users_path() for path to directory containing
+	  system.users and local.users.
+
+1.21.9 2005-02-09
+	* Changed relabel Makefile target to use restorecon.
+
+1.21.8 2005-02-07
+	* Regenerated av_permissions.h.
+
+1.21.7 2005-02-01
+	* Modified avc_dump_av to explicitly check for any permissions that
+	  cannot be mapped to string names and display them as a hex value.
+
+1.21.6 2005-01-31
+	* Regenerated av_permissions.h.
+
+1.21.5 2005-01-28
+	* Generalized matchpathcon internals, exported more interfaces,
+	  and moved additional code from setfiles into libselinux so that
+	  setfiles can directly use matchpathcon.
+	
+1.21.4 2005-01-27
+	* Prevent overflow of spec array in matchpathcon.
+
+1.21.3 2005-01-26
+	* Fixed several uses of internal functions to avoid relocations.
+	* Changed rpm_execcon to check is_selinux_enabled() and fallback to
+	  a regular execve if not enabled (or unable to determine due to a lack
+	  of /proc, e.g. chroot'd environment).
+	  
+
+1.21.2 2005-01-24
+	* Merged minor fix for avcstat from Dan Walsh.
+
+1.21.1 2005-01-19
+	* Merged patch from Dan Walsh, including:
+	     - new is_context_customizable function
+	     - changed matchpathcon to also use file_contexts.local if present
+	     - man page cleanups
+
+1.20 2005-01-04
+	* Changed matchpathcon to return -1 with errno ENOENT for 
+	  <<none>> entries, and also for an empty file_contexts configuration.
+	* Removed some trivial utils that were not useful or redundant.
+	* Changed BINDIR default to /usr/sbin to match change in Fedora.
+	* Added security_compute_member.
+	* Added man page for setcon.
+	* Merged more man pages from Dan Walsh.
+	* Merged avcstat from James Morris.
+	* Merged build fix for mips from Manoj Srivastava.
+	* Merged C++ support from John Ramsdell of MITRE.
+	* Merged setcon() function from Darrel Goeddel of TCS.
+	* Merged setsebool/togglesebool enhancement from Steve Grubb.
+	* Merged cleanup patches from Steve Grubb.
+
+1.18 2004-11-01
+	* Merged cleanup patches from Steve Grubb.
+	* Added rpm_execcon.
+	* Merged setenforce and removable context patch from Dan Walsh.
+	* Merged build fix for alpha from Ulrich Drepper.
+	* Removed copyright/license from selinux_netlink.h - definitions only.
+	* Merged matchmediacon from Dan Walsh.
+	* Regenerated headers for new nscd permissions.
+	* Added get_default_context_with_role.
+	* Added set_matchpathcon_printf.	
+	* Reworked av_inherit.h to allow easier re-use by kernel. 
+	* Changed avc_has_perm_noaudit to not fail on netlink errors.
+	* Changed avc netlink code to check pid based on patch by Steve Grubb.
+	* Merged second optimization patch from Ulrich Drepper.
+	* Changed matchpathcon to skip invalid file_contexts entries.
+	* Made string tables private to libselinux.
+	* Merged strcat->stpcpy patch from Ulrich Drepper.
+	* Merged matchpathcon man page from Dan Walsh.
+	* Merged patch to eliminate PLTs for local syms from Ulrich Drepper.
+	* Autobind netlink socket.
+	* Dropped compatibility code from security_compute_user.
+	* Merged fix for context_range_set from Chad Hanson.
+	* Merged allocation failure checking patch from Chad Hanson.
+	* Merged avc netlink error message patch from Colin Walters.
+
 1.16 2004-08-19
 	* Regenerated headers for nscd class.
 	* Merged man pages from Dan Walsh.

@@ -5,15 +5,14 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <asm/page.h>
-#include <selinux/selinux.h>
+#include "selinux_internal.h"
 #include "policy.h"
 #include <limits.h>
 
-int security_compute_create(security_context_t scon,
-			    security_context_t tcon,
-			    security_class_t tclass,
-			    security_context_t *newcon)
+int security_compute_create_raw(security_context_t scon,
+                                security_context_t tcon,
+                                security_class_t tclass,
+                                security_context_t *newcon)
 {
 	char path[PATH_MAX];
 	char *buf;
@@ -25,7 +24,7 @@ int security_compute_create(security_context_t scon,
 	if (fd < 0)
 		return -1;
 
-	size = PAGE_SIZE;
+	size = getpagesize();
 	buf = malloc(size);
 	if (!buf) {
 		ret = -1;
@@ -54,3 +53,42 @@ out:
 	close(fd);
 	return ret;
 }
+hidden_def(security_compute_create_raw)
+
+int security_compute_create(security_context_t scon,
+                            security_context_t tcon,
+                            security_class_t tclass,
+                            security_context_t *newcon)
+{
+	int ret;
+	security_context_t rscon = scon;
+	security_context_t rtcon = tcon;
+	security_context_t rnewcon;
+
+	if (context_translations) {
+		if (trans_to_raw_context(scon, &rscon))
+			return -1;
+		if (trans_to_raw_context(tcon, &rtcon)) {
+			freecon(rscon);
+			return -1;
+		}
+	}
+
+ 	ret = security_compute_create_raw(rscon, rtcon, tclass, &rnewcon);
+
+	if (context_translations) {
+		freecon(rscon);
+		freecon(rtcon);
+		if (!ret) {
+			if (raw_to_trans_context(rnewcon, newcon)) {
+				*newcon = NULL;
+				ret = -1;
+			}
+			freecon(rnewcon);
+		}
+	} else if (!ret)
+		*newcon = rnewcon;
+
+	return ret;
+}
+hidden_def(security_compute_create)

@@ -1,45 +1,49 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <selinux/selinux.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sys/xattr.h>
+#include "selinux_internal.h"
 #include "policy.h"
+#include <sys/mac.h>
+
+int fgetfilecon_raw(int fd, security_context_t *context)
+{
+        int   r = -1;
+        mac_t mac;
+        char *string;
+
+	if (mac_prepare(&mac, "sebsd"))
+		return r;
+	
+        if (mac_get_fd(fd, mac) ||
+            mac_to_text(mac, &string))
+                goto out;
+
+        *context = strdup(string + strlen("sebsd/"));
+        r = strlen(*context);
+        free(string);
+out:
+        mac_free(mac);
+        return r;
+}
+hidden_def(fgetfilecon_raw)
 
 int fgetfilecon(int fd, security_context_t *context)
 {
-	char *buf;
-	ssize_t size;
-	ssize_t ret;
+	security_context_t rcontext;
+	int ret;
 
-	size = INITCONTEXTLEN+1;
-	buf = malloc(size);
-	if (!buf) 
-		return -1;
-	memset(buf, 0, size);
+ 	ret = fgetfilecon_raw(fd, &rcontext);
 
-	ret = fgetxattr(fd, XATTR_NAME_SELINUX, buf, size-1);
-	if (ret < 0 && errno == ERANGE) {
-		char *newbuf;
+	if (context_translations && ret > 0) {
+		if (raw_to_trans_context(rcontext, context)) {
+			*context = NULL;
+			ret = -1;
+		}
+		freecon(rcontext);
+	} else if (ret > 0)
+		*context = rcontext;
 
-		size = fgetxattr(fd, XATTR_NAME_SELINUX, NULL, 0);
-		if (size < 0)
-			goto out;
-
-		size++;
-		newbuf = realloc(buf, size);
-		if (!newbuf)
-			goto out;
-
-		buf = newbuf;
-		memset(buf, 0, size);
-		ret = fgetxattr(fd, XATTR_NAME_SELINUX, buf, size-1); 
-	}
-out:			
-	if (ret < 0)
-		free(buf);
-	else
-		*context = buf;
 	return ret;
 }
