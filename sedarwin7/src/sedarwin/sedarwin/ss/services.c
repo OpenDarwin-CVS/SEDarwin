@@ -1847,7 +1847,7 @@ static const char *findperm(struct hashtab *h, u32 perm)
  * @tclass: target security class
  * @av: access vector
  */
-void avc_dump_av(u16 tclass, u32 av)
+void avc_dump_av(struct audit_buffer *ab, u16 tclass, u32 av)
 {
 	char **common_pts = 0;
 	struct class_datum  *cls;
@@ -1856,14 +1856,14 @@ void avc_dump_av(u16 tclass, u32 av)
 	int i, i2;
 
 	if (av == 0) {
-		printk(" null ");
+		audit_log_format(ab, " null ");
 		return;
 	}
 
 	cls = policydb.class_val_to_struct[tclass-1];
 	clb = cls->comdatum;
 
-	printk(" {");
+	audit_log_format(ab, " {");
 	for (i = 0, perm = 1; i < sizeof(av) * 8; i++, perm <<= 1) {
 		if (perm & av) {
 			const char *pstr;
@@ -1872,14 +1872,14 @@ void avc_dump_av(u16 tclass, u32 av)
 			if (!pstr && clb)
 				pstr = findperm(clb->permissions.table, i);
 			if (!pstr)
-				printk(" %s:%d",
+				audit_log_format(ab, " %s:%d",
 				    policydb.p_class_val_to_name[tclass-1], i);
 			else
-				printk(" %s", pstr);
+				audit_log_format(ab, " %s", pstr);
 		}
 	}
 
-	printk(" }");
+	audit_log_format(ab, " }");
 }
 
 const char *security_class_to_string(int tclass)

@@ -114,6 +114,14 @@ extern void sebsd_free(void *, int);
 #define spin_lock_irqsave(m,flags)	mutex_lock(*(m))
 #define spin_unlock_irqrestore(m,flags)	mutex_unlock(*(m))
 
+/* emulate linux audit support */
+struct audit_buffer;
+struct audit_buffer *audit_log_start(void);
+void audit_log(const char *, ...);
+void audit_log_end(struct audit_buffer *);
+void audit_log_format(struct audit_buffer *, const char *, ...);   
+void audit_log_untrustedstring(struct audit_buffer *, const char *);
+
 #endif /* _KERNEL */
 
 #define BUG() printf("BUG: %s:%d", __FILE__, __LINE__)

@@ -106,10 +106,12 @@ struct avc_audit_data {
  * AVC display support
  */
 void avc_dump_av(
+	struct audit_buffer *ab,
 	u16 tclass,	/* IN */
 	u32 av);		/* IN */
 
 void avc_dump_query(
+	struct audit_buffer *ab,
 	u32 ssid,		/* IN */
 	u32 tsid,		/* IN */
 	u16 tclass);	/* IN */

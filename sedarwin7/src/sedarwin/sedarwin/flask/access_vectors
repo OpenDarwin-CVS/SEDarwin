@@ -248,6 +248,7 @@ class process
 	siginh
 	setrlimit
 	rlimitinh
+	dyntransition
 }
 
 

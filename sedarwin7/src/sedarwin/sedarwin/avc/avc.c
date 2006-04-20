@@ -73,7 +73,7 @@ struct avc_callback_node {
 };
 
 static mutex_t *avc_lock;
-static mutex_t *avc_log_lock;
+extern mutex_t *avc_log_lock;
 uint64_t avc_msg_cost, avc_msg_burst;
 static struct avc_node *avc_node_freelist;
 static struct avc_cache avc_cache;
@@ -111,14 +111,14 @@ static inline void avc_cache_stats_add(int type, unsigned val)
  * @tclass: target security class
  * @av: access vector
  */
-void avc_dump_av(u16 tclass, u32 av)
+void avc_dump_av(struct audit_buffer *ab, u16 tclass, u32 av)
 {
 	char **common_pts = NULLL;
 	u32 common_base = NULL;
 	int i, i2, perm;
 
 	if (av == 0) {
-		printk(" null");
+		audit_log_end(ab);
 		return;
 	}
 
@@ -130,12 +130,12 @@ void avc_dump_av(u16 tclass, u32 av)
 		}
 	}
 
-	printk(" {");
+	audit_log_format(ab, " {");
 	i = 0;
 	perm = 1;
 	while (perm < common_base) {
 		if (perm & av)
-			printk(" %s", common_pts[i]);
+			audit_log_format(ab, " %s", common_pts[i]);
 		i++;
 		perm <<= 1;
 	}
@@ -148,13 +148,13 @@ void avc_dump_av(u16 tclass, u32 av)
 					break;
 			}
 			if (i2 < ARRAY_SIZE(av_perm_to_string))
-				printk(" %s", av_perm_to_string[i2].name);
+				audit_log_format(ab, " %s", av_perm_to_string[i2].name);
 		}
 		i++;
 		perm <<= 1;
 	}
 
-	printk(" }");
+	audit_log_format(ab, " }");
 }
 #endif
 
@@ -164,7 +164,7 @@ void avc_dump_av(u16 tclass, u32 av)
  * @tsid: target security identifier
  * @tclass: target security class
  */
-void avc_dump_query(u32 ssid, u32 tsid, u16 tclass)
+void avc_dump_query(struct audit_buffer *ab, u32 ssid, u32 tsid, u16 tclass)
 {
 	int rc;
 	char *scontext;
@@ -172,20 +172,20 @@ void avc_dump_query(u32 ssid, u32 tsid, u16 tclass)
 
  	rc = security_sid_to_context(ssid, &scontext, &scontext_len);
 	if (rc)
-		printk("ssid=%d", ssid);
+		audit_log_format(ab, "ssid=%d", ssid);
 	else {
-		printk("scontext=%s", scontext);
+		audit_log_format(ab, "scontext=%s", scontext);
 		kfree(scontext);
 	}
 
 	rc = security_sid_to_context(tsid, &scontext, &scontext_len);
 	if (rc)
-		printk(" tsid=%d", tsid);
+		audit_log_format(ab, " tsid=%d", tsid);
 	else {
-		printk(" tcontext=%s", scontext);
+		audit_log_format(ab, " tcontext=%s", scontext);
 		kfree(scontext);
 	}
-	printk(" tclass=%s", security_class_to_string(tclass));
+	audit_log_format(ab, " tclass=%s", security_class_to_string(tclass));
 }
 
 /**
@@ -457,23 +457,24 @@ out:
 }
 
 #if 0
-static inline void avc_print_ipv6_addr(struct in6_addr *addr, u16 port,
+static inline void avc_print_ipv6_addr(struct audit_buffer *ab,
+				       struct in6_addr *addr, u16 port,
 				       char *name1, char *name2)
 {
 	if (!ipv6_addr_any(addr))
-		printk(" %s=%04x:%04x:%04x:%04x:%04x:"
+		audit_log_format(ab, " %s=%04x:%04x:%04x:%04x:%04x:"
 				 "%04x:%04x:%04x", name1, NIP6(*addr));
 	if (port)
-		printk(" %s=%d", name2, ntohs(port));
+		audit_log_format(ab, " %s=%d", name2, ntohs(port));
 }
 
-static inline void avc_print_ipv4_addr(u32 addr, u16 port,
-				       char *name1, char *name2)
+static inline void avc_print_ipv4_addr(struct audit_buffer *ab, u32 addr,
+				       u16 port, char *name1, char *name2)
 {
 	if (addr)
-		printk(" %s=%d.%d.%d.%d", name1, NIPQUAD(addr));
+		audit_log_format(ab, " %s=%d.%d.%d.%d", name1, NIPQUAD(addr));
 	if (port)
-		printk(" %s=%d", name2, ntohs(port));
+		audit_log_format(ab, " %s=%d", name2, ntohs(port));
 }
 #endif
 
@@ -566,6 +567,7 @@ void avc_audit(u32 ssid, u32 tsid,
 {
 	struct proc *tsk = current_proc();
 	u32 denied, audited;
+	struct audit_buffer *ab;
 
 	denied = requested & ~avd->allowed;
 	if (denied) {
@@ -583,30 +585,32 @@ void avc_audit(u32 ssid, u32 tsid,
 	if (!check_avc_ratelimit())
 		return;
 
-	/* prevent overlapping printks */
-	spin_lock_irqsave(&avc_log_lock,flags);
-
-	printk("\navc:  %s ", denied ? "denied" : "granted");
-	avc_dump_av(tclass,audited);
-	printk(" for ");
+	ab = audit_log_start();
+	if (!ab)
+		return;		/* audit_panic has been called */
+	audit_log_format(ab, "avc:  %s ", denied ? "denied" : "granted");
+	avc_dump_av(ab, tclass,audited);
+	audit_log_format(ab, " for ");
 /*	if (a && a->tsk)
 	tsk = a->tsk;*/
 	if (tsk && tsk->p_pid) {
-		printk(" pid=%d comm=%s", tsk->p_pid, tsk->p_comm);
+		audit_log_format(ab, " pid=%d comm=%s", tsk->p_pid, tsk->p_comm);
 	}
 	if (a) {
 		switch (a->type) {
 		case AVC_AUDIT_DATA_IPC:
-			printk(" key=%d", a->u.ipc_id);
+			audit_log_format(ab, " key=%d", a->u.ipc_id);
 			break;
 #ifdef CAPABILITIES
 		case AVC_AUDIT_DATA_CAP:
 		{
 			const char *capt = capv_to_text (a->u.cap);
 			if (capt[7] == '!')
-				printk (" capability=<%lld>", a->u.cap);
+				audit_log_format(ab,
+				    " capability=<%lld>", a->u.cap);
 			else
-				printk(" capability=%s", capv_to_text (a->u.cap));
+				audit_log_format(ab, " capability=%s",
+				    capv_to_text(a->u.cap));
 		}
 			break;
 #endif
@@ -618,11 +622,13 @@ void avc_audit(u32 ssid, u32 tsid,
 				    !VOP_GETATTR(vp, &va,
 						 tsk->p_ucred,
 						 tsk)) {
-					printk(" inode=%ld, mountpoint=%s, ",
+					audit_log_format(ab,
+					    " inode=%ld, mountpoint=%s, ",
 					    va.va_fileid, 
 					    vp->v_mount->mnt_stat.f_mntonname);
 				} else {
-					printk(" fs/inode info not available");
+					audit_log_format(ab,
+					    " fs/inode info not available");
 				}
 			}
 			break;
@@ -631,11 +637,9 @@ void avc_audit(u32 ssid, u32 tsid,
 			break;
 		}
 	}
-	printk(" ");
-	avc_dump_query(ssid, tsid, tclass);
-	printk("\n");
-
-	spin_unlock_irqrestore(&avc_log_lock,flags);
+	audit_log_format(ab, " ");
+	avc_dump_query(ab, ssid, tsid, tclass);
+	audit_log_end(ab);
 }
 
 /**
