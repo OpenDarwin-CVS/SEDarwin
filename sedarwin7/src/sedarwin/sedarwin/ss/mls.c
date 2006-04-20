@@ -11,6 +11,8 @@
  * Copyright (C) 2004-2005 Trusted Computer Solutions, Inc.
  */
 
+#include <string.h>
+
 #include <sedarwin/ss/sidtab.h>
 #include <sedarwin/ss/mls.h>
 #include <sedarwin/ss/policydb.h>
