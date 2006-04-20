@@ -1,0 +1,113 @@
+.TH semanage_user_count_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_count \-
+return the number of users users in the persistent policy
+.br
+.B semanage_user_count_local \-
+return the number of users in the local store 
+.br
+.B semanage_bool_count \-
+return the number of booleans in the persistent policy
+.br
+.B semanage_bool_count_local \- 
+return the number of booleans in the local store
+.br
+.B semanage_bool_count_active \- 
+return the number of booleans in the currently active policy
+.br
+.B semanage_port_count \-
+return the number of port ranges in the persistent policy
+.br
+.B semanage_port_count_local \-
+return the number of port ranges in the local store
+.br
+.B semanage_iface_count \-
+return the number of network interfaces in the persistent policy
+.br
+.B semanage_iface_count_local \- 
+return the number of network interfaces in the local store
+.br
+.B semanage_fcontext_count \-
+return the number of context specifications in the persistent policy
+.br
+.B semanage_fcontext_count_local \- 
+return the number of context specifications in the local store
+.br
+.B semanage_seuser_count \-
+return the number of seusers (login mappings) in the persistent policy
+.br
+.B semanage_seuser_count_local \- 
+return the number of seusers (login mappings) in the local store
+.br
+.B semanage_node_count \-
+return the number of network nodes in the persistent policy
+.br
+.B semanage_node_count_local \-
+return the number of network nodes in the local store
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_policy.h>
+.br
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_policy.h>
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/booleans_active.h>
+.br
+.B #include <semanage/ports_policy.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_policy.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_policy.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_policy.h>
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_policy.h>
+.br
+.B #include <semanage/nodes_local.h>
+
+.B FUNCTION: 
+see above
+.br
+.sp
+.sp
+
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	unsigned int* " response ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+The count functions will return the number of all objects in the selected location.
+
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The number of objects will be stored at the location poined by 
+.I response.
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+)
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise a non-negative integer is returned (a commit number). The same number will be returned by all other semanage object read calls until the next commit.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_connect "(3), "

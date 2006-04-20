@@ -1,0 +1,83 @@
+.TH semanage_user_modify_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_modify_local \- 
+add or update a user in the local store
+.br
+.B semanage_bool_modify_local \- 
+add or update a boolean in the local store
+.br
+.B semanage_port_modify_local \- 
+add or update a port in the local store
+.br
+.B semanage_iface_modify_local \- 
+add or update an interface in the local store
+.br
+.B semanage_fcontext_modify_local \- 
+add or update a context specification in the local store
+.br
+.B semanage_seuser_modify_local \- 
+add or update a seuser (login mapping) in the local store
+.br
+.B semanage_node_modify_local \-
+add or update a network node in the local store 
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_local.h>
+.sp
+
+.B FUNCTION: 
+see above
+.br
+.B OBJECT: 
+user, port, fcontext, iface, seuser, node
+.sp
+.sp
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	const semanage_OBJECT_key_t *" key ","
+.br
+.BI "	const semanage_OBJECT_t *" data ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+If a matching key is found in the local store, the provided object will replace the current one. Otherwise, it will be added to the store. When
+.B semanage_commit 
+is invoked, changes will be permanently written into the local store, and then loaded into policy. Validity of the object being added is checked at commit time. Adding new objects with respect to policy is allowed, except in the case of booleans. Attempt to add new booleans with respect to policy will fail at commit time.
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The
+.I key 
+identifies the 
+.I data
+object, which will be written into the store. The key are data are properties of the caller, and are not stored or modified internally.
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+), and must be executed in a transaction (see 
+.B semanage_begin_transaction
+).
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise 0 is returned.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_begin_transaction "(3), " semanage_connect "(3), " semanage_commit "(3). "

@@ -1,0 +1,131 @@
+.TH semanage_user_iterate_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_iterate \-
+execute a callback for all users users in the persistent policy
+.br
+.B semanage_user_iterate_local \-
+execute a callback for all users in the local store 
+.br
+.B semanage_bool_iterate \-
+execute a callback for all booleans in the persistent policy
+.br
+.B semanage_bool_iterate_local \- 
+execute a callback for all booleans in the local store
+.br
+.B semanage_bool_iterate_active \- 
+execute a callback for all booleans in the currently active policy
+.br
+.B semanage_port_iterate \-
+execute a callback for all port ranges in the persistent policy
+.br
+.B semanage_port_iterate_local \-
+execute a callback for all port ranges in the local store
+.br
+.B semanage_iface_iterate \-
+execute a callback for all network interfaces in the persistent policy
+.br
+.B semanage_iface_iterate_local \- 
+execute a callback for all network interfaces in the local store
+.br
+.B semanage_fcontext_iterate \-
+execute a callback for all context specifications in the persistent policy
+.br
+.B semanage_fcontext_iterate_local \- 
+execute a callback for all context specifications in the local store
+.br
+.B semanage_seuser_iterate \-
+execute a callback for all seusers (login mappings) in the persistent policy
+.br
+.B semanage_seuser_iterate_local \- 
+execute a callback for all seusers (login mappings) in the local store
+.br
+.B semanage_node_iterate \-
+execute a callback for all network nodes in the persistent policy
+.br
+.B semanage_node_iterate_local \-
+execute a callback for all network nodes in the local store
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_policy.h>
+.br
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_policy.h>
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/booleans_active.h>
+.br
+.B #include <semanage/ports_policy.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_policy.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_policy.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_policy.h>
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_policy.h>
+.br
+.B #include <semanage/nodes_local.h>
+.sp
+
+.B FUNCTION: 
+see above
+.br
+.B OBJECT: 
+user, port, fcontext, iface, seuser, node
+.sp
+.sp
+
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	int (*handler) (const semanage_OBJECT_t *" object ","
+.br
+.BI "                   void *" varg "),"
+.br
+.BI "	void *" handler_arg ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+The iterate functions will execute the specified handler over all objects in the selected location. An arbitrary argument can be passed into the handler function along with each object. 
+
+The object passed in is property of the libsemanage library, and may not be modified or preserved - use 
+.B semanage_OBJECT_clone 
+if that is necessary.
+
+The handler code may not invoke any semanage write requests for the same object type (i.e. modifying the underlying store is not allowed). The iterate functions are reentrant only while inside a transaction (see
+.B semanage_begin_transaction
+). It is not safe to execute other semanage read or write requests within iterate if not inside a transaction. The handler may return -1 to signal error exit, 0 to signal continue, and 1 to signal successful exit early (the iterate function will stop accordingly). 
+
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The
+.I handler
+is the function to execute, with 
+.I handler_arg
+as its second parameter, and each object as its first parameter.
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+)
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise a non-negative integer is returned (a commit number). The same number will be returned by all other semanage object read calls until the next commit.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_connect "(3), "

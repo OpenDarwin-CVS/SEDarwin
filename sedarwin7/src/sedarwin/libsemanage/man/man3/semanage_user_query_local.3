@@ -1,0 +1,121 @@
+.TH semanage_user_query_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_query \-
+query a user in the persistent policy
+.br
+.B semanage_user_query_local \- 
+query a user in the local store
+.br
+.B semanage_bool_query \-
+query a boolean in the persistent policy
+.br
+.B semanage_bool_query_local \- 
+query a boolean in the local store 
+.br
+.B semanage_bool_query_active \- 
+query a boolean in the currently active policy
+.br
+.B semanage_port_query \-
+query a port range in the persistent policy
+.br
+.B semanage_port_query_local \-
+query a port range in the local store
+.br
+.B semanage_iface_query \-
+query a network interface in the persistent policy
+.br
+.B semanage_iface_query_local \- 
+query a network interface in the local store
+.br
+.B semanage_fcontext_query \-
+query a context specification in the persistent policy 
+.br
+.B semanage_fcontext_query_local \- 
+query a context specification in the local store
+.br
+.B semanage_seuser_query \-
+query a seuser (login mapping) in the persistent policy
+.br
+.B semanage_seuser_query_local \- 
+query a seuser (login mapping) in the local store
+.br
+.B semanage_node_query \-
+query a network node in the persistent policy
+.br
+.B semanage_node_query_local \-
+query a network node in the local store
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_policy.h>
+.br
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_policy.h>
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/booleans_active.h>
+.br
+.B #include <semanage/ports_policy.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_policy.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_policy.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_policy.h>
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_policy.h>
+.br
+.B #include <semanage/nodes_local.h>
+.sp
+
+.B FUNCTION: 
+see above
+.br
+.B OBJECT: 
+user, port, fcontext, iface, seuser, node
+.sp
+.sp
+
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	const semanage_OBJECT_key_t *" key ","
+.br
+.BI "	semanage_OBJECT_t **" response ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+The query functions will fail if a matching key is not found. Otherwise, the corresponding object is returned. 
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The
+.I key 
+identifies the object being queried, which will be stored in the address pointed by 
+.I response
+The key is a property of the caller, and will not be stored or modified internally. The object returned becomes a property of the caller, and must be freed with 
+.B semanage_OBJECT_free. 
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+)
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise a non-negative integer is returned (a commit number). The same number will be returned by all other semanage object read calls until the next commit.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_connect "(3), "

@@ -1,0 +1,122 @@
+.TH semanage_user_list_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_list \-
+list all users users in the persistent policy
+.br
+.B semanage_user_list_local \-
+list all users in the local store 
+.br
+.B semanage_bool_list \-
+list all booleans in the persistent policy
+.br
+.B semanage_bool_list_local \- 
+list all booleans in the local store
+.br
+.B semanage_bool_list_active \- 
+list all booleans in the currently active policy
+.br
+.B semanage_port_list \-
+list all port ranges in the persistent policy
+.br
+.B semanage_port_list_local \-
+list all port ranges in the local store
+.br
+.B semanage_iface_list \-
+list all network interfaces in the persistent policy
+.br
+.B semanage_iface_list_local \- 
+list all network interfaces in the local store
+.br
+.B semanage_fcontext_list \-
+list all context specifications in the persistent policy
+.br
+.B semanage_fcontext_list_local \- 
+list all context specifications in the local store
+.br
+.B semanage_seuser_list \-
+list all seusers (login mappings) in the persistent policy
+.br
+.B semanage_seuser_list_local \- 
+list all seusers (login mappings) in the local store
+.br
+.B semanage_node_list \-
+list all network nodes in the persistent policy
+.br
+.B semanage_node_list_local \-
+list all network nodes in the local store
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_policy.h>
+.br
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_policy.h>
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/booleans_active.h>
+.br
+.B #include <semanage/ports_policy.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_policy.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_policy.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_policy.h>
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_policy.h>
+.br
+.B #include <semanage/nodes_local.h>
+.sp
+
+.B FUNCTION: 
+see above
+.br
+.B OBJECT: 
+user, port, fcontext, iface, seuser, node
+.sp
+.sp
+
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	semanage_OBJECT_t ***" objects ","
+.br
+.BI "	unsigned int* " count ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+The list functions will return an array of all the objects in the selected location.
+
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The function will allocate and populate the the array of objects, and store it at the location pointed by  
+.I objects.
+It will write the number of objects at the location pointed by 
+.I count.
+The array, and all its objects become property of the caller. Each object must be freed with 
+.B semanage_OBJECT_free. 
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+)
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise a non-negative integer is returned (a commit number). The same number will be returned by all other semanage object read calls until the next commit.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_connect "(3), "

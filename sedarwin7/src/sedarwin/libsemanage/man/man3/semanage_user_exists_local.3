@@ -1,0 +1,121 @@
+.TH semanage_user_exists_local 3 "20 January 2006" "ivg2@cornell.edu" "Libsemanage API documentation"
+.SH "NAME"
+.B semanage_user_exists \-
+check if a user exists in the persistent policy
+.br
+.B semanage_user_exists_local \- 
+check if a user exists in the local store
+.br
+.B semanage_bool_exists \-
+check if a boolean exists in the persistent policy
+.br
+.B semanage_bool_exists_local \- 
+check if a boolean exists in the local store 
+.br
+.B semanage_bool_exists_active \- 
+check if a boolean exists in the currently active policy
+.br
+.B semanage_port_exists \-
+check if a port range exists in the persistent policy
+.br
+.B semanage_port_exists_local \-
+check if a port range exists in the local store
+.br
+.B semanage_iface_exists \-
+check if a network interface exists in the persistent policy
+.br
+.B semanage_iface_exists_local \- 
+check if a network interface exists in the local store
+.br
+.B semanage_fcontext_exists \-
+check if a context specification exists in the persistent policy
+.br
+.B semanage_fcontext_exists_local \- 
+check if a context specification exists in the local store
+.br
+.B semanage_seuser_exists \-
+check if a seuser (login mapping) exists in the persistent policy
+.br
+.B semanage_seuser_exists_local \- 
+check if a seuser (login mapping) exists in the local store
+.br
+.B semanage_node_exists \-
+check if a network node exists in the persistent policy
+.br
+.B semanage_node_exists_local \-
+check if a network node exists in the local store
+.br
+
+.SH "SYNOPSIS"
+.B #include <semanage/users_policy.h>
+.br
+.B #include <semanage/users_local.h> 
+.br
+.B #include <semanage/booleans_policy.h>
+.br
+.B #include <semanage/booleans_local.h>
+.br
+.B #include <semanage/booleans_active.h>
+.br
+.B #include <semanage/ports_policy.h>
+.br
+.B #include <semanage/ports_local.h>
+.br
+.B #include <semanage/interfaces_policy.h>
+.br
+.B #include <semanage/interfaces_local.h>
+.br
+.B #include <semanage/fcontexts_policy.h>
+.br
+.B #include <semanage/fcontexts_local.h>
+.br
+.B #include <semanage/seusers_policy.h
+.br
+.B #include <semanage/seusers_local.h>
+.br
+.B #include <semanage/nodes_policy.h>
+.br
+.B #include <semanage/nodes_local.h>
+.sp
+
+.B FUNCTION: 
+see above
+.br
+.B OBJECT: 
+user, port, fcontext, iface, seuser, node
+.sp
+.sp
+
+.B extern int FUNCTION (
+.br
+.BI "	semanage_handle_t *" handle ","
+.br
+.BI "	const semanage_OBJECT_key_t *" key ","
+.br
+.BI "	semanage_OBJECT_t **" response ");"
+
+.SH "DESCRIPTION"
+.TP
+.SS Behavior:
+The exists functions will return 0 if a matching key is not found, and 1 otherwise. 
+.TP
+.SS Parameters:
+The 
+.I handle
+is used to track persistent state across semanage calls, and for error reporting. The
+.I key 
+identifies the object being checked. The result of the test will be stored in the address pointed by 
+.I response
+The key is a property of the caller, and will not be stored or modified internally. 
+.TP
+.SS Requirements:
+This function requires an semanage connection to be established (see 
+.B semanage_connect
+)
+
+.SH "RETURN VALUE"
+In case of failure, -1 is returned, and the semanage error callback is invoked, describing the error.
+Otherwise a non-negative integer is returned (a commit number). The same number will be returned by all other read calls to the semanage database until the next commit.
+
+.SH "SEE ALSO"
+.BR semanage_handle_create "(3), " semanage_connect "(3), "
