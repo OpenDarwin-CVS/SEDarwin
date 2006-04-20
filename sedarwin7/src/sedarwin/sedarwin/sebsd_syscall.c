@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002 Networks Associates Technology, Inc.
- * Copyright (c) 2005, 2006 SPARTA, Inc.
+ * Copyright (c) 2005-2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -84,7 +84,7 @@ sys_load_migscs(struct proc *td, void *data, size_t len)
 	void *kdata;
 	int rc;
 	
-	rc = cred_has_security(td->p_ucred, SECURITY__LOAD_POLICY);
+	rc = proc_has_security(td, SECURITY__LOAD_POLICY);
 	if (rc)
 		return (rc);
 
@@ -362,7 +362,7 @@ sebsd_syscall(struct proc *td, int call, void *args, int *retv)
 	{
 		char *str;
 
-		error = cred_has_security(td->p_ucred, SECURITY__SETBOOL);
+		error = proc_has_security(td, SECURITY__SETBOOL);
 		if (error)
 			return (error);
 
@@ -383,7 +383,7 @@ sebsd_syscall(struct proc *td, int call, void *args, int *retv)
 	}
 
 	case SEBSDCALL_COMMIT_BOOLS:
-		error = cred_has_security(td->p_ucred, SECURITY__SETBOOL);
+		error = proc_has_security(td, SECURITY__SETBOOL);
 		if (error)
 			return (error);
 		return (security_commit_pending_bools());
