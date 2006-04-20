@@ -12,9 +12,9 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include <sepol/sidtab.h>
+#include <sepol/policydb/sidtab.h>
 
-#include <sepol/flask.h>
+#include <sepol/policydb/flask.h>
 
 #define SIDTAB_HASH(sid) \
 (sid & SIDTAB_HASH_MASK)
@@ -39,7 +39,7 @@ int sepol_sidtab_init(sidtab_t *s)
 	return 0;
 }
 
-int sepol_sidtab_insert(sidtab_t * s, security_id_t sid, context_struct_t * context)
+int sepol_sidtab_insert(sidtab_t * s, sepol_security_id_t sid, context_struct_t * context)
 {
 	int hvalue;
 	sidtab_node_t *prev, *cur, *newnode;
@@ -83,7 +83,7 @@ int sepol_sidtab_insert(sidtab_t * s, security_id_t sid, context_struct_t * cont
 }
 
 
-int sepol_sidtab_remove(sidtab_t * s, security_id_t sid)
+int sepol_sidtab_remove(sidtab_t * s, sepol_security_id_t sid)
 {
 	int hvalue;
 	sidtab_node_t *cur, *last;
@@ -117,7 +117,7 @@ int sepol_sidtab_remove(sidtab_t * s, security_id_t sid)
 
 
 context_struct_t *
- sepol_sidtab_search(sidtab_t * s, security_id_t sid)
+ sepol_sidtab_search(sidtab_t * s, sepol_security_id_t sid)
 {
 	int hvalue;
 	sidtab_node_t *cur;
@@ -147,7 +147,7 @@ context_struct_t *
 
 
 int sepol_sidtab_map(sidtab_t * s,
-	       int (*apply) (security_id_t sid,
+	       int (*apply) (sepol_security_id_t sid,
 			     context_struct_t * context,
 			     void *args),
 	       void *args)
@@ -173,7 +173,7 @@ int sepol_sidtab_map(sidtab_t * s,
 
 
 void sepol_sidtab_map_remove_on_error(sidtab_t * s,
-				int (*apply) (security_id_t sid,
+				int (*apply) (sepol_security_id_t sid,
 					      context_struct_t * context,
 					      void *args),
 				void *args)
@@ -212,7 +212,7 @@ void sepol_sidtab_map_remove_on_error(sidtab_t * s,
 	return;
 }
 
-static inline security_id_t sepol_sidtab_search_context(sidtab_t *s, 
+static inline sepol_security_id_t sepol_sidtab_search_context(sidtab_t *s, 
 						  context_struct_t *context) 
 {
 	int i;
@@ -231,12 +231,12 @@ static inline security_id_t sepol_sidtab_search_context(sidtab_t *s,
 
 int sepol_sidtab_context_to_sid(sidtab_t * s,
 			  context_struct_t * context,
-			  security_id_t * out_sid)
+			  sepol_security_id_t * out_sid)
 {
-	security_id_t sid;
+	sepol_security_id_t sid;
 	int ret = 0;
 
-	*out_sid = SECSID_NULL;
+	*out_sid = SEPOL_SECSID_NULL;
 
 	sid = sepol_sidtab_search_context(s, context);
 	if (!sid) {

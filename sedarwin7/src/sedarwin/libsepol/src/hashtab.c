@@ -9,15 +9,19 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sepol/hashtab.h>
+#include <sepol/policydb/hashtab.h>
 
-hashtab_t hashtab_create(unsigned int (*hash_value) (hashtab_t h,
-						     hashtab_key_t key),
-			 int (*keycmp) (hashtab_t h,
-					hashtab_key_t key1,
-					hashtab_key_t key2),
-			 unsigned int size)
-{
+hashtab_t hashtab_create(
+	unsigned int (*hash_value) (
+		hashtab_t h,
+		const hashtab_key_t key),
+
+	int (*keycmp) (
+		hashtab_t h,
+		const hashtab_key_t key1,
+		const hashtab_key_t key2),
+		unsigned int size) {
+
 	hashtab_t p;
 	unsigned int i;
 
@@ -165,12 +169,12 @@ int hashtab_replace(hashtab_t h, hashtab_key_t key, hashtab_datum_t datum,
 }
 
 
-hashtab_datum_t
-hashtab_search(hashtab_t h, hashtab_key_t key)
-{
+hashtab_datum_t hashtab_search(
+	hashtab_t h, 
+	const hashtab_key_t key) {
+
 	int hvalue;
 	hashtab_ptr_t cur;
-
 
 	if (!h)
 		return NULL;

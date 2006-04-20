@@ -7,32 +7,29 @@ SHLIBDIR ?= $(DESTDIR)/lib
 
 LIBVERSION = 1
 
-# Set to y for MLS
-MLS=n
-
 LIBA=libsepol.a 
 #TARGET=libsepol.so
 #LIBSO=$(TARGET).$(LIBVERSION)
 OBJS= $(patsubst %.c,%.o,$(wildcard *.c))
 #LOBJS= $(patsubst %.c,%.lo,$(wildcard *.c))
-CFLAGS = -Wall $(OPTIONS)
-override CFLAGS += -I. -I../include
+CFLAGS ?= -Wall -W -Wundef -Wmissing-noreturn -Wmissing-format-attribute
+override CFLAGS += -I. -I../include -I../../libsecompat -D_GNU_SOURCE
 
-all: $(LIBA)
+all: $(LIBA) $(LIBSO)
 
 $(LIBA):  $(OBJS)
 	$(AR) rcs $@ $^
 	ranlib $@
 
 $(LIBSO): $(LOBJS)
-	$(CC) $(LDFLAGS) -shared -o $@ $^ -Wl,-soname,$(LIBSO),--version-script=libsepol.map
+	$(CC) $(LDFLAGS) -shared -o $@ $^ -Wl,-soname,$(LIBSO),--version-script=libsepol.map,-z,defs
 	ln -sf $@ $(TARGET) 
 
 %.o:  %.c 
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 %.lo:  %.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
+	$(CC) $(CFLAGS) -fPIC -DSHARED -c -o $@ $<
 
 install: all
 	test -d $(LIBDIR) || install -m 755 -d $(LIBDIR)
@@ -41,6 +38,9 @@ install: all
 #	install -m 755 $(LIBSO) $(SHLIBDIR)
 #	cd $(LIBDIR) && ln -sf ../../`basename $(SHLIBDIR)`/$(LIBSO) $(TARGET)
 
+relabel:
+#	/sbin/restorecon $(SHLIBDIR)/$(LIBSO)
+
 clean: 
-	rm -f $(OBJS) $(LOBJS) $(LIBA) $(LIBSO) $(TARGET) 
+	-rm -f $(OBJS) $(LOBJS) $(LIBA) 
 
