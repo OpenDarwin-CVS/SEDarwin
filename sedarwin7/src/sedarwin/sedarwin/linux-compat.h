@@ -90,19 +90,19 @@ typedef u_int8_t  u8;
 
 #define __init
 
-extern void *sebsd_malloc(size_t size, int flags);
-extern void sebsd_free(void *);
+extern void *sebsd_malloc(size_t size, int type, int flags);
+extern void sebsd_free(void *, int);
 
 /* BSD-style malloc/free emulation */
+#ifndef M_SEBSD
 #include <sys/malloc.h>
-#define malloc(size, type, flags)	sebsd_malloc(size, flags)
-#define free(addr, type)		sebsd_free(addr)
 #define M_SEBSD				M_MACTEMP
+#endif
 
 /* Linux-style kmalloc/kfree (note kfree namespace collision) */
-#define kmalloc(size, flags)		sebsd_malloc(size, flags)
-#define kfree(addr)			sebsd_free(addr)
-#define __get_free_page(flags)		sebsd_malloc(PAGE_SIZE, flags) 
+#define kmalloc(size, flags)		sebsd_malloc(size, M_SEBSD, flags)
+#define kfree(addr)			sebsd_free(addr, M_SEBSD)
+#define __get_free_page(flags)		sebsd_malloc(PAGE_SIZE, M_SEBSD, flags) 
 #define GFP_ATOMIC  M_WAITOK		/* XXX - want M_NOWAIT but too early */
 #define GFP_KERNEL  M_WAITOK
 

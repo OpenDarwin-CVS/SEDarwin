@@ -54,5 +54,11 @@ extern int security_init(void);
 extern int sebsd_syscall(struct proc *p, int call, void *args, int *retv);
 extern int proc_has_system(struct proc *p, u32 perm);
 extern int proc_has_security(struct proc *p, u32 perm);
+extern void *sebsd_malloc(size_t size, int type, int flags);
+extern void sebsd_free(void *, int);
+
+#ifndef M_SEBSD
+#define M_SEBSD	M_MACTEMP
+#endif
 
 #endif /* _SYS_SECURITY_SEBSD_H */

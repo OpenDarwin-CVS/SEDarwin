@@ -20,7 +20,8 @@ queue_create(void)
 {
 	queue_t q;
 
-	q = (queue_t) sebsd_malloc(sizeof(struct queue_info), M_WAITOK);
+	q = (queue_t) sebsd_malloc(sizeof(struct queue_info), M_SEBSD,
+	    M_WAITOK);
 	if (q == NULL)
 		return NULL;
 
@@ -38,7 +39,7 @@ int queue_insert(queue_t q, queue_element_t e)
 		return -1;
 
 	newnode = (queue_node_ptr_t) sebsd_malloc(sizeof(struct queue_node),
-	    M_WAITOK);
+	    M_SEBSD, M_WAITOK);
 	if (newnode == NULL)
 		return -1;
 
@@ -64,7 +65,7 @@ int queue_push(queue_t q, queue_element_t e)
 		return -1;
 
 	newnode = (queue_node_ptr_t) sebsd_malloc(sizeof(struct queue_node),
-	    M_WAITOK);
+	    M_SEBSD, M_WAITOK);
 	if (newnode == NULL)
 		return -1;
 
@@ -100,7 +101,7 @@ queue_remove(queue_t q)
 		q->tail = NULL;
 
 	e = node->element;
-	sebsd_free(node);
+	sebsd_free(node, M_SEBSD);
 
 	return e;
 }
@@ -129,10 +130,10 @@ void queue_destroy(queue_t q)
 	while (p != NULL) {
 		temp = p;
 		p = p->next;
-		sebsd_free(temp);
+		sebsd_free(temp, M_SEBSD);
 	}
 
-	sebsd_free(q);
+	sebsd_free(q, M_SEBSD);
 }
 
 int queue_map(queue_t q, int (*f) (queue_element_t, void *), void *vp)
@@ -185,7 +186,7 @@ void queue_map_remove_on_error(queue_t q,
 			temp = p;
 			p = p->next;
 			g(temp->element, vp);
-			sebsd_free(temp);
+			sebsd_free(temp, M_SEBSD);
 		} else {
 			last = p;
 			p = p->next;

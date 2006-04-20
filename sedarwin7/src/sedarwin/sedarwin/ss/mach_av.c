@@ -82,13 +82,14 @@ sebsd_load_migscs(void *tdata, size_t tsize)
 		int i;
 		struct msgid_classinfo *c;
 
-		c = sebsd_malloc(sizeof(int) * nclasses + sizeof(*c), M_WAITOK);
+		c = sebsd_malloc(sizeof(int) * nclasses + sizeof(*c), M_SEBSD,
+		    M_WAITOK);
 		c->baseid = msgid;
 		c->nclasses = nclasses;
 		for (i = 0; i < nclasses; i++)
 			c->classes[i] = *p++;
 		for (i = msgid; i < msgid + size; i++) {
-			int *ip = sebsd_malloc(sizeof(int), M_WAITOK);
+			int *ip = sebsd_malloc(sizeof(int), M_SEBSD, M_WAITOK);
 			*ip = i;
 			error = hashtab_insert(ht, ip, c);
 			if (error) {

@@ -59,8 +59,16 @@
 #include <sys/vnode.h>
 #include <sys/dirent.h>
 #include <sys/fcntl.h>
+#include <sys/ucred.h>
+#include <sys/mac_policy.h>
 
-#ifdef __APPLE__
+#include <miscfs/devfs/devfsdefs.h>
+
+#include <sedarwin/linux-compat.h>
+#include <sedarwin/sebsd.h>
+#include <sedarwin/sebsd_labels.h>
+#include <sedarwin/ss/policydb.h>
+
 /*
  * The code is conditional upon the following list of defines.
  * At the moment, Darwin does not provide support for all of them:
@@ -73,50 +81,7 @@
  * HAS_STRINGS
  * HAS_ACLS
  */
-
 #define HAS_STRINGS
-
-#include <sys/ucred.h>
-#include <vm/vm_kern.h>
-#include <kern/kalloc.h>
-
-/* XXX - move sebsd_malloc/free */
-void *
-sebsd_malloc(size_t size, int flags)
-{
-	size_t *vs, nsize;
-
-	nsize = size + sizeof(size_t);
-	vs = (flags & M_NOWAIT) ?
-	    (size_t *)kalloc_noblock(nsize) : (size_t *)kalloc(nsize);
-	if (vs != NULL) {
-		*vs++ = nsize;
-		if (flags & M_ZERO)
-			bzero(vs, size);
-	}
-	return (vs);
-}
-
-void
-sebsd_free(void *v)
-{
-	size_t *vs = v;
-
-	if (vs != NULL) {
-		vs--;
-		kfree((vm_offset_t)vs, *vs);
-	}
-}
-
-#include <miscfs/devfs/devfsdefs.h>
-#endif
-
-#include <sys/mac_policy.h>
-
-#include <sedarwin/linux-compat.h>
-#include <sedarwin/sebsd.h>
-#include <sedarwin/sebsd_labels.h>
-#include <sedarwin/ss/policydb.h>
 
 int	sebsd_verbose = 0;
 
@@ -395,7 +360,7 @@ sebsd_init_cred_label(struct label *label)
 {
 	struct task_security_struct *new_tsec;
 
-	new_tsec = sebsd_malloc(sizeof(*new_tsec), M_ZERO | M_WAITOK);
+	new_tsec = sebsd_malloc(sizeof(*new_tsec), M_SEBSD, M_ZERO | M_WAITOK);
 	new_tsec->osid = new_tsec->sid = SECINITSID_UNLABELED;
 	SLOT(label) = new_tsec;
 }
@@ -405,7 +370,7 @@ sebsd_init_file_label(struct label *label)
 {
 	struct file_security_struct *new_fsec;
 
-	new_fsec = sebsd_malloc(sizeof(*new_fsec), M_ZERO | M_WAITOK);
+	new_fsec = sebsd_malloc(sizeof(*new_fsec), M_SEBSD, M_ZERO | M_WAITOK);
 	new_fsec->sid = new_fsec->sid = SECINITSID_UNLABELED;
 	SLOT(label) = new_fsec;
 }
@@ -415,7 +380,7 @@ sebsd_init_mount_label(struct label *label)
 {
 	struct mount_security_struct *sbsec;
 
-	sbsec = sebsd_malloc(sizeof(*sbsec), M_ZERO | M_WAITOK);
+	sbsec = sebsd_malloc(sizeof(*sbsec), M_SEBSD, M_ZERO | M_WAITOK);
 	sbsec->sid = SECINITSID_UNLABELED;
 	SLOT(label) = sbsec;
 }
@@ -425,7 +390,7 @@ sebsd_init_mount_fs_label(struct label *label)
 {
 	struct mount_fs_security_struct *sbsec;
 
-	sbsec = sebsd_malloc(sizeof(*sbsec), M_ZERO | M_WAITOK);
+	sbsec = sebsd_malloc(sizeof(*sbsec), M_SEBSD, M_ZERO | M_WAITOK);
 	sbsec->sid = SECINITSID_UNLABELED;
 	SLOT(label) = sbsec;
 }
@@ -435,7 +400,7 @@ sebsd_init_network_label(struct label *label)
 {
 	struct network_security_struct *new;
 
-	new = sebsd_malloc(sizeof(*new), M_ZERO | M_WAITOK);
+	new = sebsd_malloc(sizeof(*new), M_SEBSD, M_ZERO | M_WAITOK);
 	new->sid = new->task_sid = SECINITSID_UNLABELED;
 	SLOT(label) = new;
 }
@@ -445,7 +410,7 @@ sebsd_init_network_label_waitcheck(struct label *label, int flag)
 {
 	struct network_security_struct *new;
 
-	new = sebsd_malloc(sizeof(*new), M_ZERO | flag);
+	new = sebsd_malloc(sizeof(*new), M_SEBSD, M_ZERO | flag);
 	if (new == NULL) {
 		SLOT(label) = NULL;
 		return (ENOMEM);
@@ -462,7 +427,7 @@ sebsd_init_vnode_label(struct label *label)
 {
 	struct vnode_security_struct *vsec;
 
-	vsec = sebsd_malloc(sizeof(*vsec), M_ZERO | M_WAITOK);
+	vsec = sebsd_malloc(sizeof(*vsec), M_SEBSD, M_ZERO | M_WAITOK);
 	vsec->sid = SECINITSID_UNLABELED;
 	vsec->task_sid = SECINITSID_UNLABELED;
 	SLOT(label) = vsec;
@@ -473,7 +438,7 @@ sebsd_init_sysv_label(struct label *label)
 {
 	struct ipc_security_struct *new;
 
-	new = sebsd_malloc(sizeof(*new), M_ZERO | M_WAITOK);
+	new = sebsd_malloc(sizeof(*new), M_SEBSD, M_ZERO | M_WAITOK);
 	new->sid = SECINITSID_UNLABELED;
 	SLOT(label) = new;
 }
@@ -483,7 +448,7 @@ sebsd_init_devfs_label(struct label *label)
 {
 	struct vnode_security_struct *vsec;
 
-	vsec = sebsd_malloc(sizeof(*vsec), M_ZERO | M_WAITOK);
+	vsec = sebsd_malloc(sizeof(*vsec), M_SEBSD, M_ZERO | M_WAITOK);
 	vsec->sid = SECINITSID_UNLABELED;
 	vsec->task_sid = SECINITSID_UNLABELED;
 	SLOT(label) = vsec;
@@ -493,7 +458,7 @@ static void
 sebsd_destroy_label(struct label *label)
 {
 
-	sebsd_free(SLOT(label));
+	sebsd_free(SLOT(label), M_SEBSD);
 	SLOT(label) = NULL;
 }
 
@@ -793,7 +758,7 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 	dirent->sclass = devfs_type_to_security_class(devfs_dirent->dn_type);
 
 	/* Obtain a SID based on the fstype, path, and class. */
-	path = sebsd_malloc(strlen(fullpath) + 2, M_ZERO | M_WAITOK);
+	path = sebsd_malloc(strlen(fullpath) + 2, M_SEBSD, M_ZERO | M_WAITOK);
 	path[0] = '/';
 	strcpy(&path[1], fullpath);
 	rc = security_genfs_sid("devfs", path, dirent->sclass, &newsid);
@@ -822,7 +787,7 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 		    "dirent=%d\n", path,
 		    rc, dirent->sclass, newsid, dirent->sid);
 	}
-	sebsd_free(path);
+	sebsd_free(path, M_SEBSD);
 }
 
 #if 0
@@ -846,7 +811,7 @@ sebsd_create_devfs_directory(struct mount *mp, char *dirname,
 	dirent->sclass = SECCLASS_DIR;
 
 	/* Obtain a SID based on the fstype, path, and class. */
-	path = sebsd_malloc(strlen(fullpath) + 2, M_ZERO | M_WAITOK);
+	path = sebsd_malloc(strlen(fullpath) + 2, M_SEBSD, M_ZERO | M_WAITOK);
 	path[0] = '/';
 	strcpy(&path[1], fullpath);
 	rc = security_genfs_sid(mp->mnt_vfc->vfc_name, path, dirent->sclass,
@@ -861,7 +826,7 @@ sebsd_create_devfs_directory(struct mount *mp, char *dirname,
 		    __func__, path, sbsec->sid, mp->mnt_stat.f_mntonname, rc,
 		    dirent->sclass, newsid, dirent->sid);
 	}
-	sebsd_free(path);
+	sebsd_free(path, M_SEBSD);
 }
 
 static void
@@ -888,7 +853,7 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 	lnksec->sclass = SECCLASS_LNK_FILE;
 
 	/* Obtain a SID based on the fstype, path, and class. */
-	path = sebsd_malloc(strlen(fullpath) + 2, M_ZERO | M_WAITOK);
+	path = sebsd_malloc(strlen(fullpath) + 2, M_SEBSD, M_ZERO | M_WAITOK);
 	path[0] = '/';
 	strcpy(&path[1], fullpath);
 	rc = security_genfs_sid(mp->mnt_vfc->vfc_name, path, lnksec->sclass,
@@ -902,7 +867,7 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 		    sbsec->sid, mp->mnt_stat.f_mntonname, rc,
 		    lnksec->sclass, newsid, lnksec->sid);
 	}
-	sebsd_free(path);
+	sebsd_free(path, M_SEBSD);
 }
 #endif /* HAS_DEVFS_DIRENT */
 

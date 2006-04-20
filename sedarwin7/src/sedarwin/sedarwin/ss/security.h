@@ -90,7 +90,7 @@ int security_fs_use(const char *fstype, unsigned int *behavior,
 int security_genfs_sid(const char *fstype, char *name, u16 sclass,
 	u32 *sid);
 
-#define security_free_context(ctx) ({ if (ctx) free(ctx, M_SEBSD); })
+#define security_free_context(ctx) ({ if (ctx) sebsd_free(ctx, M_SEBSD); })
 
 int security_get_bool_string(int *len, char *out);
 int security_commit_pending_bools(void);

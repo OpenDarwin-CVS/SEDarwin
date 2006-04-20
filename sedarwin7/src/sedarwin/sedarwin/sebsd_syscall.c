@@ -67,13 +67,13 @@ sys_load_policy(struct proc *td, void *data, size_t len)
 	if (rc)
 		return (rc);
 
-	kdata = malloc(len, M_SEBSD, M_WAITOK);
+	kdata = sebsd_malloc(len, M_SEBSD, M_WAITOK);
 	rc = copyin(data, kdata, len);
 	if (rc)
 		return (rc);
 
 	rc = security_load_policy(kdata, len);
-	free(kdata, M_SEBSD);
+	sebsd_free(kdata, M_SEBSD);
 
 	return (rc);
 }
@@ -88,13 +88,13 @@ sys_load_migscs(struct proc *td, void *data, size_t len)
 	if (rc)
 		return (rc);
 
-	kdata = malloc(len, M_SEBSD, M_WAITOK);
+	kdata = sebsd_malloc(len, M_SEBSD, M_WAITOK);
 	rc = copyin(data, kdata, len);
 	if (rc)
 		return (rc);
 
 	rc = sebsd_load_migscs(kdata, len);
-	free(kdata, M_SEBSD);
+	sebsd_free(kdata, M_SEBSD);
 
 	return (rc);
 }
@@ -159,7 +159,7 @@ sys_get_sids(int function, char *context, char *username, char *out, int *outlen
 	}
 	error = copyout(&olen, outlen, sizeof(int));
 out2:
-	sebsd_free(sids);
+	sebsd_free(sids, M_SEBSD);
 out:
 	return (error);
 }
@@ -236,12 +236,12 @@ sebsd_get_bools(struct proc *td, struct sebsd_get_bools *gb)
 	int error;
 
 	if (gb->out)
-		out = malloc(gb->len, M_SEBSD, M_WAITOK);
+		out = sebsd_malloc(gb->len, M_SEBSD, M_WAITOK);
 	error = security_get_bool_string(&gb->len, out);
 	if (out && error == 0)
 		error = copyout(out, gb->out, gb->len);
 	if (out)
-		free(out, M_SEBSD);
+		sebsd_free(out, M_SEBSD);
 	return (error);
 }
 
@@ -274,24 +274,24 @@ sebsd_syscall(struct proc *td, int call, void *args, int *retv)
 		error = copyin(args, &uap, sizeof(struct getsid_args));
 		if (error)
 			return (error);
-		ctx = sebsd_malloc(MAX_UC, M_WAITOK);
+		ctx = sebsd_malloc(MAX_UC, M_SEBSD, M_WAITOK);
 		error = copyinstr(uap.ctx, ctx, MAX_UC, &dummy);
 		if (error) {
-			sebsd_free(ctx);
+			sebsd_free(ctx, M_SEBSD);
 			return (error);
 		}
-		usr = sebsd_malloc(MAX_UC, M_WAITOK);
+		usr = sebsd_malloc(MAX_UC, M_SEBSD, M_WAITOK);
 		error = copyinstr(uap.usr, usr, MAX_UC, &dummy);
 		if (error) {
-			sebsd_free(ctx);
-			sebsd_free(usr);
+			sebsd_free(ctx, M_SEBSD);
+			sebsd_free(usr, M_SEBSD);
 			return (error);
 		}
 		ctx[MAX_UC-1] = 0;
 		usr[MAX_UC-1] = 0;
 		error = sys_get_sids(call, ctx, usr, uap.out, uap.outlen);
-		sebsd_free(ctx);
-		sebsd_free(usr);
+		sebsd_free(ctx, M_SEBSD);
+		sebsd_free(usr, M_SEBSD);
 		break;
 	}
 
@@ -304,31 +304,31 @@ sebsd_syscall(struct proc *td, int call, void *args, int *retv)
 		error = copyin(args, &uap, sizeof(struct changesid_args));
 		if (error)
 			return (error);
-		doms = sebsd_malloc(MAX_UC, M_WAITOK);
+		doms = sebsd_malloc(MAX_UC, M_SEBSD, M_WAITOK);
 		error = copyinstr(uap.domain, doms, MAX_UC, &dummy);
 		if (error) {
-			sebsd_free(doms);
+			sebsd_free(doms, M_SEBSD);
 			return (error);
 		}
-		srcs = sebsd_malloc(MAX_UC, M_WAITOK);
+		srcs = sebsd_malloc(MAX_UC, M_SEBSD, M_WAITOK);
 		error = copyinstr(uap.source, srcs, MAX_UC, &dummy);
 		if (error) {
-			sebsd_free(doms);
-			sebsd_free(srcs);
+			sebsd_free(doms, M_SEBSD);
+			sebsd_free(srcs, M_SEBSD);
 			return (error);
 		}
-		scs = sebsd_malloc(MAX_UC, M_WAITOK);
+		scs = sebsd_malloc(MAX_UC, M_SEBSD, M_WAITOK);
 		error = copyinstr(uap.sclass, scs, MAX_UC, &dummy);
 		if (error) {
-			sebsd_free(doms);
-			sebsd_free(srcs);
-			sebsd_free(scs);
+			sebsd_free(doms, M_SEBSD);
+			sebsd_free(srcs, M_SEBSD);
+			sebsd_free(scs, M_SEBSD);
 			return (error);
 		}
 		error = sys_change_sid(doms, srcs, scs, uap.out, uap.outlen);
-		sebsd_free(doms);
-		sebsd_free(srcs);
-		sebsd_free(scs);
+		sebsd_free(doms, M_SEBSD);
+		sebsd_free(srcs, M_SEBSD);
+		sebsd_free(scs, M_SEBSD);
 		return (error);
 	}
 
@@ -368,17 +368,17 @@ sebsd_syscall(struct proc *td, int call, void *args, int *retv)
 
 		if (copyin(args, &p, sizeof(struct lp_args)))
 			return (EFAULT);
-		str = malloc(p.len, M_SEBSD, M_WAITOK);
+		str = sebsd_malloc(p.len, M_SEBSD, M_WAITOK);
 		if (!str)
 			return (ENOMEM);
 		if (copyin(p.data, str, p.len)) {
-			free(str, M_SEBSD);
+			sebsd_free(str, M_SEBSD);
 			return (EFAULT);
 		}
 
 		str[p.len-1] = 0;
 		error = security_set_bool(str+1, str[0]-'0');
-		free(str, M_SEBSD);
+		sebsd_free(str, M_SEBSD);
 		break;
 	}
 
