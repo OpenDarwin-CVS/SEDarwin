@@ -2,12 +2,12 @@ include ../../../Makeconfig
 
 PROG= checkpolicy
 
-OBJS = checkpolicy.o y.tab.o policy_scan.o queue.o
+OBJS = checkpolicy.o y.tab.o policy_scan.o queue.o module_compiler.o
 
 CFLAGS+= -I$(SOURCE_ROOT)/sedarwin/libsepol/include
 CFLAGS+= -I$(SOURCE_ROOT)/sedarwin/libselinux/include
-LDADD+= -L$(SOURCE_ROOT)/sedarwin/libselinux/src -L$(SOURCE_ROOT)/sedarwin/libsepol/src
-LDADD+= -lselinux -lsepol -lfl
+LDADD+= -L$(SOURCE_ROOT)/sedarwin/libselinux/src -L$(SOURCE_ROOT)/sedarwin/libsepol/src -L$(SOURCE_ROOT)/sedarwin/libsecompat
+LDADD+= -lselinux -lsepol -lsecompat -lfl
 
 all: $(PROG)
 

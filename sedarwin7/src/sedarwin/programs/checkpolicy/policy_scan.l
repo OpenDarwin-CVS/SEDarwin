@@ -7,7 +7,11 @@
  *
  * 	Added conditional policy language extensions
  *
- * Copyright (C) 2003 Tresys Technology, LLC
+ *          Jason Tang    <jtang@tresys.com>
+ *
+ *	Added support for binary policy modules
+ *
+ * Copyright (C) 2003-5 Tresys Technology, LLC
  *	This program is free software; you can redistribute it and/or modify
  *  	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, version 2.
@@ -20,11 +24,14 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef int (* require_func_t)();
+
 #include "y.tab.h"
 
 static char linebuf[2][255];
 static unsigned int lno = 0;
 int yywarn(char *msg);
+static int is_valid_identifier(char *id);
 
 char source_file[255];
 unsigned long source_lineno = 1;
@@ -37,6 +44,8 @@ unsigned int policydb_errors = 0;
 letter  [A-Za-z]
 digit   [0-9]
 hexval	[0-9A-Fa-f]
+version [0-9]+(\.[A-Za-z0-9_.]*)?
+
 %%
 \n.*				{ strncpy(linebuf[lno], yytext+1, 255);
                                   linebuf[lno][254] = 0;
@@ -52,6 +61,8 @@ CLASS |
 class				{ return(CLASS); }
 CONSTRAIN |
 constrain			{ return(CONSTRAIN); }
+VALIDATETRANS |
+validatetrans			{ return(VALIDATETRANS); }
 INHERITS |
 inherits			{ return(INHERITS); }
 SID |
@@ -64,14 +75,16 @@ TYPES |
 types				{ return(TYPES); }
 TYPEALIAS |
 typealias			{ return(TYPEALIAS); }
+TYPEATTRIBUTE |
+typeattribute			{ return(TYPEATTRIBUTE); }
 TYPE |
 type				{ return(TYPE); }
 BOOL |
 bool                            { return(BOOL); }
 IF |
-if                         { return(IF); }
+if				{ return(IF); }
 ELSE |
-else                         { return(ELSE); }
+else				{ return(ELSE); }
 ALIAS |
 alias				{ return(ALIAS); }
 ATTRIBUTE |
@@ -84,16 +97,22 @@ TYPE_CHANGE |
 type_change			{ return(TYPE_CHANGE); }
 ROLE_TRANSITION |
 role_transition			{ return(ROLE_TRANSITION); }
+RANGE_TRANSITION |
+range_transition		{ return(RANGE_TRANSITION); }
 SENSITIVITY |
-sensitivity		{ return(SENSITIVITY); }
+sensitivity			{ return(SENSITIVITY); }
 DOMINANCE |
 dominance			{ return(DOMINANCE); }
 CATEGORY |
 category			{ return(CATEGORY); }
 LEVEL |
 level				{ return(LEVEL); }
-RANGES |
-ranges				{ return(RANGES); }
+RANGE |
+range				{ return(RANGE); }
+MLSCONSTRAIN |
+mlsconstrain			{ return(MLSCONSTRAIN); }
+MLSVALIDATETRANS |
+mlsvalidatetrans		{ return(MLSVALIDATETRANS); }
 USER |
 user				{ return(USER); }
 NEVERALLOW |
@@ -112,6 +131,9 @@ TARGET |
 target			        { return(TARGET); }
 SAMEUSER |
 sameuser			{ return(SAMEUSER);}
+module|MODULE                   { return(MODULE); }
+require|REQUIRE                 { return(REQUIRE); }
+optional|OPTIONAL               { return(OPTIONAL); }
 OR |
 or     			        { return(OR);}
 AND |
@@ -135,36 +157,55 @@ incomp				{ return(INCOMP);}
 fscon |
 FSCON                           { return(FSCON);}
 portcon |
-PORTCON                        { return(PORTCON);}
+PORTCON				{ return(PORTCON);}
 netifcon |                     
-NETIFCON                       { return(NETIFCON);}
+NETIFCON			{ return(NETIFCON);}
 nodecon |                     
-NODECON                       { return(NODECON);}
+NODECON				{ return(NODECON);}
 fs_use_xattr |
-FS_USE_XATTR                     {return(FSUSEXATTR);}
+FS_USE_XATTR			{ return(FSUSEXATTR);}
 fs_use_task |
-FS_USE_TASK                     {return(FSUSETASK);}
+FS_USE_TASK                     { return(FSUSETASK);}
 fs_use_trans |
-FS_USE_TRANS                    {return(FSUSETRANS);}
+FS_USE_TRANS                    { return(FSUSETRANS);}
 genfscon |
 GENFSCON                        { return(GENFSCON);}
 r1 |
 R1				{ return(R1); }
 r2 |
 R2				{ return(R2); }
+r3 |
+R3				{ return(R3); }
 u1 |
 U1				{ return(U1); }
 u2 |
 U2				{ return(U2); }
+u3 |
+U3				{ return(U3); }
 t1 |
 T1				{ return(T1); }
 t2 |
 T2				{ return(T2); }
+t3 |
+T3				{ return(T3); }
+l1 |
+L1				{ return(L1); }
+l2 |
+L2				{ return(L2); }
+h1 |
+H1				{ return(H1); }
+h2 |
+H2				{ return(H2); }
 "/"({letter}|{digit}|_|"."|"-"|"/")*	{ return(PATH); }
-{letter}({letter}|{digit}|_)*	{ return(IDENTIFIER); }
+{letter}({letter}|{digit}|_|".")*	{ if (is_valid_identifier(yytext)) 
+						return(IDENTIFIER); 
+					  else 
+					  	REJECT;
+					}
 {letter}({letter}|{digit}|_|"."|"-")*	{ return(USER_IDENTIFIER); }
 {digit}{digit}*                 { return(NUMBER); }
 {hexval}{0,4}":"{hexval}{0,4}":"({hexval}|":"|".")*	{ return(IPV6_ADDR); }
+{version}/([ \t\f]*;)           { return(VERSION_IDENTIFIER); }
 #line[ ]1[ ]\"[^\n]*\"		{ source_lineno = 1; strncpy(source_file, yytext+9, 255); source_file[strlen(source_file)-1] = '\0'; }
 #line[ ]{digit}{digit}*		{ source_lineno = atoi(yytext+6)-1; }
 #[^\n]*                         { /* delete comments */ }
@@ -219,4 +260,18 @@ int yywarn(char *msg)
 			policydb_lineno,
 			linebuf[0], linebuf[1]);
 	return 0;
+}
+
+static int is_valid_identifier(char *id) {
+        if ((strrchr(id, '.')) != NULL) {
+                if (strstr(id, "..") != NULL) {
+                        /* identifier has consecutive '.' */
+                        return 0;
+                }
+		if (id[strlen(id) - 1] == '.') {
+			/* identifier ends in '.' */
+			return 0;
+		}
+        }
+        return 1;
 }

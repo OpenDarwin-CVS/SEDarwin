@@ -3,7 +3,12 @@
  * Author : Stephen Smalley, <sds@epoch.ncsc.mil> 
  */
 
-/* Updated: Karl MacMillan <kmacmillan@tresys.com>
+/*
+ * Updated: Trusted Computer Solutions, Inc. <dgoeddel@trustedcs.com>
+ *
+ *	Support for enhanced MLS infrastructure.
+ *
+ * Updated: Karl MacMillan <kmacmillan@tresys.com>
  *
  * 	Added conditional policy language extensions
  *
@@ -11,7 +16,14 @@
  *
  *	Added IPv6 support.
  *
- * Copyright (C) 2003 - 2004 Tresys Technology, LLC
+ * Updated: Joshua Brindle <jbrindle@tresys.com>
+ *	    Karl MacMillan <kmacmillan@tresys.com>
+ *          Jason Tang     <jtang@tresys.com>
+ *
+ *	Policy Module support.
+ *
+ * Copyright (C) 2004-2005 Trusted Computer Solutions, Inc.
+ * Copyright (C) 2003 - 2005 Tresys Technology, LLC
  * Copyright (C) 2003 Red Hat, Inc., James Morris <jmorris@redhat.com>
  *	This program is free software; you can redistribute it and/or modify
  *  	it under the terms of the GNU General Public License as published by
@@ -58,10 +70,13 @@
 #include <errno.h>
 #include <sys/mman.h>
 
-#include <sepol/policydb.h>
-#include <sepol/services.h>
-#include <sepol/conditional.h>
-#include <sepol/flask.h>
+#include <sepol/policydb/policydb.h>
+#include <sepol/policydb/services.h>
+#include <sepol/policydb/conditional.h>
+#include <sepol/policydb/hierarchy.h>
+#include <sepol/policydb/flask.h>
+#include <sepol/policydb/expand.h>
+#include <sepol/policydb/link.h>
 
 #include "queue.h"
 #include "checkpolicy.h"
@@ -76,30 +91,36 @@ extern policydb_t *policydbp;
 extern queue_t id_queue;
 extern unsigned int policydb_errors;
 extern unsigned long policydb_lineno;
-extern unsigned long source_lineno;
 extern char source_file[];
-extern unsigned int pass;
+extern int mlspol;
 
 extern FILE *yyin;
+extern void init_parser(int);
 extern int yyparse(void);
 extern void yyrestart(FILE *);
 
-char *txtfile = "policy.conf";
-char *binfile = "policy";
+static char *txtfile = "policy.conf";
+static char *binfile = "policy";
 
 unsigned int policyvers = POLICYDB_VERSION_MAX;
 
 void usage(char *progname)
 {
-	printf("usage:  %s [-b] [-d] [-c policyvers (%d-%d)] [-o output_file] [input_file]\n",
+	printf("usage:  %s [-b] [-d] [-M] [-c policyvers (%d-%d)] [-o output_file] [input_file]\n",
 		progname, POLICYDB_VERSION_MIN, POLICYDB_VERSION_MAX);
 	exit(1);
 }
 
-static int print_sid(security_id_t sid,
+#define FGETS(out, size, in) \
+if (fgets(out,size,in)==NULL) {	\
+		fprintf(stderr, "fgets failed at line %d: %s\n", __LINE__,\
+				strerror(errno)); \
+			exit(1);\
+}
+static int print_sid(sepol_security_id_t sid,
 		     context_struct_t * context __attribute__ ((unused)), void *data __attribute__ ((unused)))
 {
-	security_context_t scontext;
+	sepol_security_context_t scontext;
 	size_t scontext_len;
 	int rc;
 
@@ -130,16 +151,6 @@ static int find_perm(hashtab_key_t key, hashtab_datum_t datum, void *p)
 		return 1;
 	}
 
-	return 0;
-}
-
-static int type_attr_remove(hashtab_key_t key __attribute__ ((unused)), hashtab_datum_t datum, void *p __attribute__ ((unused)))
-{
-	type_datum_t *typdatum;
-
-	typdatum = (type_datum_t *) datum;
-	if (typdatum->isattr)
-		return 1;
 	return 0;
 }
 
@@ -270,99 +281,8 @@ static int identify_equiv_types(void)
 }
 #endif 
 
-static void cond_check_type_rules_list(cond_av_list_t *list)
-{
-	cond_av_list_t *cur = list;
+extern char *av_to_string(uint32_t tclass, sepol_access_vector_t av);
 
-	while (cur) {
-		if (cur->node->datum.specified & AVTAB_TYPE) {
-			if (avtab_search(&policydbp->te_avtab, &cur->node->key, AVTAB_TYPE)) {
-				fprintf(stderr, "conditional type rule for (%s, %s : %s) conflicts with entry in base policy; "
-					"conditional rule discarded.\n", policydbp->p_type_val_to_name[cur->node->key.source_type-1],
-					policydbp->p_type_val_to_name[cur->node->key.target_type-1],
-					policydbp->p_class_val_to_name[cur->node->key.target_class-1]);
-				cur->node->parse_context = (void*)0;
-			} else {
-				cur->node->parse_context = (void*)1;
-			}
-		} else {
-			cur->node->parse_context = (void*)1;
-		}
-		cur = cur->next;
-	}
-}
-
-/* check for duplicate type rules - this has to be done after all of
- * the parsing is finished because the conditional and base type rules
- * are collected in the same pass */
-static void cond_check_type_rules(void)
-{
-	cond_list_t *node;
-
-	for (node = policydbp->cond_list; node != NULL; node = node->next) {
-		cond_check_type_rules_list(node->true_list);
-		cond_check_type_rules_list(node->false_list);
-	}
-}
-
-extern char *av_to_string(uint32_t tclass, access_vector_t av);
-
-void check_assertion_helper(unsigned int stype, unsigned int ttype, ebitmap_t *tclasses, 
-			    access_vector_t *avp, unsigned long line) 
-{
-	avtab_key_t avkey;
-	avtab_datum_t *avdatump;
-	unsigned int k;
-	
-
-	for (k = ebitmap_startbit(tclasses); k < ebitmap_length(tclasses); k++) {
-		if (!ebitmap_get_bit(tclasses, k)) 
-			continue;
-		avkey.source_type = stype + 1;
-		avkey.target_type = ttype + 1;
-		avkey.target_class = k + 1;
-		avdatump = avtab_search(&policydb.te_avtab, &avkey, AVTAB_AV);
-		if (!avdatump) 
-			continue;
-
-		if ((avdatump->specified & AVTAB_ALLOWED) &&
-		    (avtab_allowed(avdatump) & avp[k])) {
-			fprintf(stderr, "assertion on line %ld violated by allow %s %s:%s {%s };\n", line, policydb.p_type_val_to_name[stype], policydb.p_type_val_to_name[ttype], policydb.p_class_val_to_name[k], 
-				av_to_string(k+1,
-					     avtab_allowed(avdatump) & avp[k]));
-			policydb_errors++;
-		}
-	}
-}
-
-void check_assertions(void) 
-{
-	te_assert_t *a, *tmp;
-	unsigned int i, j;
-
-	a = te_assertions;
-	while (a) {
-		for (i = ebitmap_startbit(&a->stypes); i < ebitmap_length(&a->stypes); i++) {
-			if (!ebitmap_get_bit(&a->stypes, i))
-				continue;
-			if (a->self) {
-				check_assertion_helper(i, i, &a->tclasses, a->avp, a->line);
-			}
-			for (j = ebitmap_startbit(&a->ttypes); j < ebitmap_length(&a->ttypes); j++) {
-				if (!ebitmap_get_bit(&a->ttypes, j)) 
-					continue;
-				check_assertion_helper(i, j, &a->tclasses, a->avp, a->line);
-			}
-		}
-		tmp = a;
-		a = a->next;
-		ebitmap_destroy(&tmp->stypes);
-		ebitmap_destroy(&tmp->ttypes);
-		ebitmap_destroy(&tmp->tclasses);
-		free(tmp->avp);
-		free(tmp);
-	}
-}
 
 int display_bools()
 {
@@ -435,12 +355,23 @@ int change_bool(char *name, int state)
 	return 0;
 }
 
+static int check_level(hashtab_key_t key, hashtab_datum_t datum, void *arg)
+{
+	level_datum_t *levdatum = (level_datum_t *) datum;
+
+	if (!levdatum->isalias && !levdatum->defined) {
+		fprintf(stderr, "Error:  sensitivity %s was not used in a level definition!\n", key);
+		return -1;
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
-	security_class_t tclass;
-	security_id_t ssid, tsid, *sids;
-	security_context_t scontext;
-	struct av_decision avd;
+	sepol_security_class_t tclass;
+	sepol_security_id_t ssid, tsid, *sids;
+	sepol_security_context_t scontext;
+	struct sepol_av_decision avd;
 	class_datum_t *cladatum;
 	char ans[80 + 1], *file = txtfile, *outfile = NULL, *path, *fstype;
 	size_t scontext_len, pathlen;
@@ -449,7 +380,7 @@ int main(int argc, char **argv)
 	unsigned int binary = 0, debug = 0;
 	struct val_to_name v;
 	int ret, ch, fd;
-	unsigned int nel;
+	unsigned int nel, uret;
 	struct stat sb;
 	void *map;
 	FILE *outfp = NULL;
@@ -459,7 +390,7 @@ int main(int argc, char **argv)
 	struct policy_file pf;
 
 
-	while ((ch = getopt(argc, argv, "o:dbVc:")) != EOF) {
+	while ((ch = getopt(argc, argv, "o:dbMVc:")) != EOF) {
 		switch (ch) {
 		case 'o':
 			outfile = optarg;
@@ -473,6 +404,9 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			show_version = 1;
+			break;
+		case 'M':
+			mlspol = 1;
 			break;
 		case 'c': {
 			long int n = strtol(optarg, NULL, 10);
@@ -497,11 +431,7 @@ int main(int argc, char **argv)
 	}
 
 	if (show_version) {
-#ifdef CONFIG_SECURITY_SELINUX_MLS	
-		printf("%d-mls (compatibility range %d-%d)\n", policyvers, POLICYDB_VERSION_MAX, POLICYDB_VERSION_MIN);
-#else
 		printf("%d (compatibility range %d-%d)\n", policyvers, POLICYDB_VERSION_MAX, POLICYDB_VERSION_MIN);
-#endif
 		exit(0);
 	}
 
@@ -540,63 +470,93 @@ int main(int argc, char **argv)
 		pf.type = PF_USE_MEMORY;
 		pf.data = map;
 		pf.len = sb.st_size;
+		if (policydb_init(&policydb)) {
+			fprintf(stderr, "%s:  policydb_init:  Out of memory!\n", argv[0]);
+			exit(1);
+		}
 		ret = policydb_read(&policydb, &pf, 1);
 		if (ret) {
 			fprintf(stderr, "%s:  error(s) encountered while parsing configuration\n", argv[0]);
 			exit(1);
 		}
 		policydbp = &policydb;
+
+		/* Check Policy Consistency */
+		if (policydbp->mls) {
+			if (!mlspol) {
+				fprintf(stderr,"%s:  MLS policy, but non-MLS"
+				        " is specified\n", argv[0]);
+				exit(1);
+			}
+		} else {
+			if (mlspol) {
+				fprintf(stderr,"%s:  non-MLS policy, but MLS"
+				        " is specified\n", argv[0]);
+				exit(1);
+			}
+		}
 	} else {
-		yyin = fopen(file, "r");
+                policydb_t parse_policy;
+
+                yyin = fopen(file, "r");
 		if (!yyin) {
 			fprintf(stderr, "%s:  unable to open %s\n", argv[0], 
 				file);
 			exit(1);
 		}
 
-		if (policydb_init(&policydb))
+		if (policydb_init(&parse_policy))
 			exit(1);
+		/* We build this as a base policy first since that is all the parser understands */
+		parse_policy.policy_type = POLICY_BASE;
+
+		/* Let sepol know if we are dealing with MLS support */
+		parse_policy.mls = mlspol;
 
 		id_queue = queue_create();
 		if (!id_queue) {
 			fprintf(stderr, "%s:  out of memory\n", argv[0]);
 			exit(1);
 		}
-		policydbp = &policydb;
-		policydb_errors = 0;
-		pass = 1;
+		policydbp = &parse_policy;
+                init_parser(1);
 		if (yyparse() || policydb_errors) {
 			fprintf(stderr, "%s:  error(s) encountered while parsing configuration\n", argv[0]);
 			exit(1);
 		}
 		rewind(yyin);
-		policydb_lineno = 1;
+                init_parser(2);
 		source_file[0] = '\0';
-		source_lineno = 1;
 		yyrestart(yyin);
-		pass = 2;
 		if (yyparse() || policydb_errors) {
 			fprintf(stderr, "%s:  error(s) encountered while parsing configuration\n", argv[0]);
 			exit(1);
 		}
 		queue_destroy(id_queue);
 
-		cond_check_type_rules();
-		cond_optimize_lists(policydb.cond_list);
-
-		check_assertions();
 		if (policydb_errors) 
 			exit(1);
 
-		if (policyvers >= POLICYDB_VERSION_NLCLASS &&
-		    policydb.p_classes.nprim < SECCLASS_NETLINK_DNRT_SOCKET) {
-			fprintf(stderr, "%s:  policy lacks new netlink classes, unable to generate policy version %d\n", argv[0], policyvers);
+		if (hashtab_map(policydbp->p_levels.table, check_level, NULL))
+			exit(1);
+
+		if (policydb_init(&policydb)) {
+			fprintf(stderr, "%s:  policydb_init failed\n", argv[0]);
 			exit(1);
 		}
-	    
-		/* remove type attributes */
-		hashtab_map_remove_on_error(policydb.p_types.table, 
-					    type_attr_remove, 0, 0);
+
+		/* Linking takes care of optional avrule blocks */
+        	if (link_modules(NULL, &parse_policy, NULL, 0, 0)) {
+			fprintf(stderr, "Error while resolving optionals\n");
+			exit(1);
+		}
+
+		if (expand_module(NULL, &parse_policy, &policydb, 0, 1)) {
+                        fprintf(stderr, "Error while expanding policy\n");
+			exit(1);
+                }
+		policydb_destroy(&parse_policy);
+		policydbp = &policydb;
 		fclose(yyin);
 	}
 
@@ -614,7 +574,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-		sepol_set_policyvers(policyvers);
+		policydb.policy_type = POLICY_KERN;
+		policydb.policyvers = policyvers;
 
 		pf.type = PF_USE_STDIO;
 		pf.fp = outfp;
@@ -626,8 +587,10 @@ int main(int argc, char **argv)
 		}
 		fclose(outfp);
 	}
-	if (!debug)
+	if (!debug) {
+		policydb_destroy(&policydb);
 		exit(0);
+	}
 
       menu:
 	printf("\nSelect an option:\n");
@@ -656,19 +619,19 @@ int main(int argc, char **argv)
 	printf("q)  Exit\n");
 	while (1) {
 		printf("\nChoose:  ");
-		fgets(ans, sizeof(ans), stdin);
+		FGETS(ans, sizeof(ans), stdin);
 		switch (ans[0]) {
 		case '0':
 			printf("source sid?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ssid = atoi(ans);
 
 			printf("target sid?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			tsid = atoi(ans);
 
 			printf("target class?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			if (isdigit(ans[0])) {
 				tclass = atoi(ans);
 				if (!tclass || tclass > policydb.p_classes.nprim) {
@@ -720,7 +683,7 @@ int main(int argc, char **argv)
 			break;
 		case '1':
 			printf("sid?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ssid = atoi(ans);
 			ret = sepol_sid_to_context(ssid,
 					       &scontext, &scontext_len);
@@ -741,7 +704,7 @@ int main(int argc, char **argv)
 			break;
 		case '2':
 			printf("scontext?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			scontext_len = strlen(ans);
 			ans[scontext_len - 1] = 0;
 			ret = sepol_context_to_sid(ans, scontext_len,
@@ -766,14 +729,14 @@ int main(int argc, char **argv)
 			ch = ans[0];
 
 			printf("source sid?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ssid = atoi(ans);
 			printf("target sid?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			tsid = atoi(ans);
 
 			printf("object class?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			if (isdigit(ans[0])) {
 				tclass = atoi(ans);
 				if (!tclass || tclass > policydb.p_classes.nprim) {
@@ -816,7 +779,7 @@ int main(int argc, char **argv)
 			break;
 		case '7':
 			printf("pathname?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			pathlen = strlen(ans);
 			ans[pathlen - 1] = 0;
 			printf("%s:  loading policy configuration from %s\n", argv[0], ans);
@@ -854,7 +817,7 @@ int main(int argc, char **argv)
 			break;
 		case '8':
 			printf("fs kdevname?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			sepol_fs_sid(ans, &ssid, &tsid);
 			printf("fs_sid %d default_file_sid %d\n",
@@ -862,7 +825,7 @@ int main(int argc, char **argv)
 			break;
 		case '9':
 			printf("protocol?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			if (!strcmp(ans, "tcp") || !strcmp(ans, "TCP"))
 				protocol = IPPROTO_TCP;
@@ -873,14 +836,14 @@ int main(int argc, char **argv)
 				break;
 			}
 			printf("port? ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			port = atoi(ans);
 			sepol_port_sid(0, 0, protocol, port, &ssid);
 			printf("sid %d\n", ssid);
 			break;
 		case 'a':
 			printf("netif name?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			sepol_netif_sid(ans, &ssid, &tsid);
 			printf("if_sid %d default_msg_sid %d\n",
@@ -893,7 +856,7 @@ int main(int argc, char **argv)
 			struct in6_addr addr6;
 			
 			printf("protocol family? ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			if (!strcasecmp(ans, "ipv4"))
 				family = AF_INET;
@@ -905,7 +868,7 @@ int main(int argc, char **argv)
 			}
 			
 			printf("node address?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			
 			if (family == AF_INET) {
@@ -927,10 +890,10 @@ int main(int argc, char **argv)
 		}	
 		case 'c':
 			printf("fstype?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
-			sepol_fs_use(ans, &ret, &ssid);
-			switch (ret) {
+			sepol_fs_use(ans, &uret, &ssid);
+			switch (uret) {
 			case SECURITY_FS_USE_XATTR:
 				printf("use xattr\n");
 				break;
@@ -951,15 +914,15 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			printf("fstype?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			fstype = strdup(ans);
 			printf("path?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			path = strdup(ans);
 			printf("object class?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			if (isdigit(ans[0])) {
 				tclass = atoi(ans);
 				if (!tclass || tclass > policydb.p_classes.nprim) {
@@ -983,12 +946,12 @@ int main(int argc, char **argv)
 			break;
 		case 'e':
 			printf("from SID?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			ssid = atoi(ans);
 
 			printf("username?  ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 
 			ret = sepol_get_user_sids(ssid, ans, &sids, &nel);
@@ -1019,7 +982,7 @@ int main(int argc, char **argv)
 			break;
 		case 'h':
 			printf("name? ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 			
 			name = malloc((strlen(ans) + 1) * sizeof(char));
@@ -1031,7 +994,7 @@ int main(int argc, char **argv)
 
 
 			printf("state? ");
-			fgets(ans, sizeof(ans), stdin);
+			FGETS(ans, sizeof(ans), stdin);
 			ans[strlen(ans) - 1] = 0;
 
 			if (atoi(ans))
