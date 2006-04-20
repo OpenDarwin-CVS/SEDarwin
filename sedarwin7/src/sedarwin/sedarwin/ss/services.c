@@ -1679,12 +1679,13 @@ int security_get_file_sids(u32 user,
 			   u32 **sids,
 			   int *numsids)
 {
-	struct context *scontext = sidtab_search(&sidtab, user);
+	struct getfilesids p;
+	struct context *scontext;
 
+	scontext = sidtab_search(&sidtab, user);
 	if (scontext == NULL)
 		goto out_err;
 
-	struct getfilesids p;
 	p.scon = scontext;
 	p.sclass = sclass;
 	if (!sclass || sclass > policydb.p_classes.nprim)
