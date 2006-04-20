@@ -20,11 +20,15 @@
 #include <sedarwin/avc/avc.h>
 #include <sedarwin/ss/global.h>
 
+#include <kern/zalloc.h>
+
 #define AVTAB_HASH(keyp) \
 ((keyp->target_class + \
  (keyp->target_type << 2) + \
  (keyp->source_type << 9)) & \
  AVTAB_HASH_MASK)
+
+zone_t avtab_node_cachep;
 
 static struct avtab_node*
 avtab_insert_node(struct avtab *h, int hvalue,
@@ -32,7 +36,8 @@ avtab_insert_node(struct avtab *h, int hvalue,
 		  struct avtab_key *key, struct avtab_datum *datum)
 {
 	struct avtab_node * newnode;
-	newnode = kmalloc(sizeof(*newnode), GFP_KERNEL);
+	/* XXX - should use non-blocking zalloc */
+	newnode = (struct avtab_node *)zalloc(avtab_node_cachep);
 	if (newnode == NULL)
 		return NULL;
 	memset(newnode, 0, sizeof(struct avtab_node));
@@ -464,17 +469,13 @@ bad:
 
 void avtab_cache_init(void)
 {
-/* XXX - use zone allocator */
-#ifdef SEBSDnotyet
-	avtab_node_cachep = kmem_cache_create("avtab_node",
-					      sizeof(struct avtab_node),
-					      0, SLAB_PANIC, NULL, NULL);
-#endif
+	// XXX - we can probably do a better job of packing items into the zone 
+	avtab_node_cachep = zinit(sizeof(struct avtab_node),
+	    4096 * sizeof(struct avtab_node), 16 * sizeof(struct avtab_node),
+	    "avtab node");
 }
 
 void avtab_cache_destroy(void)
 {
-#ifdef SEBSDnotyet
-	kmem_cache_destroy (avtab_node_cachep);
-#endif
+	/* Darwin does not provide a way to destroy a zone. */
 }
