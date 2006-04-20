@@ -54,6 +54,8 @@
 #include <sedarwin/sebsd_syscalls.h>
 #include <sedarwin/avc/avc.h>
 
+extern unsigned int policydb_loaded_version;
+
 #if 0
 /*
  * Sysctl handler for security.mac.sebsd.sids
@@ -358,6 +360,8 @@ SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, auditing, CTLTYPE_INT |
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, enforcing, CTLTYPE_INT |
     CTLFLAG_RW, NULL, 0, sysctl_sebsd_enforcing, "I",
     "SEBSD avc enforcement");
+SYSCTL_UINT(_security_mac_sebsd, OID_AUTO, policyvers, CTLFLAG_RD,
+    &policydb_loaded_version, 0, " SEBSD loaded policy version");
 
 void
 sebsd_register_sysctls()
@@ -366,4 +370,5 @@ sebsd_register_sysctls()
 	sysctl_register_oid(&sysctl__security_mac_sebsd_verbose);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_auditing);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_enforcing);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_policyvers);
 }
