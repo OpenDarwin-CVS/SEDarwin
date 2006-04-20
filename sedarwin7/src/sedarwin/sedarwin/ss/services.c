@@ -1624,7 +1624,7 @@ static int getfilesids1(struct avtab_key *avk,
 	if (avk->source_type != p->scon->type ||
 	    avk->target_class != p->sclass ||
 	    (specified & AVTAB_AV) == 0 ||
-	    (avtab_allowed(avd) & COMMON_FILE__RELABELTO) == 0)
+	    (avd->data & COMMON_FILE__RELABELTO) == 0)
 		return 0;
 
 	fc.type = avk->target_type;

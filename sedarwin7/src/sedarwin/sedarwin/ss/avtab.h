@@ -55,6 +55,11 @@ struct avtab {
 int avtab_init(struct avtab *);
 struct avtab_datum *avtab_search(struct avtab *h, struct avtab_key *k);
 void avtab_destroy(struct avtab *h);
+int avtab_map(struct avtab *h,
+	      int (*apply) (struct avtab_key *k,
+			    struct avtab_datum *d,
+			    void *args),
+	      void *args);
 void avtab_hash_eval(struct avtab *h, char *tag);
 
 int avtab_read_item(void *fp, u32 vers, struct avtab *a,
