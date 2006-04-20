@@ -150,5 +150,5 @@ sebsd_check_ipc_method1(int subj, int obj, int msgid)
 
 	perms = (u32)1 <<
 	    (msgid - mcl->baseid - (cl * 8 * sizeof(u32)));
-	return avc_has_perm_audit(subj, obj, mcl->classes[cl], perms, NULL);
+	return avc_has_perm(subj, obj, mcl->classes[cl], perms, NULL);
 }

@@ -44,7 +44,6 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 
-#include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/ss/global.h>
 #include <sedarwin/ss/services.h>
@@ -177,7 +176,7 @@ static int
 sysctl_user_sids(SYSCTL_HANDLER_ARGS)
 {
 	u_int32_t n, nsids, scontext_len;
-	u32 *sids, sid;
+	u_int32_t *sids, sid;
 	char *scontext;
 	char *context, *username;
 	int error, len;
@@ -235,8 +234,8 @@ static int
 sysctl_change_sid(SYSCTL_HANDLER_ARGS)
 {
 	u_int32_t newcontext_len;
-	u32 sid, tsid, newsid;
-	u16 tclass;
+	u_int32_t sid, tsid, newsid;
+	u_int16_t tclass;
 	char *scontext, *tcontext, *newcontext;
 	int error;
 
@@ -287,9 +286,9 @@ out:
 static int
 sysctl_compute_av(SYSCTL_HANDLER_ARGS)
 {
-	u32 sid, tsid;
-	u16 tclass;
-	u32 av;
+	u_int32_t sid, tsid;
+	u_int16_t tclass;
+	u_int32_t av;
 	struct av_decision avd;
 	char *scontext, *tcontext;
 	int error;

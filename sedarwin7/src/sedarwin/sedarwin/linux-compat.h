@@ -7,6 +7,9 @@
  * DARPA/SPAWAR contract N66001-01-C-8035 ("CBOSS"), as part of the DARPA
  * CHATS research program.
  *
+ * This software was enhanced by SPARTA ISSO under SPAWAR contract
+ * N66001-04-C-6019 ("SEFOS").
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -44,12 +47,17 @@
  */
 
 #include <sys/types.h>			/* NOTE: mach sys/types, not BSD one. */
+#include <sys/lock.h>			/* For atomic operation protos */
 #include <machine/endian.h>		/* We need to explicitly include */
 #include <architecture/byte_order.h>	/* byte order includes for mach. */
 
 typedef u_int64_t u64;
+typedef u_int64_t __le64;
 typedef u_int32_t u32;
+typedef u_int32_t __le32;
 typedef u_int16_t u16;
+typedef u_int16_t __le16;
+typedef u_int16_t __be16;
 typedef u_int8_t  u8;
 
 
@@ -76,7 +84,9 @@ typedef u_int8_t  u8;
 #if !defined(_KERNEL) && !defined(KERNEL)
 
 /* sedarwin uses same ss source files for userspace */
-#define kmalloc(size,flags) malloc(size)
+#define kcalloc(nmemb, size, flags) calloc(nmemb, size)
+#define kmalloc(size, flags) malloc(size)
+#define kzalloc(size, flags) calloc(1, size)
 #define kfree(v) free(v)
 #define __get_free_page(flags) malloc(PAGE_SIZE)
 #define GFP_ATOMIC  1
@@ -104,10 +114,12 @@ extern void sebsd_free(void *, int);
 #endif
 
 /* Linux-style kmalloc/kfree (note kfree namespace collision) */
-#define kmalloc(size, flags)		sebsd_malloc(size, M_SEBSD, flags)
-#define kfree(addr)			sebsd_free(addr, M_SEBSD)
-#define __get_free_page(flags)		sebsd_malloc(PAGE_SIZE, M_SEBSD, flags) 
-#define GFP_ATOMIC  M_WAITOK		/* XXX - want M_NOWAIT but too early */
+#define kcalloc(nmemb, size, flags) sebsd_malloc(nmemb * size, M_SEBSD, flags | M_ZERO)
+#define kmalloc(size, flags)	sebsd_malloc(size, M_SEBSD, flags)
+#define kzalloc(size, flags)	sebsd_malloc(size, M_SEBSD, flags | M_ZERO)
+#define kfree(addr)		sebsd_free(addr, M_SEBSD)
+#define __get_free_page(flags)	sebsd_malloc(PAGE_SIZE, M_SEBSD, flags) 
+#define GFP_ATOMIC  M_WAITOK	/* XXX - want M_NOWAIT but too early */
 #define GFP_KERNEL  M_WAITOK
 
 /* TBD: no boot-time tunable support yet */
@@ -125,6 +137,22 @@ void audit_log(const char *, ...);
 void audit_log_end(struct audit_buffer *);
 void audit_log_format(struct audit_buffer *, const char *, ...);   
 void audit_log_untrustedstring(struct audit_buffer *, const char *);
+
+/*
+ * Atomic integer operations, Linux style
+ */
+#define atomic_inc(p)		hw_atomic_add(p, 1)
+#define atomic_inc_return(p)	hw_atomic_add(p, 1)
+#define atomic_dec(p)		hw_atomic_sub(p, 1)
+#define atomic_dec_and_test(p)	(hw_atomic_sub(p, 1) == 0)
+#define atomic_read(p)		hw_atomic_or(p, 0x1)
+static inline void atomic_set(u_int32_t *ptr, u_int32_t newval)
+{
+	u_int32_t oldval;
+	do {
+		oldval = *ptr;
+	} while (!hw_compare_and_store(oldval, newval, ptr));
+}
 
 #endif /* _KERNEL */
 

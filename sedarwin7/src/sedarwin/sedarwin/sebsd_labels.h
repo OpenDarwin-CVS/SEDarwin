@@ -44,7 +44,6 @@
 struct task_security_struct {
 	u32 osid;
 	u32 sid;
-	struct avc_entry_ref avcr;
 };
 
 struct file_security_struct {
@@ -55,19 +54,16 @@ struct vnode_security_struct {
 	u32 task_sid;
 	u32 sid;
 	u16 sclass;
-	struct avc_entry_ref avcr;
 };
 
 struct network_security_struct {
 	u32 sid;
 	u32 task_sid;
-	struct avc_entry_ref avcr;
 };
 
 struct ipc_security_struct {
 	u32 sid;
 	u16 sclass;
-	struct avc_entry_ref avcr;
 };
 
 struct mount_security_struct {

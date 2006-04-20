@@ -44,7 +44,6 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 
-#include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/sebsd_syscalls.h>
 #include <sedarwin/avc/avc.h>
@@ -109,7 +108,7 @@ static int
 sys_get_sids(int function, char *context, char *username, char *out, int *outlen)
 {
 	u_int32_t n, nsids, scontext_len;
-	u32 *sids, sid;
+	u_int32_t *sids, sid;
 	char * scontext;
 	int error;
 	int olen = 1;
@@ -168,9 +167,9 @@ static int
 sys_change_sid(char *domains, char *sources, char *sclasss, char *out,
     int *outlen)
 {
-	u32       domain, source;
+	u_int32_t domain, source;
 	struct class_datum *cld;
-	char *  outc;
+	char *outc;
 	int error;
 	int ubufsz, outclen;
 

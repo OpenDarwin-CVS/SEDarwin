@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002, 2003 Networks Associates Technology, Inc.
- * Copyright (c) 2005, 2006 SPARTA, Inc.
+ * Copyright (c) 2005-2006 SPARTA, Inc.
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by NAI Labs, the
@@ -64,7 +64,6 @@
 
 #include <miscfs/devfs/devfsdefs.h>
 
-#include <sedarwin/linux-compat.h>
 #include <sedarwin/sebsd.h>
 #include <sedarwin/sebsd_labels.h>
 #include <sedarwin/ss/policydb.h>
@@ -133,25 +132,25 @@ cred_has_capability(struct ucred *cred, cap_value_t cap)
 	AVC_AUDIT_DATA_INIT(&ad, CAP);
 	ad.u.cap = cap;
 
-	return (avc_has_perm_audit(task->sid, task->sid,
+	return (avc_has_perm(task->sid, task->sid,
 	    SECCLASS_CAPABILITY, cap, &ad));
 }
 #endif
 
 static int
-cred_has_perm(struct ucred *cred, struct proc *proc, u32 perm)
+cred_has_perm(struct ucred *cred, struct proc *proc, u_int32_t perm)
 {
 	struct task_security_struct *task, *target;
 
 	task = SLOT(cred->cr_label);
 	target = SLOT(proc->p_ucred->cr_label);
 
-	return (avc_has_perm_ref(task->sid, target->sid, SECCLASS_PROCESS,
-	    perm, &target->avcr));
+	return (avc_has_perm(task->sid, target->sid,
+	    SECCLASS_PROCESS, perm, NULL));
 }
 
 static int
-mount_has_perm(struct ucred *cred, struct mount *mp, u32 perm,
+mount_has_perm(struct ucred *cred, struct mount *mp, u_int32_t perm,
     struct avc_audit_data *ad)
 {
 	struct mount_security_struct *sbsec;
@@ -160,63 +159,63 @@ mount_has_perm(struct ucred *cred, struct mount *mp, u32 perm,
 	task = SLOT(cred->cr_label);
 	sbsec = SLOT(mp->mnt_mntlabel);
 
-	return (avc_has_perm_audit(task->sid, sbsec->sid, SECCLASS_FILESYSTEM,
+	return (avc_has_perm(task->sid, sbsec->sid, SECCLASS_FILESYSTEM,
 	    perm, ad));
 }
 
 static int
-cred_has_system(struct ucred *cred, u32 perm)
+cred_has_system(struct ucred *cred, u_int32_t perm)
 {
 	struct task_security_struct *task;
 
 	task = SLOT(cred->cr_label);
 
 	return (avc_has_perm(task->sid, SECINITSID_KERNEL,
-	    SECCLASS_SYSTEM, perm, NULL, NULL));
+	    SECCLASS_SYSTEM, perm, NULL));
 }
 
-int
-cred_has_security(struct ucred *cred, u32 perm)
+static int
+cred_has_security(struct ucred *cred, u_int32_t perm)
 {
 	struct task_security_struct *task;
 
 	task = SLOT(cred->cr_label);
 
 	return (avc_has_perm(task->sid, SECINITSID_SECURITY,
-	    SECCLASS_SECURITY, perm, NULL, NULL));
+	    SECCLASS_SECURITY, perm, NULL));
 }
 
 #ifdef HAS_THREADS
 int
-thread_has_system(struct thread *td, u32 perm)
+thread_has_system(struct thread *td, u_int32_t perm)
 {
 
 	return (cred_has_system(td->td_proc->p_ucred, perm));
 }
 
 int
-thread_has_security(struct thread *td, u32 perm)
+thread_has_security(struct thread *td, u_int32_t perm)
 {
 
 	return (cred_has_security(td->td_proc->p_ucred, perm));
 }
 #else
 int
-proc_has_system(struct proc *p, u32 perm)
+proc_has_system(struct proc *p, u_int32_t perm)
 {
 
 	return (cred_has_system(p->p_ucred, perm));
 }
 
 int
-proc_has_security(struct proc *p, u32 perm)
+proc_has_security(struct proc *p, u_int32_t perm)
 {
 
 	return (cred_has_security(p->p_ucred, perm));
 }
 #endif
 
-static __inline u16
+static __inline u_int16_t
 vnode_type_to_security_class(enum vtype vt)
 {
 
@@ -247,7 +246,7 @@ vnode_type_to_security_class(enum vtype vt)
 	return (SECCLASS_FILE);
 }
 
-static __inline u16
+static __inline u_int16_t
 devfs_type_to_security_class(int type)
 {
 
@@ -265,10 +264,10 @@ devfs_type_to_security_class(int type)
 	return (SECCLASS_FILE);
 }
 
-static __inline u32
+static __inline u_int32_t
 file_mask_to_av(enum vtype vt, int mask)
 {
-	u32 av = 0;
+	u_int32_t av = 0;
 
 	if (vt != VDIR) {
 		if (mask & VEXEC)
@@ -297,8 +296,7 @@ file_mask_to_av(enum vtype vt, int mask)
 }
 
 static int
-vnode_has_perm(struct ucred *cred, struct vnode *vp, u32 perm,
-    struct avc_entry_ref *aeref)
+vnode_has_perm(struct ucred *cred, struct vnode *vp, u_int32_t perm)
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
@@ -332,13 +330,12 @@ vnode_has_perm(struct ucred *cred, struct vnode *vp, u32 perm,
 	file->sclass = vnode_type_to_security_class(vp->v_type);
 #endif
 
-	return (avc_has_perm_ref_audit(task->sid, file->sid, file->sclass,
-	    perm, aeref ? aeref : &file->avcr, &ad));
+	return (avc_has_perm(task->sid, file->sid, file->sclass, perm, &ad));
 }
 
 #ifdef HAS_PIPES
 static int
-pipe_has_perm(struct ucred *cred, struct pipe *pipe, u32 perm)
+pipe_has_perm(struct ucred *cred, struct pipe *pipe, u_int32_t perm)
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
@@ -350,8 +347,7 @@ pipe_has_perm(struct ucred *cred, struct pipe *pipe, u32 perm)
 	 * TBD: No audit information yet
 	 */
 
-	return (avc_has_perm_ref(task->sid, file->sid, file->sclass,
-	    perm, &file->avcr));
+	return (avc_has_perm(task->sid, file->sid, file->sclass, perm, NULL));
 }
 #endif
 
@@ -552,7 +548,7 @@ sebsd_associate_vnode_extattr(struct mount *mp, struct label *fslabel,
 			context, va.va_fileid, va.va_fsid);
 	}
 #endif
-	
+
 	if (p == NULL || vp == NULL || vp->v_op == NULL ||
 	    vp->v_tag != VT_HFS || vp->v_data == NULL)
 		goto dosclass;
@@ -747,7 +743,7 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 {
 	char *path;
 	int rc;
-	u32 newsid;
+	u_int32_t newsid;
 	struct vnode_security_struct *dirent;
 
 	dirent = SLOT(label);
@@ -798,7 +794,7 @@ sebsd_create_devfs_directory(struct mount *mp, char *dirname,
 {
 	char *path;
 	int rc;
-	u32 newsid;
+	u_int32_t newsid;
 	struct mount_security_struct *sbsec;
 	struct vnode_security_struct *dirent;
 
@@ -836,7 +832,7 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 {
 	char *path;
 	int rc;
-	u32 newsid;
+	u_int32_t newsid;
 	struct vnode_security_struct *lnksec;
 	struct vnode_security_struct *dirsec;
 	struct mount_security_struct *sbsec;
@@ -1015,7 +1011,7 @@ sebsd_create_vnode_extattr(struct ucred *cred, struct mount *mp,
 	struct task_security_struct *task;
 	char *context;
 	u_int32_t context_len;
-	u32 newsid;
+	u_int32_t newsid;
 	int error;
 	int tclass;
 
@@ -1038,8 +1034,8 @@ sebsd_create_vnode_extattr(struct ucred *cred, struct mount *mp,
 		return (error);
 
 	error = vn_extattr_set(child, IO_NODELOCKED,
-	   SEBSD_MAC_EXTATTR_NAMESPACE, SEBSD_MAC_EXTATTR_NAME,
-	   context_len, context, current_proc());
+	    SEBSD_MAC_EXTATTR_NAMESPACE, SEBSD_MAC_EXTATTR_NAME,
+	    context_len, context, current_proc());
 
 	security_free_context(context);
 	return (error);
@@ -1065,13 +1061,13 @@ sebsd_check_cred_relabel(struct ucred *cred, struct label *newlabel)
 
 	if (nsec == NULL)
 		return (0);
-	
-	rc = avc_has_perm_ref_audit(tsec->sid, tsec->sid, SECCLASS_PROCESS,
-	    FILE__RELABELFROM, NULL, NULL);
+
+	rc = avc_has_perm(tsec->sid, tsec->sid, SECCLASS_PROCESS,
+	    FILE__RELABELFROM, NULL);
 	if (rc)
 		return (rc);
 
-	rc = avc_has_perm_audit(tsec->sid, nsec->sid, SECCLASS_PROCESS,
+	rc = avc_has_perm(tsec->sid, nsec->sid, SECCLASS_PROCESS,
 	    FILE__RELABELTO, NULL);
 	if (rc)
 		return (rc);
@@ -1090,12 +1086,12 @@ sebsd_check_port_relabel(struct label *task, struct label *oldlabel,
 	olds = SLOT(oldlabel);
 	tsec = SLOT(task);
 
-	rc = avc_has_perm_ref_audit(tsec->sid, olds->sid, SECCLASS_MACH_PORT,
-	    MACH_PORT__RELABELFROM, NULL, NULL);
+	rc = avc_has_perm(tsec->sid, olds->sid, SECCLASS_MACH_PORT,
+	    MACH_PORT__RELABELFROM, NULL);
 	if (rc)
 		return (rc);
 
-	rc = avc_has_perm_audit(tsec->sid, news->sid, SECCLASS_MACH_PORT,
+	rc = avc_has_perm(tsec->sid, news->sid, SECCLASS_MACH_PORT,
 	    MACH_PORT__RELABELTO, NULL);
 	if (rc)
 		return (rc);
@@ -1109,8 +1105,8 @@ static int sebsd_check_##func(struct label *task, struct label *port)	\
 	struct task_security_struct *tsec, *psec;			\
 	psec = SLOT(port);						\
 	tsec = SLOT(task);						\
-	return (avc_has_perm_ref_audit (tsec->sid, psec->sid,		\
-	    SECCLASS_ ## class,	class ## __ ## perm, NULL, NULL));	\
+	return (avc_has_perm(tsec->sid, psec->sid,		\
+	    SECCLASS_ ## class,	class ## __ ## perm, NULL));	\
 }
 
 CHECK_SIMPLE_PERM(msg_send, MACH_PORT, SEND);
@@ -1148,8 +1144,8 @@ sebsd_check_service_access(struct label *subj, struct label *obj,
 	if (p == NULL)
 		return (EINVAL);
 
-	return (avc_has_perm_ref_audit(tsec->sid, psec->sid, cld->value,
-	    1 << (p->value-1), NULL, NULL));
+	return (avc_has_perm(tsec->sid, psec->sid, cld->value,
+	    1 << (p->value-1), NULL));
 }
 
 static int
@@ -1189,7 +1185,7 @@ sebsd_check_mount(struct ucred *cred, struct vnode *vp, struct label *vl,
     const char *vfc_name, struct label *mntlabel)
 {
 	int rc;
-	u32 sid;
+	u_int32_t sid;
 	int behavior;
 	struct vnode_security_struct *vsec;
 	struct task_security_struct  *task;
@@ -1198,7 +1194,7 @@ sebsd_check_mount(struct ucred *cred, struct vnode *vp, struct label *vl,
 	vsec = SLOT(vl);
 	task = SLOT(cred->cr_label);
 
-	rc = vnode_has_perm(cred, vp, FILE__MOUNTON, NULL);
+	rc = vnode_has_perm(cred, vp, FILE__MOUNTON);
 	if (rc)
 		return (rc);
 
@@ -1206,8 +1202,8 @@ sebsd_check_mount(struct ucred *cred, struct vnode *vp, struct label *vl,
 		sbsec = SLOT(mntlabel);
 		sid = sbsec->sid;
 
-		rc = avc_has_perm_ref_audit(task->sid, sid, SECCLASS_FILE,
-		    COMMON_FILE__RELABELTO, NULL, NULL);
+		rc = avc_has_perm(task->sid, sid, SECCLASS_FILE,
+		    COMMON_FILE__RELABELTO, NULL);
 		if (rc)
 			return (rc);
 	} else {
@@ -1216,8 +1212,8 @@ sebsd_check_mount(struct ucred *cred, struct vnode *vp, struct label *vl,
 			return (rc);
 	}
 
-	rc = avc_has_perm_ref_audit(task->sid, sid, SECCLASS_FILESYSTEM,
-	    FILESYSTEM__MOUNT, NULL, NULL);
+	rc = avc_has_perm(task->sid, sid, SECCLASS_FILESYSTEM,
+	    FILESYSTEM__MOUNT, NULL);
 
 	return (rc);
 }
@@ -1291,21 +1287,21 @@ sebsd_check_pipe_relabel(struct ucred *cred, struct pipe *pipe,
 	file = SLOT(pipelabel);
 	newfile = SLOT(newlabel);
 
-	rc = avc_has_perm_ref(task->sid, file->sid, file->sclass,
-	    FIFO_FILE__RELABELFROM, &file->avcr);
+	rc = avc_has_perm(task->sid, file->sid, file->sclass,
+	    FIFO_FILE__RELABELFROM, NULL);
 	if (rc)
 		return (rc);
 
 	rc = avc_has_perm(task->sid, newfile->sid, file->sclass,
-	    FIFO_FILE__RELABELTO, NULL, NULL);
+	    FIFO_FILE__RELABELTO, NULL);
 
 #if 0
-	 /* TBD: SELinux also checks filesystem associate permission: */
-	        return (avc_has_perm_audit(newsid,
-	                                  sbsec->sid,
-	                                  SECCLASS_FILESYSTEM,
-	                                  FILESYSTEM__ASSOCIATE,
-	                                  &ad));
+	/* TBD: SELinux also checks filesystem associate permission: */
+	        return (avc_has_perm(newsid,
+	                             sbsec->sid,
+	                             SECCLASS_FILESYSTEM,
+	                             FILESYSTEM__ASSOCIATE,
+	                             &ad));
 #endif
 	return (rc);
 }
@@ -1403,7 +1399,7 @@ sebsd_check_proc_setlcid(struct proc *p0, struct proc *p, pid_t pid, pid_t lcid)
 static int
 sebsd_check_proc_signal(struct ucred *cred, struct proc *proc, int signum)
 {
-	u32 perm;
+	u_int32_t perm;
 
 	switch (signum) {
 	case SIGCHLD:
@@ -1467,7 +1463,7 @@ sebsd_execve_will_transition(struct ucred *old, struct vnode *vp,
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
-	u32 newsid;
+	u_int32_t newsid;
 
 	task = SLOT(old->cr_label);
 	if (interpvnodelabel != NULL)
@@ -1491,7 +1487,7 @@ sebsd_execve_will_transition(struct ucred *old, struct vnode *vp,
 
 #ifdef HAS_STRINGS
 static int
-sebsd_internalize_sid(u32 *sidp, char *element_name,
+sebsd_internalize_sid(u_int32_t *sidp, char *element_name,
     char *element_data)
 {
 	char context[128];  /* TBD: contexts aren't fixed size */
@@ -1624,7 +1620,7 @@ sebsd_check_vnode_access(struct ucred *cred, struct vnode *vp,
 		return (0);
 
 	return (vnode_has_perm(cred, vp,
-	    file_mask_to_av(vp->v_type, acc_mode), NULL));
+	    file_mask_to_av(vp->v_type, acc_mode)));
 }
 
 static int
@@ -1633,7 +1629,7 @@ sebsd_check_vnode_chdir(struct ucred *cred, struct vnode *dvp,
 {
 
 	/* MAY_EXEC ~= DIR__SEARCH */
-	return (vnode_has_perm(cred, dvp, DIR__SEARCH, NULL));
+	return (vnode_has_perm(cred, dvp, DIR__SEARCH));
 }
 
 static int
@@ -1643,7 +1639,7 @@ sebsd_check_vnode_chroot(struct ucred *cred, struct vnode *dvp,
 
 	/* TBD: Incomplete, SELinux also check capability(CAP_SYS_CHROOT)) */
 	/* MAY_EXEC ~= DIR__SEARCH */
-	return (vnode_has_perm(cred, dvp, DIR__SEARCH, NULL));
+	return (vnode_has_perm(cred, dvp, DIR__SEARCH));
 }
 
 static int
@@ -1653,8 +1649,8 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *dir;
 	struct mount_security_struct *sbsec;
-	u16 tclass;
-	u32 newsid;
+	u_int16_t tclass;
+	u_int32_t newsid;
 	struct avc_audit_data ad;
 	int rc;
 
@@ -1666,8 +1662,8 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 	AVC_AUDIT_DATA_INIT(&ad, FS);
 	ad.u.fs.vp = dvp;
 
-	rc = avc_has_perm_ref_audit(task->sid, dir->sid, SECCLASS_DIR,
-	    DIR__ADD_NAME | DIR__SEARCH, &dir->avcr, &ad);
+	rc = avc_has_perm(task->sid, dir->sid, SECCLASS_DIR,
+	    DIR__ADD_NAME | DIR__SEARCH, &ad);
 	if (rc)
 		return (rc);
 
@@ -1675,7 +1671,7 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 	if (rc)
 		return (rc);
 
-	rc = avc_has_perm_audit(task->sid, newsid, tclass, FILE__CREATE, &ad);
+	rc = avc_has_perm(task->sid, newsid, tclass, FILE__CREATE, &ad);
 	if (rc)
 		return (rc);
 
@@ -1692,7 +1688,7 @@ sebsd_check_vnode_create(struct ucred *cred, struct vnode *dvp,
 			return (0);
 		}
 #endif
-		rc = avc_has_perm_audit(newsid, sbsec->sid,
+		rc = avc_has_perm(newsid, sbsec->sid,
 		    SECCLASS_FILESYSTEM, FILESYSTEM__ASSOCIATE, &ad);
 		if (rc)
 			return (rc);
@@ -1709,7 +1705,7 @@ sebsd_check_vnode_delete(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *dir, *file;
 	struct avc_audit_data ad;
-	u32 av;
+	u_int32_t av;
 	int rc;
 
 	task = SLOT(cred->cr_label);
@@ -1719,8 +1715,8 @@ sebsd_check_vnode_delete(struct ucred *cred, struct vnode *dvp,
 	AVC_AUDIT_DATA_INIT(&ad, FS);
 	ad.u.fs.vp = vp;
 
-	rc = avc_has_perm_ref_audit(task->sid, dir->sid, SECCLASS_DIR,
-	    DIR__SEARCH | DIR__REMOVE_NAME, &dir->avcr, &ad);
+	rc = avc_has_perm(task->sid, dir->sid, SECCLASS_DIR,
+	    DIR__SEARCH | DIR__REMOVE_NAME, &ad);
 	if (rc)
 		return (rc);
 
@@ -1729,8 +1725,7 @@ sebsd_check_vnode_delete(struct ucred *cred, struct vnode *dvp,
 	else
 		av = FILE__UNLINK;
 
-	rc = avc_has_perm_ref_audit(task->sid, file->sid, file->sclass,
-	    av, &file->avcr, &ad);
+	rc = avc_has_perm(task->sid, file->sid, file->sclass, av, &ad);
 
 	return (rc);
 }
@@ -1741,7 +1736,7 @@ sebsd_check_vnode_deleteacl(struct ucred *cred, struct vnode *vp,
     struct label *label, acl_type_t type)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 #endif
 
@@ -1751,10 +1746,10 @@ sebsd_check_vnode_exchangedata(struct ucred *cred,
 {
 	int error;
 
-	error = vnode_has_perm(cred, v1, FILE__READ | FILE__WRITE, NULL);
+	error = vnode_has_perm(cred, v1, FILE__READ | FILE__WRITE);
 	if (error)
 		return (error);
-	return (vnode_has_perm(cred, v2, FILE__READ | FILE__WRITE, NULL));
+	return (vnode_has_perm(cred, v2, FILE__READ | FILE__WRITE));
 }
 
 static int
@@ -1763,7 +1758,7 @@ sebsd_check_vnode_exec(struct ucred *cred, struct vnode *vp,
 {
 	struct task_security_struct *task;
 	struct vnode_security_struct *file;
-	u32 newsid;
+	u_int32_t newsid;
 	struct avc_audit_data ad;
 	int rc;
 
@@ -1782,17 +1777,17 @@ sebsd_check_vnode_exec(struct ucred *cred, struct vnode *vp,
 	ad.u.fs.vp = vp;
 
 	if (newsid == task->sid) {
-		rc = avc_has_perm_audit(task->sid, file->sid, SECCLASS_FILE,
+		rc = avc_has_perm(task->sid, file->sid, SECCLASS_FILE,
 		    FILE__EXECUTE_NO_TRANS, &ad);
 		if (rc)
 			return (EACCES);
 	} else {
 		/* Check permissions for the transition. */
-		rc = avc_has_perm_audit(task->sid, newsid, SECCLASS_PROCESS,
+		rc = avc_has_perm(task->sid, newsid, SECCLASS_PROCESS,
 		    PROCESS__TRANSITION, &ad);
 		if (rc)
 			return (EACCES);
-		rc = avc_has_perm_audit(newsid, file->sid, SECCLASS_FILE,
+		rc = avc_has_perm(newsid, file->sid, SECCLASS_FILE,
 		    FILE__ENTRYPOINT, &ad);
 		if (rc)
 			return (EACCES);
@@ -1819,7 +1814,7 @@ sebsd_check_vnode_getacl(struct ucred *cred, struct vnode *vp,
     struct label *label, acl_type_t type)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__GETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__GETATTR));
 }
 #endif
 
@@ -1828,7 +1823,7 @@ sebsd_check_vnode_getattrlist(struct ucred *cred, struct vnode *vp,
     struct label *vlabel, struct attrlist *alist, struct uio *attrblk)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__GETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__GETATTR));
 }
 
 #ifdef HAS_EXTATTRS
@@ -1837,7 +1832,7 @@ sebsd_check_vnode_getextattr(struct ucred *cred, struct vnode *vp,
     struct label *label, int attrnamespace, const char *name, struct uio *uio)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__GETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__GETATTR));
 }
 #endif
 
@@ -1858,13 +1853,13 @@ sebsd_check_vnode_link(struct ucred *cred, struct vnode *dvp,
 	AVC_AUDIT_DATA_INIT(&ad, FS);
 	ad.u.fs.vp = vp;
 
-	rc = avc_has_perm_ref_audit(task->sid, dir->sid, SECCLASS_DIR,
-	    DIR__SEARCH | DIR__ADD_NAME, &dir->avcr, &ad);
+	rc = avc_has_perm(task->sid, dir->sid, SECCLASS_DIR,
+	    DIR__SEARCH | DIR__ADD_NAME, &ad);
 	if (rc)
 		return (rc);
 
-	rc = avc_has_perm_ref_audit(task->sid, file->sid, file->sclass,
-	    FILE__LINK, &file->avcr, &ad);
+	rc = avc_has_perm(task->sid, file->sid, file->sclass,
+	    FILE__LINK, &ad);
 
 	return (0);
 }
@@ -1877,7 +1872,7 @@ sebsd_check_vnode_lookup(struct ucred *cred, struct vnode *dvp,
 		return (ENOTDIR);
 
 	/* TBD: DIR__READ as well? */
-	return (vnode_has_perm(cred, dvp, DIR__SEARCH, NULL));
+	return (vnode_has_perm(cred, dvp, DIR__SEARCH));
 }
 
 static int
@@ -1896,8 +1891,8 @@ sebsd_check_vnode_open(struct ucred *cred, struct vnode *vp,
 	if (!acc_mode)
 		return (0);
 
-	return (vnode_has_perm(cred, vp, file_mask_to_av(vp->v_type, acc_mode),
-	    NULL));
+	return (vnode_has_perm(cred, vp,
+	    file_mask_to_av(vp->v_type, acc_mode)));
 }
 
 static int
@@ -1905,7 +1900,7 @@ sebsd_check_vnode_poll(struct ucred *cred, struct ucred *file_cred,
     struct vnode *vp, struct label *label)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__POLL, NULL));
+	return (vnode_has_perm(cred, vp, FILE__POLL));
 }
 
 static int
@@ -1913,7 +1908,7 @@ sebsd_check_vnode_read(struct ucred *cred, struct ucred *file_cred,
     struct vnode *vp, struct label *label)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__READ, NULL));
+	return (vnode_has_perm(cred, vp, FILE__READ));
 }
 
 static int
@@ -1921,7 +1916,7 @@ sebsd_check_vnode_readdir(struct ucred *cred, struct vnode *dvp,
     struct label *dlabel)
 {
 
-	return (vnode_has_perm(cred, dvp, DIR__READ, NULL));
+	return (vnode_has_perm(cred, dvp, DIR__READ));
 }
 
 static int
@@ -1929,7 +1924,7 @@ sebsd_check_vnode_readlink(struct ucred *cred, struct vnode *vp,
     struct label *label)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__READ, NULL));
+	return (vnode_has_perm(cred, vp, FILE__READ));
 }
 
 static int
@@ -1954,12 +1949,12 @@ sebsd_check_vnode_relabel(struct ucred *cred, struct vnode *vp,
 		       old->sid, vp->v_type);
 		return (0);	/* TBD: debugging */
 	}
-	rc = avc_has_perm_ref_audit(task->sid, old->sid, old->sclass,
-	    FILE__RELABELFROM, &old->avcr, &ad);
+	rc = avc_has_perm(task->sid, old->sid, old->sclass,
+	    FILE__RELABELFROM, &ad);
 	if (rc)
 		return (rc);
 
-	rc = avc_has_perm_audit(task->sid, new->sid, old->sclass,
+	rc = avc_has_perm(task->sid, new->sid, old->sclass,
 	    FILE__RELABELTO, &ad);
 	if (rc)
 		return (rc);
@@ -1970,7 +1965,7 @@ sebsd_check_vnode_relabel(struct ucred *cred, struct vnode *vp,
 		 * mntlabel.
 		 */
 		sbsec = SLOT(vp->v_mount->mnt_mntlabel);
-		rc = avc_has_perm_audit(new->sid, sbsec->sid,
+		rc = avc_has_perm(new->sid, sbsec->sid,
 		    SECCLASS_FILESYSTEM, FILESYSTEM__ASSOCIATE, &ad);
 		if (rc)
 			return (rc);
@@ -1995,18 +1990,18 @@ sebsd_check_vnode_rename_from(struct ucred *cred, struct vnode *dvp,
 
 	AVC_AUDIT_DATA_INIT(&ad, FS);
 
-	rc = avc_has_perm_ref_audit(task->sid, old_dir->sid, SECCLASS_DIR,
-	    DIR__REMOVE_NAME | DIR__SEARCH, &old_dir->avcr, &ad);
+	rc = avc_has_perm(task->sid, old_dir->sid, SECCLASS_DIR,
+	    DIR__REMOVE_NAME | DIR__SEARCH, &ad);
 	if (rc)
 		return (rc);
 	if (old_file->sclass == 0) {
 		printf("vnode_rename_from:: ERROR, sid=%d, sclass=0, "
-		   "v_type=%d\n", old_file->sid, vp->v_type);
+		    "v_type=%d\n", old_file->sid, vp->v_type);
 		return (0);	/* TBD: debugging */
 	}
 
-	rc = avc_has_perm_ref_audit(task->sid, old_file->sid,
-	    old_file->sclass, FILE__RENAME, &old_file->avcr, &ad);
+	rc = avc_has_perm(task->sid, old_file->sid,
+	    old_file->sclass, FILE__RENAME, &ad);
 	if (rc)
 		return (rc);
 
@@ -2021,7 +2016,7 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 	struct task_security_struct *task;
 	struct vnode_security_struct *new_dir, *new_file;
 	struct avc_audit_data ad;
-	u32 av;
+	u_int32_t av;
 	int rc;
 
 	task = SLOT(cred->cr_label);
@@ -2033,8 +2028,8 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 	 * test. TBD - find a way!
 	 */
 	if (vp->v_type == VDIR && !samedir) {
-		rc = avc_has_perm_ref(task->sid, old_file->sid,
-		    old_file->sclass, DIR__REPARENT, &old_file->avcr);
+		rc = avc_has_perm(task->sid, old_file->sid,
+		    old_file->sclass, DIR__REPARENT, NULL);
 		if (rc)
 			return (rc);
 	}
@@ -2047,8 +2042,7 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 	AVC_AUDIT_DATA_INIT(&ad, FS);
 	ad.u.fs.vp = vp;
 
-	rc = avc_has_perm_ref(task->sid, new_dir->sid, SECCLASS_DIR,
-	    av, &new_dir->avcr);
+	rc = avc_has_perm(task->sid, new_dir->sid, SECCLASS_DIR, av, NULL);
 	if (rc)
 		return (rc);
 
@@ -2060,11 +2054,11 @@ sebsd_check_vnode_rename_to(struct ucred *cred, struct vnode *dvp,
 			return (0);	/* TBD: debugging */
 		}
 		if (vp->v_type == VDIR)
-			rc = avc_has_perm_ref(task->sid, new_file->sid,
-			    new_file->sclass, DIR__RMDIR, &new_file->avcr);
+			rc = avc_has_perm(task->sid, new_file->sid,
+			    new_file->sclass, DIR__RMDIR, NULL);
 		else
-			rc = avc_has_perm_ref(task->sid, new_file->sid,
-			    new_file->sclass, FILE__UNLINK, &new_file->avcr);
+			rc = avc_has_perm(task->sid, new_file->sid,
+			    new_file->sclass, FILE__UNLINK, NULL);
 		if (rc)
 			return (rc);
 	}
@@ -2087,7 +2081,7 @@ sebsd_check_vnode_setacl(struct ucred *cred, struct vnode *vp,
     struct label *label, acl_type_t type, struct acl *acl)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 #endif
 
@@ -2096,7 +2090,7 @@ sebsd_check_vnode_setattrlist(struct ucred *cred, struct vnode *vp,
     struct label *vlabel, struct attrlist *alist, struct uio *attrblk)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 
 #ifdef HAS_EXTATTRS
@@ -2105,7 +2099,7 @@ sebsd_check_vnode_setextattr(struct ucred *cred, struct vnode *vp,
     struct label *label, int attrnamespace, const char *name, struct uio *uio)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 #endif
 
@@ -2114,7 +2108,7 @@ sebsd_check_vnode_setflags(struct ucred *cred, struct vnode *vp,
     struct label *label, u_long flags)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 
 static int
@@ -2122,7 +2116,7 @@ sebsd_check_vnode_setmode(struct ucred *cred, struct vnode *vp,
     struct label *label, mode_t mode)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 
 static int
@@ -2130,7 +2124,7 @@ sebsd_check_vnode_setowner(struct ucred *cred, struct vnode *vp,
     struct label *label, uid_t uid, gid_t gid)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 
 static int
@@ -2138,7 +2132,7 @@ sebsd_check_vnode_setutimes(struct ucred *cred, struct vnode *vp,
     struct label *label, struct timespec atime, struct timespec mtime)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SETATTR));
 }
 
 static int
@@ -2146,7 +2140,7 @@ sebsd_check_vnode_stat(struct ucred *cred, struct ucred *file_cred,
     struct vnode *vp, struct label *vnodelabel)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__GETATTR, NULL));
+	return (vnode_has_perm(cred, vp, FILE__GETATTR));
 }
 
 /*
@@ -2164,7 +2158,7 @@ sebsd_check_system_swapon(struct ucred *cred, struct vnode *vp,
     struct label *vnodelabel)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SWAPON, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SWAPON));
 }
 
 static int
@@ -2172,7 +2166,7 @@ sebsd_check_system_swapoff(struct ucred *cred, struct vnode *vp,
     struct label *vnodelabel)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__SWAPON, NULL));
+	return (vnode_has_perm(cred, vp, FILE__SWAPON));
 }
 
 /*
@@ -2192,14 +2186,14 @@ sebsd_check_vnode_write(struct ucred *cred, struct ucred *file_cred,
     struct vnode *vp, struct label *label)
 {
 
-	return (vnode_has_perm(cred, vp, FILE__WRITE, NULL));
+	return (vnode_has_perm(cred, vp, FILE__WRITE));
 }
 
 static int
 sebsd_check_vnode_mmap(struct ucred *cred, struct vnode *vp,
     struct label *label, int prot, int flags, int *maxprot)
 {
-	u32 av;
+	u_int32_t av;
 
 	/*
 	 * TBD: Incomplete?
@@ -2214,7 +2208,7 @@ sebsd_check_vnode_mmap(struct ucred *cred, struct vnode *vp,
 		if (prot & PROT_EXEC)
 			av |= FILE__EXECUTE;
 
-		return (vnode_has_perm(cred, vp, av, NULL));
+		return (vnode_has_perm(cred, vp, av));
 	}
 	return (0);
 }
@@ -2223,7 +2217,7 @@ static int
 sebsd_check_vnode_mprotect(struct ucred *cred, struct vnode *vp,
     struct label *label, int prot)
 {
-	u32 av;
+	u_int32_t av;
 
 	/*
 	 * TBD: Incomplete?
@@ -2237,14 +2231,14 @@ sebsd_check_vnode_mprotect(struct ucred *cred, struct vnode *vp,
 		if (prot & PROT_EXEC)
 			av |= FILE__EXECUTE;
 
-		return (vnode_has_perm(cred, vp, av, NULL));
+		return (vnode_has_perm(cred, vp, av));
 	}
 	return (0);
 }
 
 #ifdef HAS_STRINGS
 static int
-sebsd_externalize_sid(u32 sid, char *element_name, struct sbuf *sb)
+sebsd_externalize_sid(u_int32_t sid, char *element_name, struct sbuf *sb)
 {
 	char *context;
 	u_int32_t context_len;
@@ -2341,7 +2335,7 @@ sebsd_check_file_create(struct ucred *cred)
 	struct task_security_struct *tsec;
 
 	tsec = SLOT(cred->cr_label);
-	return (avc_has_perm_audit(tsec->sid, tsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, tsec->sid, SECCLASS_FD,
 	    FD__CREATE, NULL));
 }
 
@@ -2356,14 +2350,14 @@ sebsd_check_file_ioctl(struct ucred *cred, struct file *fp,
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
 
-	error = avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	error = avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL);
 	if (error)
 		return (error);
 	if (fp->f_type != DTYPE_VNODE)
 		return (0);
 
-	return (vnode_has_perm(cred, fp->f_vnode, FILE__IOCTL, NULL));
+	return (vnode_has_perm(cred, fp->f_vnode, FILE__IOCTL));
 }
 #endif
 
@@ -2381,7 +2375,7 @@ sebsd_check_file_get_flags(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
@@ -2394,7 +2388,7 @@ sebsd_check_file_get_ofileflags(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
@@ -2407,7 +2401,7 @@ sebsd_check_file_change_flags(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
@@ -2420,7 +2414,7 @@ sebsd_check_file_change_ofileflags(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
@@ -2433,7 +2427,7 @@ sebsd_check_file_get_offset(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
@@ -2446,12 +2440,12 @@ sebsd_check_file_change_offset(struct ucred *cred, struct file *fp,
 
 	tsec = SLOT(cred->cr_label);
 	fsec = SLOT(fplabel);
-	return (avc_has_perm_audit(tsec->sid, fsec->sid, SECCLASS_FD,
+	return (avc_has_perm(tsec->sid, fsec->sid, SECCLASS_FD,
 	    FD__USE, NULL));
 }
 
 static int
-ipc_has_perm(struct ucred *cred, struct label *label, u32 perm)
+ipc_has_perm(struct ucred *cred, struct label *label, u_int32_t perm)
 {
 	struct task_security_struct *task;
 	struct ipc_security_struct *ipcsec;
@@ -2463,15 +2457,15 @@ ipc_has_perm(struct ucred *cred, struct label *label, u32 perm)
 	 * TBD: No audit information yet
 	 */
 
-	return (avc_has_perm_ref(task->sid, ipcsec->sid, ipcsec->sclass,
-	    perm, &ipcsec->avcr));
+	return (avc_has_perm(task->sid, ipcsec->sid, ipcsec->sclass,
+	    perm, NULL));
 }
 
 static int
 sebsd_check_sysv_semctl(struct ucred *cred, struct semid_kernel *semakptr,
     struct label *semaklabel, int cmd)
 {
-	u32 perm;
+	u_int32_t perm;
 
 	switch(cmd) {
 	case GETPID:
@@ -2518,14 +2512,14 @@ static int
 sebsd_check_sysv_semop(struct ucred *cred, struct semid_kernel *semakptr,
     struct label *semaklabel, size_t accesstype)
 {
-	u32 perm;
+	u_int32_t perm;
 	perm = 0UL;
 
 	if (accesstype & SEM_R)
 		perm = SEM__READ;
 	if (accesstype & SEM_A)
 		perm = SEM__READ | SEM__WRITE;
-	
+
 	return (ipc_has_perm(cred, semaklabel, perm));
 }
 
@@ -2533,7 +2527,7 @@ static int
 sebsd_check_sysv_shmat(struct ucred *cred, struct shmid_kernel *shmsegptr,
     struct label *shmseglabel, int shmflg)
 {
-	u32 perm;
+	u_int32_t perm;
 
 	if (shmflg & SHM_RDONLY)
 		perm = SHM__READ;
@@ -2547,7 +2541,7 @@ static int
 sebsd_check_sysv_shmctl(struct ucred *cred, struct shmid_kernel *shmsegptr,
     struct label *shmseglabel, int cmd)
 {
-	u32 perm;
+	u_int32_t perm;
 
 	switch(cmd) {
 	case IPC_RMID:
