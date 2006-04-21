@@ -1,20 +1,19 @@
-all:
-	cd sedarwin && gnumake
-	cd libsepol/src && gnumake
-	cd libselinux && gnumake
-	cd programs && gnumake
-	cd policy && gnumake
+SUBDIR= sedarwin \
+	libsecompat \
+	libsepol \
+	libselinux \
+	libsemanage \
+	programs \
+	policy
 
-clean:
-	cd sedarwin && gnumake clean
-	cd libsepol/src && gnumake clean
-	cd libselinux && gnumake clean
-	cd programs && gnumake clean
-	cd policy && gnumake clean
+.PHONY: $(SUBDIR) all install clean
 
-install:
-	cd sedarwin && gnumake install
-	cd libsepol/src && gnumake install
-	cd libselinux && gnumake install
-	cd programs && gnumake install
-	cd policy && gnumake install
+all: $(SUBDIR)
+
+$(SUBDIR):
+	$(MAKE) -w -C $@ 
+
+install clean:
+	for dir in $(SUBDIR); do \
+		$(MAKE) -w -C $$dir $@; \
+	done

@@ -310,63 +310,6 @@ allow $3 $2:file entrypoint;
 
 #################################
 #
-# domain_exec_trans(parent_domain, child_domain)
-#
-# Permissions for transitioning to a new domain.
-#
-
-define(`domain_exec_trans',`
-
-#
-# Allow the process to transition to the new domain.
-#
-allow $1 $2:process transition;
-
-#
-# Do not audit when glibc secure mode is enabled upon the transition.
-#
-dontaudit $1 $2:process noatsecure;
-
-#
-# Allow the process to execute the program.
-# 
-allow $1 *:file { read x_file_perms };
-
-#
-# Allow the process to reap the new domain.
-#
-allow $2 $1:process sigchld;
-
-#
-# Allow the new domain to inherit and use file 
-# descriptions from the creating process and vice versa.
-#
-allow $2 $1:fd use;
-allow $1 $2:fd use;
-
-#
-# Allow the new domain to write back to the old domain via a pipe.
-#
-allow $2 $1:fifo_file rw_file_perms;
-
-#
-# Allow the new domain to read and execute the program.
-#
-allow $2 *:file rx_file_perms;
-
-#
-# Allow the new domain to be entered via the program.
-#
-allow $2 *:file entrypoint;
-
-#
-# Make the transition
-#
-type_transition $1 *:process $2;
-')
-
-#################################
-#
 # domain_auto_trans(parent_domain, program_type, child_domain)
 #
 # Define a default domain transition and allow it.

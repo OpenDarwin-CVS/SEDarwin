@@ -49,6 +49,7 @@
 #import <sys/time.h>
 #import <sys/resource.h>
 #import <sys/wait.h>
+#import <sys/mac.h>
 #import <pthread.h>
 #import	<string.h>
 #import	<ctype.h>
@@ -825,8 +826,9 @@ start_server(server_t *serverp)
 static void
 exec_server(server_t *serverp)
 {
-	char **argv;
+	char **argv, *cp, textlabel[512];
 	sigset_t mask;
+	mac_t label;
 
 	/*
 	 * Setup environment for server, someday this should be Mach stuff
@@ -881,12 +883,19 @@ exec_server(server_t *serverp)
 	sigemptyset(&mask);
 	(void) sigprocmask(SIG_SETMASK, &mask, (sigset_t *)NULL);
 
+	if (mach_get_task_label_text(mach_task_self(), "sebsd", textlabel) == 0
+	    && (cp = rindex(textlabel, ':')) != NULL) {
+		*(cp + 1) = '\0';
+		strlcat(textlabel, "mach_servers_d");
+		if (mac_from_text(&label, textlabel) == 0)
+			mac_set_proc(label);
+	}
 	execv(argv[0], argv);
 	unix_fatal("Disabled server %x bootstrap %x: \"%s\": exec()",
 			   serverp->port,
 			   serverp->bootstrap->bootstrap_port,
 			   serverp->cmd);
-}	
+}
 
 static char **
 argvize(const char *string)

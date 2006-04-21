@@ -131,14 +131,13 @@ allow xfile fs:filesystem associate;
 #allow init_d { bin_t shell_exec_t file_t }:dir_file_class_set rw_file_perms;
 #allow init_d bin_t:file execute_no_trans;
 
-# Things executed by mach_init transition to mach_servers_d
-# XXX - awful hack
-domain_exec_trans(mach_init_d,mach_servers_d);
-
 # Transition from init_d -> mach_init_d when mach_init starts
 # and then back to init_d when BSD init is exec'd
 domain_auto_trans(init_d,mach_init_exec_t,mach_init_d);
 domain_auto_trans(mach_init_d,init_exec_t,init_d);
+
+# mach_init_d does its own transition to mach_servers_d
+allow mach_init_d mach_servers_d:process transition;
 
 # User transitions for login and sshd
 domain_auto_trans(init_d,login_exec_t,login_d);
@@ -194,11 +193,17 @@ domain_trans(user_d,shell_exec_t,protected_d);
 allow user_d security_t:security *;
 
 # Transitions for mach servers started by mach_init
-domain_auto_trans(mach_init_d,windowserver_exec_t,windowserver_d);
-domain_auto_trans(mach_init_d,lookupd_exec_t,lookupd_d);
-domain_auto_trans(mach_init_d,notifyd_exec_t,notifyd_d);
-domain_auto_trans(mach_init_d,diskarbitrationd_exec_t,diskarbitrationd_d);
-domain_auto_trans(mach_init_d,configd_exec_t,configd_d);
+allow mach_servers_d file_t:file entrypoint;
+domain_auto_trans(mach_servers_d,windowserver_exec_t,windowserver_d);
+allow mach_servers_d windowserver_exec_t:file entrypoint;
+domain_auto_trans(mach_servers_d,lookupd_exec_t,lookupd_d);
+allow mach_servers_d lookupd_exec_t:file entrypoint;
+domain_auto_trans(mach_servers_d,notifyd_exec_t,notifyd_d);
+allow mach_servers_d notifyd_exec_t:file entrypoint;
+domain_auto_trans(mach_servers_d,diskarbitrationd_exec_t,diskarbitrationd_d);
+allow mach_servers_d diskarbitrationd_exec_t:file entrypoint;
+domain_auto_trans(mach_servers_d,configd_exec_t,configd_d);
+allow mach_servers_d configd_exec_t:file entrypoint;
 
 # Transitions for things started by BSD init
 domain_auto_trans(init_d,systemstarter_exec_t,systemstarter_d);

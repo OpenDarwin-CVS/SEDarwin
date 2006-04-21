@@ -37,7 +37,7 @@ relabel: fc
 install:
 	$(INSTALL) -o ${BINOWN} -g ${BINGRP} -m 644 ${POLICY} ${DESTDIR}
 	$(INSTALL) -o ${BINOWN} -g ${BINGRP} -m 644 sebsd_migscs ${DESTDIR}
-	$(INSTALL) -o ${BINOWN} -g ${BINGRP} -m 644 failsafe_context ${DESTDIR}/private/etc/sedarwin
+	$(INSTALL) -o ${BINOWN} -g ${BINGRP} -m 644 failsafe_context ${DESTDIR}/private/etc/sedarwin/contexts
 	$(INSTALL) -o ${BINOWN} -g ${BINGRP} -m 700 ${SCRIPTS} ${DESTDIR}/private/etc/sedarwin
 	(cd $(CURDIR)/.. && tar -X policy/excludes -cf - policy) | (cd $(DESTDIR)/private/etc/sedarwin/ && tar -xf -)
 	(cd $(FLASK)/.. && tar -cf - flask) | (cd $(DESTDIR)/private/etc/sedarwin/policy && tar -xf -)
