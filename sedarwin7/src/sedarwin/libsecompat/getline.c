@@ -37,24 +37,25 @@
  * Note that outsize is not changed unless memory is allocated.
  */
 ssize_t
-getline(char **outbuf, size_t *outsize, FILE *fp)
+getline(char **bufp, size_t *bufsizep, FILE *fp)
 {
-	char *buf;
-	size_t len;
+	char *line, *buf = *bufp;
+	size_t linelen, bufsize = *bufsizep;
 
-	buf = fgetln(fp, &len);
-	if (buf == NULL)
+	line = fgetln(fp, &linelen);
+	if (line == NULL)
 		return (-1);
 
 	/* Assumes realloc() accepts NULL for ptr (C99) */
-	if (*outbuf == NULL || *outsize < len + 1) {
-		void *tmp = realloc(*outbuf, len + 1);
-		if (tmp == NULL)
+	if (buf == NULL || bufsize < linelen + 1) {
+		bufsize = linelen + 1;
+		buf = realloc(buf, bufsize);
+		if (buf == NULL)
 			return (-1);
-		*outbuf = tmp;
-		*outsize = len + 1;
+		*bufp = buf;
+		*bufsizep = bufsize;
 	}
-	memcpy(*outbuf, buf, len);
-	(*outbuf)[len] = '\0';
-	return (len);
+	memcpy(buf, line, linelen);
+	buf[linelen] = '\0';
+	return (linelen);
 }
