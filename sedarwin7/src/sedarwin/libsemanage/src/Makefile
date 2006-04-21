@@ -1,6 +1,6 @@
 include ../../../Makeconfig
 
-CFLAGS+= -I$(EXPORT_HDRS)/bsd -idirafter $(EXPORT_HDRS)/osfmk -I../.. -I../include -I../include/selinux -I../../libsepol/include
+CFLAGS+= -I$(EXPORT_HDRS)/bsd -idirafter $(EXPORT_HDRS)/osfmk -I../.. -I../include -I../../libselinux/include -I../../libsepol/include
 
 # Installation directories.
 PREFIX ?= $(DESTDIR)/usr
