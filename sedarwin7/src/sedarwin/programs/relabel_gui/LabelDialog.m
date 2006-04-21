@@ -2,16 +2,14 @@
 #import "LabelDialog.h"
 #import <Cocoa/Cocoa.h>
 #import <sys/mac.h>
-#import <sedarwin/sebsd.h>
+//#import <selinux/sebsd.h>
+#import <selinux/selinux.h>
 
 const char *filename;
 char *initial;
 
 char **users, **roles, **types;
 size_t nusers, nroles, ntypes;
-
-extern int security_get_file_contexts(const char *fromcontext, char ***retcontexts, size_t *ncontexts);
-extern char *getseccontext(void);
 
 static void addstring (char **ar, size_t *n, char *in)
 {
@@ -55,8 +53,16 @@ int main (int argc, const char *argv[])
 
     char **filelabels;
     size_t nfilelabels;
-    if (security_get_file_contexts (getseccontext(), &filelabels, &nfilelabels))
+    char *seccon;
+    
+    if (getcon(&seccon)) {
+	fprintf(stderr, "Failed to get the current security context\n");
+        exit(1);
+    }
+    if (security_get_file_contexts (seccon, &filelabels, &nfilelabels))
+//    if (security_get_file_contexts (getseccontext(), &filelabels, &nfilelabels))
         exit (1);
+    free(seccon);
     users = (char **) malloc (sizeof (char *) * (1+nfilelabels));
     roles = (char **) malloc (sizeof (char *) * (1+nfilelabels));
     types = (char **) malloc (sizeof (char *) * (1+nfilelabels));

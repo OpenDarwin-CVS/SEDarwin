@@ -6,8 +6,8 @@
 #include <sys/types.h>
 #include <sys/mac.h> 
 #include <pwd.h> 
+#include <selinux/selinux.h>
 #include <selinux/get_context_list.h>
-#include <sedarwin/sebsd.h>
 
 @interface SEDarwin : NSObject <MACpolicyPlugin>
 {

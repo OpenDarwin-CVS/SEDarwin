@@ -32,8 +32,8 @@ __FBSDID("$FreeBSD$");
 #define _BSD_SOURCE
 #include <sys/types.h>
 #include <sys/mac.h> 
+#include <selinux/selinux.h>
 #include <selinux/get_context_list.h>
-#include <sedarwin/sebsd.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -115,7 +115,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused, int argc __unused,
 	int ncontexts, retval, which;
 
 	/* XXX - use SELINUX_DEFAULTUSER if not enabled? */
-	if (!sebsd_enabled()) {
+	if (!is_selinux_enabled()) {
 		syslog(LOG_ERR, "%s(): SEDarwin not enabled", __func__);
 		return (PAM_SUCCESS);
 	}
@@ -171,7 +171,7 @@ pam_sm_open_session(pam_handle_t *pamh __unused, int flags __unused,
 	mac_t label;
 	int retval;
 
-	if (!sebsd_enabled()) {
+	if (!is_selinux_enabled()) {
 		syslog(LOG_ERR, "%s(): SEDarwin not enabled", __func__);
 		return (PAM_SUCCESS);
 	}

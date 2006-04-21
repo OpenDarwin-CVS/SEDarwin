@@ -41,7 +41,7 @@ display_alert(NSString *message)
 		return;
 	}
 
-	if (!sebsd_enabled())
+	if (!is_selinux_enabled())
 		return;
 
 	/*
@@ -88,7 +88,7 @@ display_alert(NSString *message)
 	}
 
 	/* XXX - use SELINUX_DEFAULTUSER and fill in selector if not enabled? */
-	if (!sebsd_enabled())
+	if (!is_selinux_enabled())
 		return (MAC_LOGIN_OK);
 
 	/*

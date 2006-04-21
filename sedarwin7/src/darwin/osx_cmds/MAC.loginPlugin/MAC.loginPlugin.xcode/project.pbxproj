@@ -81,8 +81,8 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				INFOPLIST_FILE = plugins/SEDarwin/Info.plist;
-				OTHER_CFLAGS = "-I../../xnu/BUILD/obj/EXPORT_HDRS/bsd -idirafter ../../xnu/BUILD/obj/EXPORT_HDRS/osfmk -I../../../sedarwin/libselinux/include  -I../../../sedarwin";
-				OTHER_LDFLAGS = "-framework Foundation -framework AppKit -L../../libmac -lmac -L../../../sedarwin/libselinux/src -lselinux";
+				OTHER_CFLAGS = "-I../../xnu/BUILD/obj/EXPORT_HDRS/bsd -idirafter ../../xnu/BUILD/obj/EXPORT_HDRS/osfmk -I../../../sedarwin/libselinux/include";
+				OTHER_LDFLAGS = "-framework Foundation -framework AppKit -L../../../sedarwin/libselinux/src -lselinux -L../../../sedarwin/libsepol/src -lsepol -L../../../sedarwin/libsecompat -lsecompat -L../../libmac -lmac";
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = SEDarwin;
 				SECTORDER_FLAGS = "";

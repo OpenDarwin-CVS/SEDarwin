@@ -173,7 +173,7 @@
 				HEADER_SEARCH_PATHS = "";
 				INSTALL_PATH = "/Applications";
 				LIBRARY_SEARCH_PATHS = "";
-				OTHER_CFLAGS = "-I../.. -I../../../darwin/xnu/BUILD/obj/EXPORT_HDRS/bsd -idirafter ../../../darwin/xnu/BUILD/obj/EXPORT_HDRS/osfmk";
+				OTHER_CFLAGS = "-I../../libselinux/include -I../../../darwin/xnu/BUILD/obj/EXPORT_HDRS/bsd -idirafter ../../../darwin/xnu/BUILD/obj/EXPORT_HDRS/osfmk";
 				OTHER_LDFLAGS = "../../libselinux/src/libselinux.a ../../../darwin/libmac/libmac.a";
 				PRODUCT_NAME = relabel;
 				SECTORDER_FLAGS = "";
