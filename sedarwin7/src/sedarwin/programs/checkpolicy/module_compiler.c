@@ -656,40 +656,42 @@ int require_class(int pass)
 
         /* now add each of the permissions to this class's requirements */
         while ((perm_id = queue_remove(id_queue)) != NULL) {
-                if ((perm = malloc(sizeof(*perm))) == NULL) {
-                        yyerror("Out of memory!");
-                        free(perm_id);
-                        goto cleanup;
-                }
-                ret2 = hashtab_insert(datum->permissions.table, perm_id, perm);
-                switch (ret2) {
-                case HASHTAB_PRESENT: {
-                        perm = hashtab_search(datum->permissions.table, perm_id);
-                        assert(perm != NULL);  /* reuse existing permission */
-                        free(perm_id);
-                        perm_id = NULL;
-                        break;
-                }
-                case HASHTAB_SUCCESS: {
-                        perm->value = datum->permissions.nprim + 1;
-                        break;
-                }
-                default: {
-                        yyerror("Out of memory!");
-                        free(perm_id);
-                        free(perm);
-                        goto cleanup;
-                }
-                }
+		int allocated = 0;
+
+		/* Is the permission already in the table? */
+		perm = hashtab_search(datum->permissions.table, perm_id);
+		if (!perm && datum->comdatum)
+			perm = hashtab_search(datum->comdatum->permissions.table, perm_id);
+		if (perm) {
+			/* Yes, drop the name. */
+			free(perm_id);
+		} else {
+			/* No - allocate and insert an entry for it. */
+			allocated = 1;
+			if ((perm = malloc(sizeof(*perm))) == NULL) {
+				yyerror("Out of memory!");
+				free(perm_id);
+				goto cleanup;
+			}
+			memset(perm, 0, sizeof(*perm));
+			ret = hashtab_insert(datum->permissions.table, perm_id, perm);
+			if (ret) {
+				yyerror("Out of memory!");
+				free(perm_id);
+				free(perm);
+				goto cleanup;
+			}
+			perm->value = datum->permissions.nprim + 1;
+		}
+		
                 if (add_perm_to_class(perm->value, datum->value) == -1) {
                         yyerror("Out of memory!");
-                        free(perm_id);
-                        free(perm);
                         goto cleanup;
                 }
-                if (ret2 == HASHTAB_SUCCESS) {
+
+		/* Update number of primitives if we allocated one. */
+		if (allocated)
                         datum->permissions.nprim++;
-                }
         }
         return 0;
  cleanup:
@@ -702,7 +704,7 @@ int require_role(int pass)
         char *id = queue_remove(id_queue);
         role_datum_t *role = NULL;
         int retval;
-        if (pass == 2) {
+        if (pass == 1) {
                 free(id);
                 return 0;
         }
@@ -816,7 +818,7 @@ int require_user(int pass)
         char *id = queue_remove(id_queue);
         user_datum_t *user = NULL;
         int retval;
-        if (pass == 2) {
+        if (pass == 1) {
                 free(id);
                 return 0;
         }

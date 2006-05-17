@@ -26,6 +26,7 @@
 #include <sepol/policydb/flask.h>
 #include <sepol/policydb/hierarchy.h>
 #include <sepol/policydb/expand.h>
+#include <sepol/policydb/link.h>
 
 #include "queue.h"
 #include "checkpolicy.h"
@@ -269,6 +270,10 @@ int main(int argc, char **argv)
 
 		if (policydb_init(&kernpolicydb)) {
 			fprintf(stderr, "%s:  policydb_init failed\n", argv[0]);
+			exit(1);
+		}
+		if (link_modules(NULL, policydbp, NULL, 0, 0)) {
+			fprintf(stderr, "%s:  link modules failed\n", argv[0]);
 			exit(1);
 		}
 		if (expand_module(NULL, policydbp, &kernpolicydb, 0, 1)) {
