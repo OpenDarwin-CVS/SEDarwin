@@ -16,8 +16,6 @@
 #include <sepol/policydb.h>
 #include "policy.h"
 #include <limits.h>
-#include <sedarwin/linux-compat.h>
-#include <sedarwin/sebsd.h>
 #include <sedarwin/sebsd_syscalls.h>
 
 int security_load_policy(void *data, size_t len)
@@ -26,7 +24,7 @@ int security_load_policy(void *data, size_t len)
 
         la.len = len;
         la.data = data;
-        return mac_syscall(SEBSD_ID_STRING, SEBSDCALL_LOAD_POLICY, &la);
+        return mac_syscall("sebsd", SEBSDCALL_LOAD_POLICY, &la);
 }
 hidden_def(security_load_policy)
 

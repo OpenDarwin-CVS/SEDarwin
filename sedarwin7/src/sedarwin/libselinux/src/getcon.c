@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "policy.h"
-#include <sedarwin/linux-compat.h>
-#include <sedarwin/sebsd.h>
 #include <sys/mac.h>
 
 int getcon_raw(security_context_t *context)
@@ -16,7 +14,7 @@ int getcon_raw(security_context_t *context)
         int error;
 	int ret = 0;
 
-        error = mac_prepare(&label, SEBSD_ID_STRING);
+        error = mac_prepare(&label, "sebsd");
 	if (error)
 		return -1;
         error = mac_get_proc(label);

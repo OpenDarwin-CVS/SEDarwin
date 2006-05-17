@@ -7,15 +7,13 @@
 #include <string.h>
 #include "selinux_internal.h"
 #include <sys/mac.h>
-#include <sedarwin/linux-compat.h>
-#include <sedarwin/sebsd.h>
 
 int setcon_raw(security_context_t context)
 {
 	mac_t label;
 	int error;
 	
-	error = mac_prepare(&label, SEBSD_ID_STRING);
+	error = mac_prepare(&label, "sebsd");
 	if (error)
 		return -1;
 	error = mac_from_text(&label, context);

@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sedarwin/sebsd_syscalls.h>
-#include <sedarwin/sebsd.h>
 
 int
 selinux_load_migscs(const char *path)
@@ -23,5 +22,5 @@ selinux_load_migscs(const char *path)
         if (fread(la.data, la.len, 1, fp) != 1)
                 return (EIO);
 
-        return (mac_syscall(SEBSD_ID_STRING, SEBSDCALL_LOAD_MIGSCS, &la));
+        return (mac_syscall("sebsd", SEBSDCALL_LOAD_MIGSCS, &la));
 }
