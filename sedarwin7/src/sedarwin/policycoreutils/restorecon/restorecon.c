@@ -31,13 +31,13 @@
 #include <unistd.h>
 #include <limits.h>
 #include <selinux/selinux.h>
+#include <secompat.h>
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
-#define __USE_XOPEN_EXTENDED 1	/* nftw */
-#include <ftw.h>
+#include <fts.h>
 
 static int change=1;
 static int verbose=0;
@@ -46,8 +46,6 @@ static char *progname;
 static int errors=0;
 static int recurse=0;
 static int force=0;
-#define STAT_BLOCK_SIZE 1
-static int pipe_fds[2] = { -1, -1 };
 
 #define MAX_EXCLUDES 100
 static int excludeCtr=0;
@@ -118,7 +116,7 @@ void usage(const char * const name)
 	  "usage:  %s [-FnrRv] [-e excludedir ] [-o filename ] [-f filename | pathname... ]\n",  name);
   exit(1);
 }
-/* filename has trailing '/' removed by nftw or other calling code */
+/* filename has trailing '/' removed by fts or other calling code */
 int restore(const char *filename) {
   int retcontext=0;
   security_context_t scontext=NULL;
@@ -228,59 +226,47 @@ int restore(const char *filename) {
   return errors;
 }
 
-static int pre_stat(const char *file_unused __attribute__((unused)),
-		      const struct stat *sb_unused __attribute__((unused)),
-		      int flag_unused __attribute__((unused)),
-		      struct FTW *s_unused __attribute__((unused)))
+static int apply_spec(const char *file, const struct stat *sb)
 {
-  char buf[STAT_BLOCK_SIZE];
-  if(write(pipe_fds[1], buf, STAT_BLOCK_SIZE) != STAT_BLOCK_SIZE)
-  {
-    fprintf(stderr, "Error writing to stat pipe, child exiting.\n");
-    exit(1);
-  }
-  return 0;
-}
-
-static int apply_spec(const char *file,
-		      const struct stat *sb_unused __attribute__((unused)),
-		      int flag,
-		      struct FTW *s_unused __attribute__((unused)))
-{
-	char buf[STAT_BLOCK_SIZE];
-	if(pipe_fds[0] != -1 && read(pipe_fds[0], buf, STAT_BLOCK_SIZE) != STAT_BLOCK_SIZE)
-	{
-		fprintf(stderr, "Read error on pipe.\n");
-		pipe_fds[0] = -1;
-	}
-	if (flag == FTW_DNR) {
-		fprintf(stderr, "%s:  unable to read directory %s\n",
-			progname, file);
-		return 0;
-	}
-	errors=errors+restore(file);
+	errors += restore(file);
 	return 0;
 }
 void process(char *buf) {
-      int rc;
       if (recurse) {
-	if(pipe(pipe_fds) == -1)
-	  rc = -1;
-	else
-	  rc = fork();
-	if(rc == 0)
-	{
-	  close(pipe_fds[0]);
-	  nftw(buf, pre_stat, 1024, FTW_PHYS);
-	  exit(1);
-	}
-	if(rc > 0)
-	  close(pipe_fds[1]);
-	if(rc == -1 || rc > 0) {
-	  if (nftw(buf, apply_spec, 1024, FTW_PHYS)) {
-	    fprintf(stderr, "%s:  error while labeling files under %s\n",
+	FTS *fts;
+	FTSENT *ftsent;
+	char *av[2] = {buf, NULL};
+
+	fts = fts_open(av, FTS_PHYSICAL | FTS_COMFOLLOW, NULL);
+	if (fts == NULL) {
+	  fprintf(stderr, "%s:  error while labeling files under %s\n",
 		  progname, buf);
-	    errors++;
+	  errors++;
+	}
+	else
+	{
+	  while ((ftsent = fts_read(fts)) != NULL) {
+	    switch (ftsent->fts_info) {
+	    case FTS_DEFAULT:
+	    case FTS_D:
+	    case FTS_F:
+	    case FTS_SL:
+	    case FTS_W:
+	      apply_spec(ftsent->fts_path, ftsent->fts_statp);
+	      break;
+	    case FTS_DNR:
+	      fprintf(stderr, "%s:  unable to read directory %s\n",
+		      progname, ftsent->fts_path);
+	      break;
+	    case FTS_NS:
+	      fprintf(stderr, "%s:  unable to stat file %s\n",
+		      progname, ftsent->fts_path);
+	      break;
+	    case FTS_ERR:
+	      fprintf(stderr, "%s:  %s:  %s\n", progname, ftsent->fts_path,
+		      strerror(ftsent->fts_errno));
+	      break;
+	    }
 	  }
 	}
       }

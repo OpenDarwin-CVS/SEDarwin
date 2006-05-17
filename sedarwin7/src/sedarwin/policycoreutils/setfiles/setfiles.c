@@ -68,8 +68,7 @@
 #include <regex.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#define __USE_XOPEN_EXTENDED 1	/* nftw */
-#include <ftw.h>
+#include <fts.h>
 #include <limits.h>
 #include <sepol/sepol.h>
 #include <selinux/selinux.h>
@@ -79,8 +78,6 @@
 static int add_assoc = 1;
 static FILE *outfile=NULL;
 static int force=0;
-#define STAT_BLOCK_SIZE 1
-static int pipe_fds[2] = { -1, -1 };
 
 #define MAX_EXCLUDES 100
 static int excludeCtr=0;
@@ -163,9 +160,8 @@ static int exclude(const char *file) {
 	return 0;
 }
 
-int match(const char *name, struct stat *sb, char **con)
+int match(const char *name, mode_t mode, char **con)
 {
-	int ret;
 	const char *fullname = name;
 
 	/* fullname will be the real file that gets labeled
@@ -184,18 +180,12 @@ int match(const char *name, struct stat *sb, char **con)
 			return -1;
 		}
 	}
-	ret = lstat(fullname, sb);
-	if (ret) {
-		fprintf(stderr, "%s:  unable to stat file %s\n", progname,
-			fullname);
-		return -1;
-	}
 
 	if(rootpath != NULL && name[0]=='\0')
 		/* this is actually the root dir of the alt root */
-		return matchpathcon_index("/", sb->st_mode, con);
+		return matchpathcon_index("/", mode, con);
 	else
-		return matchpathcon_index(name, sb->st_mode, con);
+		return matchpathcon_index(name, mode, con);
 }
 
 void usage(const char * const name)
@@ -234,25 +224,15 @@ static int only_changed_user(const char *a, const char *b)
 
 /*
  * Apply the last matching specification to a file.
- * This function is called by nftw on each file during
+ * This function is called for each file during
  * the directory traversal.
  */
-static int apply_spec(const char *file,
-		      const struct stat *sb_unused __attribute__((unused)),
-		      int flag,
-		      struct FTW *s_unused __attribute__((unused)))
+static int apply_spec(const char *file, const struct stat *sb)
 {
 	const char *my_file;
-	struct stat my_sb;
 	int i, j, ret;
 	char *context, *newcon; 
 	int user_only_changed=0;
-	char buf[STAT_BLOCK_SIZE];
-	if(pipe_fds[0] != -1 && read(pipe_fds[0], buf, STAT_BLOCK_SIZE) != STAT_BLOCK_SIZE)
-	{
-		fprintf(stderr, "Read error on pipe.\n");
-		pipe_fds[0] = -1;
-	}
 
 	/* Skip the extra slash at the beginning, if present. */
 	if (file[0] == '/' && file[1] == '/')
@@ -260,13 +240,7 @@ static int apply_spec(const char *file,
 	else
 		my_file = file;
 
-	if (flag == FTW_DNR) {
-		fprintf(stderr, "%s:  unable to read directory %s\n",
-			progname, my_file);
-		return 0;
-	}
-
-	i = match(my_file, &my_sb, &newcon);
+	i = match(my_file, sb->st_mode, &newcon);
 	if (i < 0)
 		/* No matching specification. */
 		return 0;
@@ -278,7 +252,7 @@ static int apply_spec(const char *file,
 	 * then use the last matching specification.
 	 */
 	if (add_assoc) {
-		j = matchpathcon_filespec_add(my_sb.st_ino, i, my_file);
+		j = matchpathcon_filespec_add(sb->st_ino, i, my_file);
 		if (j < 0) 
 			goto err;
 
@@ -424,20 +398,6 @@ int canoncon(const char *path, unsigned lineno, char **contextp)
 	return !valid;
 }
 
-static int pre_stat(const char *file_unused __attribute__((unused)),
-                    const struct stat *sb_unused __attribute__((unused)),
-                    int flag_unused __attribute__((unused)),
-                    struct FTW *s_unused __attribute__((unused)))
-{
-  char buf[STAT_BLOCK_SIZE];
-  if(write(pipe_fds[1], buf, STAT_BLOCK_SIZE) != STAT_BLOCK_SIZE)
-  {
-    fprintf(stderr, "Error writing to stat pipe, child exiting.\n");
-    exit(1);
-  }
-  return 0;
-}
-
 int main(int argc, char **argv)
 {
 	int opt, rc, i;
@@ -580,26 +540,16 @@ int main(int argc, char **argv)
 				if(lstat(buf, &sb))
 					fprintf(stderr, "File \"%s\" not found.\n", buf);
 				else
-				{
-					int flag;
-					switch(sb.st_mode)
-					{
-					case S_IFDIR:
-						flag = FTW_D;
-					break;
-					case S_IFLNK:
-						flag = FTW_SL;
-					break;
-					default:
-						flag = FTW_F;
-					}
-					apply_spec(buf, &sb, flag, NULL);
-				}
+					apply_spec(buf, &sb);
 			}
 		}
 	}
 	else for (; optind < argc; optind++)
 	{
+		FTS *fts;
+		FTSENT *ftsent;
+		char *pv[2] = { argv[optind], NULL };
+
 		if (NULL != rootpath) {
 			qprintf("%s:  labeling files, pretending %s is /\n",
 				argv[0], rootpath);
@@ -608,31 +558,49 @@ int main(int argc, char **argv)
 		qprintf("%s:  labeling files under %s\n", argv[0],
 			argv[optind]);
 
-		int rc;
-		if(pipe(pipe_fds) == -1)
-			rc = -1;
-		else
-			rc = fork();
-		if(rc == 0)
-		{
-			close(pipe_fds[0]);
-			nftw(argv[optind], pre_stat, OPEN_MAX, FTW_PHYS);
+		fts = fts_open(pv,
+		    FTS_PHYSICAL | FTS_XDEV | FTS_COMFOLLOW, NULL);
+		if (fts == NULL) {
+			fprintf(stderr, "%s:  cannot traverse filesystem %s",
+				argv[0], pv[0]);
 			exit(1);
 		}
-		if(rc > 0)
-			close(pipe_fds[1]);
-		if(rc == -1 || rc > 0) {
 
 		/* Walk the file tree, calling apply_spec on each file. */
-			if (nftw
-			    (argv[optind], apply_spec, OPEN_MAX,
-			     FTW_PHYS | FTW_MOUNT)) {
+		while ((ftsent = fts_read(fts)) != NULL) {
+			switch (ftsent->fts_info) {
+			case FTS_DEFAULT:
+			case FTS_D:		/* dir in pre-order */
+			case FTS_F:		/* file */
+			case FTS_SL:		/* symlink */
+			case FTS_W:		/* whiteout */
+				apply_spec(ftsent->fts_path, ftsent->fts_statp);
+				break;
+			case FTS_DNR:
 				fprintf(stderr,
-				"%s:  error while labeling files under %s\n",
-				argv[0], argv[optind]);
-				exit(1);
+				    "%s:  unable to read directory %s\n",
+				    progname, ftsent->fts_path);
+				break;
+			case FTS_NS:
+				fprintf(stderr,
+				    "%s:  unable to stat file %s\n",
+				    progname, ftsent->fts_path);
+				break;
+			case FTS_ERR:
+				fprintf(stderr,
+				    "%s:  %s:  %s\n",
+				    progname, ftsent->fts_path,
+				    strerror(ftsent->fts_errno));
+				break;
+			case FTS_DP:		/* skip post-order dir */
+			case FTS_DC:		/* skip dir cycle */
+			case FTS_DOT:		/* skip . and .. */
+			case FTS_SLNONE:	/* skip broken symlinks */
+			default:
+				break;
 			}
 		}
+		fts_close(fts);
 
 		/*
 		 * Evaluate the association hash table distribution for the
