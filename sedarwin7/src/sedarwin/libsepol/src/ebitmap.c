@@ -12,6 +12,7 @@
 #include <sepol/policydb/ebitmap.h>
 #include <sepol/policydb/policydb.h>
 
+#include "debug.h"
 #include "private.h"
 
 int ebitmap_or(ebitmap_t * dst, ebitmap_t * e1, ebitmap_t * e2)
@@ -181,7 +182,13 @@ int ebitmap_get_bit(ebitmap_t * e, unsigned int bit)
 int ebitmap_set_bit(ebitmap_t * e, unsigned int bit, int value)
 {
 	ebitmap_node_t *n, *prev, *new;
+	uint32_t startbit = bit & ~(MAPSIZE - 1);
+	uint32_t highbit = startbit + MAPSIZE;
 
+	if (highbit == 0) {
+		ERR(NULL, "bitmap overflow, bit 0x%x", bit);
+		return -EINVAL;
+	}
 
 	prev = 0;
 	n = e->node;
@@ -226,12 +233,13 @@ int ebitmap_set_bit(ebitmap_t * e, unsigned int bit, int value)
 		return -ENOMEM;
 	memset(new, 0, sizeof(ebitmap_node_t));
 
-	new->startbit = bit & ~(MAPSIZE - 1);
+	new->startbit = startbit;
 	new->map = (MAPBIT << (bit - new->startbit));
 
-	if (!n)
+	if (!n) {
 		/* this node will be the highest map within the bitmap */
-		e->highbit = new->startbit + MAPSIZE;
+		e->highbit = highbit;
+	}
 
 	if (prev) {
 		new->next = prev->next;

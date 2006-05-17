@@ -1340,7 +1340,7 @@ static int avrule_block_write(avrule_block_t *block, int num_scope_syms,
                 for (decl = cur->branch_list; decl != NULL; decl = decl->next) {
                         num_decls++;
                 }
-                buf[0] = num_decls;
+                buf[0] = cpu_to_le32(num_decls);
                 if (put_entry(buf, sizeof(uint32_t), 1, fp) != 1) {
                         return -1;
                 }
