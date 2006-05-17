@@ -32,6 +32,7 @@ type user_devpts_t;
 type sysadm_devpts_t;
 type tmpfs_t;
 type device_t;
+type disk_device_t;
 type memory_device_t;
 type null_device_t;
 type zero_device_t;
@@ -62,6 +63,7 @@ type directoryservice_d, domain, domain2;
 type notifyd_d, domain, domain2;
 type mtest_d, domain, domain2;
 type diskarbitrationd_d, domain, domain2;
+type fsadm_d, domain, domain2;
 type configd_d, domain, domain2;
 
 type pbs_exec_t, file;
@@ -76,6 +78,7 @@ type directoryservice_exec_t, file;
 type notifyd_exec_t, file;
 type mtest_exec_t, file;
 type diskarbitrationd_exec_t, file;
+type fsadm_exec_t, file;
 type configd_exec_t, file;
 
 role system_r types init_d;
@@ -97,6 +100,7 @@ role system_r types lookupd_d;
 role system_r types notifyd_d;
 role system_r types mtest_d;
 role system_r types diskarbitrationd_d;
+role system_r types fsadm_d;
 role system_r types configd_d;
 role system_r types security_t;
 role system_r types unlabeled_t;
@@ -177,6 +181,8 @@ allow kernel_d domain2:mach_port { send make_send make_send_once copy_send move_
 allow domain2 file:{file lnk_file sock_file fifo_file} {create_file_perms execute };
 allow domain2 file:file execute_no_trans;
 allow domain2 file:dir { create_dir_perms };
+allow domain2 device_t:dir { read search getattr };
+allow domain2 {device_t disk_device_t}:{blk_file} { getattr };
 allow domain2 {null_device_t console_device_t memory_device_t random_device_t zero_device_t device_t}:{file chr_file} create_file_perms;
 allow domain2 device_t:blk_file create_file_perms;
 allow domain2 {devpts_t user_devpts_t sysadm_devpts_t}:chr_file create_file_perms;
@@ -211,6 +217,13 @@ domain_auto_trans(init_d,loginwindow_exec_t,loginwindow_d); # via /etc/ttys
 
 # Transitions for mtest
 domain_auto_trans(user_secret_d,mtest_exec_t,mtest_d);
+
+# Transitions for fsck*
+domain_auto_trans(init_d,fsadm_exec_t,fsadm_d);
+allow_mach_ipc(fsadm_d,mach_init_d);
+allow_mach_ipc(fsadm_d,unlabeled_t);
+allow fsadm_d device_t:dir { read search getattr };
+allow fsadm_d disk_device_t:blk_file { read write getattr };
 
 domain_auto_trans(systemstarter_d,windowserver_exec_t,windowserver_d);
 domain_auto_trans(systemstarter_d,securityserver_exec_t,securityserver_d);
@@ -325,6 +338,7 @@ allow_mach_ipc(diskarbitrationd_d,loginwindow_d);
 allow_mach_ipc(diskarbitrationd_d,lookupd_d);
 allow_mach_ipc(diskarbitrationd_d,securityserver_d);
 allow_mach_ipc(diskarbitrationd_d,systemstarter_d);
+allow diskarbitrationd_d disk_device_t:blk_file { read write getattr };
 
 # user_d rules
 allow_notify_ipc(user_d);

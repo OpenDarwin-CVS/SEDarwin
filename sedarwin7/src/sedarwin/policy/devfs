@@ -9,6 +9,22 @@ genfscon devfs /mem			system_u:object_r:memory_device_t
 genfscon devfs /random		system_u:object_r:random_device_t
 genfscon devfs /urandom		system_u:object_r:random_device_t
 genfscon devfs /ttyp		system_u:object_r:devpts_t
+genfscon devfs /ttyq		system_u:object_r:devpts_t
+genfscon devfs /ttyr		system_u:object_r:devpts_t
+genfscon devfs /ttys		system_u:object_r:devpts_t
+genfscon devfs /ttyt		system_u:object_r:devpts_t
+genfscon devfs /ttyu		system_u:object_r:devpts_t
+genfscon devfs /ttyv		system_u:object_r:devpts_t
+genfscon devfs /ttyw		system_u:object_r:devpts_t
 genfscon devfs /ptyp		system_u:object_r:devpts_t
+genfscon devfs /ptyq		system_u:object_r:devpts_t
+genfscon devfs /ptyr		system_u:object_r:devpts_t
+genfscon devfs /ptys		system_u:object_r:devpts_t
+genfscon devfs /ptyt		system_u:object_r:devpts_t
+genfscon devfs /ptyu		system_u:object_r:devpts_t
+genfscon devfs /ptyv		system_u:object_r:devpts_t
+genfscon devfs /ptyw		system_u:object_r:devpts_t
+genfscon devfs /disk		system_u:object_r:disk_device_t
+#genfscon devfs /bpf		system_u:object_r:bpf_device_t
 
 # FLASK

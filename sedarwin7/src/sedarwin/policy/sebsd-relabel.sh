@@ -12,6 +12,8 @@ $SETFMAC sebsd/system_u:object_r:bin_t /usr/sbin/*
 $SETFMAC sebsd/system_u:object_r:bin_t /bin/*
 $SETFMAC sebsd/system_u:object_r:bin_t /usr/bin/*
 $SETFMAC sebsd/system_u:object_r:bin_t /usr/local/bin/*
+$SETFMAC sebsd/system_u:object_r:fsadm_exec_t /sbin/fsck*
+$SETFMAC sebsd/system_u:object_r:fsadm_exec_t /sbin/mount*
 $SETFMAC sebsd/system_u:object_r:shell_exec_t /bin/*sh       
 $SETFMAC sebsd/system_u:object_r:login_exec_t /usr/bin/login
 $SETFMAC sebsd/system_u:object_r:sshd_exec_t /usr/sbin/sshd
