@@ -62,7 +62,7 @@ hidden_def(selinux_removable_context_path)
 const char *
 selinux_binary_policy_path(void)
 {
-	return (SEDARWIN_DIR "/policy/policy.bin");
+	return (SEDARWIN_DIR "/policy/policy");
 }
 hidden_def(selinux_binary_policy_path) 
 
