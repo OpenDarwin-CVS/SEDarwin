@@ -235,7 +235,7 @@ void avtab_destroy(struct avtab *h)
 		while (cur != NULL) {
 			temp = cur;
 			cur = cur->next;
-			kfree(temp);
+			zfree(avtab_node_cachep, (vm_offset_t)temp);
 		}
 		h->htable[i] = NULL;
 	}
