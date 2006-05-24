@@ -93,6 +93,28 @@ static __inline int ss_precondition(void)
 	return (ss_initialized);
 }
 
+static int
+signal_to_av(int signum)
+{
+	int perm;
+
+	switch (signum) {
+		case SIGCHLD:
+			perm = PROCESS__SIGCHLD;
+			break;
+		case SIGKILL:
+			perm = PROCESS__SIGKILL;
+			break;
+		case SIGSTOP:
+			perm = PROCESS__SIGSTOP;
+			break;
+		default:
+			perm = PROCESS__SIGNAL;
+			break;
+		}
+	return perm;
+}
+
 static void
 sebsd_init(struct mac_policy_conf *mpc)
 {
@@ -134,6 +156,13 @@ cred_has_capability(struct ucred *cred, cap_value_t cap)
 
 	return (avc_has_perm(task->sid, task->sid,
 	    SECCLASS_CAPABILITY, cap, &ad));
+}
+#else
+static int
+cred_has_capability(struct ucred *cred, unsigned int cap)
+{
+
+	return (0);
 }
 #endif
 
@@ -247,7 +276,7 @@ vnode_type_to_security_class(enum vtype vt)
 }
 
 static __inline u_int16_t
-devfs_type_to_security_class(int type)
+devfs_type_to_security_class(devfstype_t type)
 {
 
 	switch (type) {
@@ -309,20 +338,38 @@ vnode_has_perm(struct ucred *cred, struct vnode *vp, u_int32_t perm)
 	ad.u.fs.vp = vp;
 
 #if 0
-	if (file->sclass == 0) {
+	{
+		u_int16_t sclass;
 		struct vattr va;
 		struct proc *p = current_proc();
 		VOP_GETATTR(vp, &va, p->p_ucred, p);
-		printf("vnode_has_perm:: ERROR, sid=%d, sclass=0, v_type=%d,"
-		       " inode=%ld, fsid=%d, fstype=%s, mnt=%s\n",
-		       file->sid, vp->v_type, va.va_fileid, va.va_fsid,
-		       vp->v_mount->mnt_vfc->vfc_name,
-		       vp->v_mount->mnt_stat.f_mntonname);
-		file->sclass = vnode_type_to_security_class(vp->v_type);
-		if (file->sclass == 0) {
+		sclass = vnode_type_to_security_class(vp->v_type);
+		if (sclass == 0) {
+			printf("%s:: ERROR, sid=%d, sclass=0, v_type=%d,"
+			    " inode=%ld, fsid=%d, fstype=%s, mnt=%s\n",
+			    __func__, file->sid, vp->v_type, va.va_fileid,
+			    va.va_fsid, vp->v_mount->mnt_vfc->vfc_name,
+			    vp->v_mount->mnt_stat.f_mntonname);
 			printf("vnode_has_perm:: Giving up\n");
 			return (1);	/* TBD: debugging */
 		}
+		if (file->sclass != 0 && sclass != file->sclass) {
+			printf("%s:: ERROR, sid=%d, sclass=%d(%d), perm=0x%x, "
+			    "v_type=%d, inode=%ld, fsid=%d",
+			    __func__, file->sid, sclass, file->sclass, perm,
+			    vp->v_type, va.va_fileid, va.va_fsid);
+			if (vp->v_mount) {
+				if (vp->v_mount->mnt_vfc &&
+				    vp->v_mount->mnt_vfc->vfc_name)
+					printf(" %s",
+					    vp->v_mount->mnt_vfc->vfc_name);
+				if (vp->v_mount->mnt_stat.f_mntonname)
+					printf(" %s",
+					    vp->v_mount->mnt_stat.f_mntonname);
+				printf("\n");
+			}
+		}
+		file->sclass = sclass;
 	}
 
 #else
@@ -440,6 +487,16 @@ sebsd_init_sysv_label(struct label *label)
 }
 
 static void
+sebsd_init_posix_label(struct label *label)
+{
+	struct ipc_security_struct *new;
+
+	new = sebsd_malloc(sizeof(*new), M_SEBSD, M_ZERO | M_WAITOK);
+	new->sid = SECINITSID_UNLABELED;
+	SLOT(label) = new;
+}
+
+static void
 sebsd_init_devfs_label(struct label *label)
 {
 	struct vnode_security_struct *vsec;
@@ -493,6 +550,20 @@ sebsd_associate_vnode_devfs(struct mount *mp, struct label *fslabel,
 	vsec->sid = dsec->sid;
 	vsec->task_sid = dsec->task_sid;
 	vsec->sclass = dsec->sclass;
+}
+
+static void
+sebsd_update_devfsdirent(struct mount *mp, struct devnode *de,
+    struct label *delabel, struct vnode *vp, struct label *vlabel)
+{
+	struct vnode_security_struct *vsec, *dsec;
+
+	vsec = SLOT(vlabel);
+	dsec = SLOT(delabel);
+
+	dsec->sid = vsec->sid;
+	dsec->task_sid = vsec->task_sid;
+	dsec->sclass = vsec->sclass;
 }
 
 static int
@@ -707,6 +778,33 @@ sebsd_create_kernel_port(struct label *port, int isreply)
 	psec->sid = SECINITSID_KERNEL;
 }
 
+static void
+sebsd_create_posix_sem(struct ucred *cred, struct pseminfo *psem,
+    struct label *psemlabel, char *name)
+{
+	struct task_security_struct *tsec;
+	struct ipc_security_struct *ipcsec;
+	
+	tsec = SLOT(cred->cr_label);
+	ipcsec = SLOT(psemlabel);
+
+	ipcsec->sid = tsec->sid;
+	ipcsec->sclass = SECCLASS_SEM;
+}
+
+static void
+sebsd_create_posix_shm(struct ucred *cred, struct pshminfo *pshm,
+    struct label *pshmlabel, char *name)
+{
+	struct task_security_struct *tsec;
+	struct ipc_security_struct *ipcsec;
+	
+	tsec = SLOT(cred->cr_label);
+	ipcsec = SLOT(pshmlabel);
+
+	ipcsec->sid = tsec->sid;
+	ipcsec->sclass = SECCLASS_SHM;
+}
 
 static void
 sebsd_create_sysv_sem(struct ucred *cred, struct semid_kernel *semakptr,
@@ -736,6 +834,9 @@ sebsd_create_sysv_shm(struct ucred *cred, struct shmid_kernel *shmsegptr,
 	ipcsec->sclass = SECCLASS_SHM;
 }
 
+/*
+ * NOTE: on Darwin mp will always be NULLL for sebsd_create_devfs_device
+ */
 static void
 sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
     struct devnode *devfs_dirent, struct label *label,
@@ -786,48 +887,50 @@ sebsd_create_devfs_device(struct ucred *cr, struct mount *mp, dev_t dev,
 	sebsd_free(path, M_SEBSD);
 }
 
-#if 0
+/*
+ * NOTE: on Darwin mp will always be NULLL for sebsd_create_devfs_directory
+ */
 static void
 sebsd_create_devfs_directory(struct mount *mp, char *dirname,
-    int dirnamelen, struct devfs_dirent *devfs_dirent, struct label *label,
+    int dirnamelen, struct devnode *de, struct label *label,
     const char *fullpath)
 {
 	char *path;
 	int rc;
 	u_int32_t newsid;
-	struct mount_security_struct *sbsec;
 	struct vnode_security_struct *dirent;
 
 	dirent = SLOT(label);
-	sbsec = SLOT(mp->mnt_mntlabel);
 
 	/* Default to the filesystem SID. */
-	dirent->sid = sbsec->sid;
+	dirent->sid = SECINITSID_DEVFS;
 	dirent->task_sid = SECINITSID_KERNEL;
-	dirent->sclass = SECCLASS_DIR;
+	dirent->sclass = devfs_type_to_security_class(de->dn_type);
 
 	/* Obtain a SID based on the fstype, path, and class. */
 	path = sebsd_malloc(strlen(fullpath) + 2, M_SEBSD, M_ZERO | M_WAITOK);
 	path[0] = '/';
 	strcpy(&path[1], fullpath);
-	rc = security_genfs_sid(mp->mnt_vfc->vfc_name, path, dirent->sclass,
-	    &newsid);
+	rc = security_genfs_sid("devfs", path, dirent->sclass, &newsid);
 	if (rc == 0)
 		dirent->sid = newsid;
 
 	/* TBD: debugging */
 	if (sebsd_verbose > 1) {
-		printf("%s(%s): sbsid=%d, mountpoint=%s, "
-		    "rc=%d, sclass=%d, computedsid=%d, dirent=%d\n",
-		    __func__, path, sbsec->sid, mp->mnt_stat.f_mntonname, rc,
-		    dirent->sclass, newsid, dirent->sid);
+		printf("%s(%s): mountpoint=devfs, rc=%d, sclass=%d, "
+		    "computedsid=%d, dirent=%d\n",
+		    __func__, path, rc, dirent->sclass, newsid, dirent->sid);
 	}
 	sebsd_free(path, M_SEBSD);
 }
 
+#if 0
+/*
+ * The create_devfs_symlink entrypoint is not implemented on Darwin.
+ */
 static void
 sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
-    struct devfs_dirent *dd, struct label *ddlabel, struct devfs_dirent *de,
+    struct devnode *dd, struct label *ddlabel, struct devnode *de,
     struct label *delabel, const char *fullpath)
 {
 	char *path;
@@ -835,13 +938,11 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 	u_int32_t newsid;
 	struct vnode_security_struct *lnksec;
 	struct vnode_security_struct *dirsec;
-	struct mount_security_struct *sbsec;
 
 	/* TBD: Should probably be checking MAY_LINK/MAY_CREATE perms here */
 
 	dirsec = SLOT(ddlabel);
 	lnksec = SLOT(delabel);
-	sbsec = SLOT(mp->mnt_mntlabel);
 
 	/* Default to the filesystem SID. */
 	lnksec->sid = dirsec->sid;
@@ -852,20 +953,18 @@ sebsd_create_devfs_symlink(struct ucred *cred, struct mount *mp,
 	path = sebsd_malloc(strlen(fullpath) + 2, M_SEBSD, M_ZERO | M_WAITOK);
 	path[0] = '/';
 	strcpy(&path[1], fullpath);
-	rc = security_genfs_sid(mp->mnt_vfc->vfc_name, path, lnksec->sclass,
-	    &newsid);
+	rc = security_genfs_sid("devfs", path, lnksec->sclass, &newsid);
 	if (rc == 0)
 		lnksec->sid = newsid;
 
 	if (sebsd_verbose > 1) {
-		printf("%s(%s): sbsid=%d, mountpoint=%s, rc=%d, sclass=%d, "
+		printf("%s(%s): mountpoint=devfs, rc=%d, sclass=%d, "
 		    "computedsid=%d, dirent=%d\n", __func__, path,
-		    sbsec->sid, mp->mnt_stat.f_mntonname, rc,
-		    lnksec->sclass, newsid, lnksec->sid);
+		    rc, lnksec->sclass, newsid, lnksec->sid);
 	}
 	sebsd_free(path, M_SEBSD);
 }
-#endif /* HAS_DEVFS_DIRENT */
+#endif
 
 #ifdef HAS_PIPES
 /*
@@ -1323,11 +1422,10 @@ sebsd_check_pipe_write(struct ucred *cred, struct pipe *pipe,
 }
 #endif /* HAS_PIPES */
 
-#if 0 /* XXX */
 static int
 sebsd_check_proc_debug(struct ucred *cred, struct proc *proc)
 {
-
+	
 	return (cred_has_perm(cred, proc, PROCESS__PTRACE));
 }
 
@@ -1337,7 +1435,6 @@ sebsd_check_proc_sched(struct ucred *cred, struct proc *proc)
 
 	return (cred_has_perm(cred, proc, PROCESS__SETSCHED));
 }
-#endif
 
 static int
 sebsd_check_proc_setlcid(struct proc *p0, struct proc *p, pid_t pid, pid_t lcid)
@@ -1401,21 +1498,19 @@ sebsd_check_proc_signal(struct ucred *cred, struct proc *proc, int signum)
 {
 	u_int32_t perm;
 
-	switch (signum) {
-	case SIGCHLD:
-		perm = PROCESS__SIGCHLD;
-		break;
-	case SIGKILL:
-		perm = PROCESS__SIGKILL;
-		break;
-	case SIGSTOP:
-		perm = PROCESS__SIGSTOP;
-		break;
-	default:
-		perm = PROCESS__SIGNAL;
-		break;
-	}
+	perm = signal_to_av(signum);
+	return (cred_has_perm(cred, proc, perm));
+}
 
+static int
+sebsd_check_proc_wait(struct ucred *cred, struct proc *proc)
+{
+	u_int32_t perm, exit_status;
+	
+	exit_status = proc->p_xstat;    // (promote to 32 btis)
+	exit_status &= 0177;
+
+	perm = signal_to_av(exit_status);
 	return (cred_has_perm(cred, proc, perm));
 }
 
@@ -2143,8 +2238,38 @@ sebsd_check_vnode_stat(struct ucred *cred, struct ucred *file_cred,
 	return (vnode_has_perm(cred, vp, FILE__GETATTR));
 }
 
+static int
+sebsd_check_system_acct(struct ucred *cred, struct vnode *v,
+    struct label *vl)
+{
+
+	return (cred_has_capability(cred, CAPABILITY__SYS_PACCT));
+}
+
+static int
+sebsd_check_system_audit(struct ucred *cred, void *record, int len)
+{
+
+	return (cred_has_capability(cred, CAPABILITY__AUDIT_WRITE));
+}
+
+static int
+sebsd_check_system_auditctl(struct ucred *cred, struct vnode *v,
+    struct label *vlabel)
+{
+
+	return (cred_has_capability(cred, CAPABILITY__AUDIT_CONTROL));
+}
+
+static int
+sebsd_check_system_auditon(struct ucred *cred, int cmd)
+{
+
+	return (cred_has_capability(cred, CAPABILITY__AUDIT_CONTROL));
+}
+
 /*
- * TBD: LSM/SELinux doesn't have a nfsd hook
+ * TBD: LSM/SELinux doesn't have a nfsd hook or relevant permission
  */
 static int
 sebsd_check_system_nfsd(struct ucred *cred)
@@ -2169,16 +2294,18 @@ sebsd_check_system_swapoff(struct ucred *cred, struct vnode *vp,
 	return (vnode_has_perm(cred, vp, FILE__SWAPON));
 }
 
-/*
- * TBD: Sysctl access control is not currently implemented
- */
 static int
-sebsd_check_system_sysctl(struct ucred *cred, int *name,
-    u_int namelen, void *old, size_t *oldlenp, int inkernel, void *new,
-    size_t newlen)
+sebsd_check_system_reboot(struct ucred *cred, int how)
 {
 
-	return (0);
+	return (cred_has_capability(cred, CAPABILITY__SYS_BOOT));
+}
+
+static int
+sebsd_check_system_settime(struct ucred *cred)
+{
+
+	return (cred_has_capability(cred, CAPABILITY__SYS_TIME));
 }
 
 static int
@@ -2477,7 +2604,7 @@ sebsd_check_sysv_semctl(struct ucred *cred, struct semid_kernel *semakptr,
 	case GETALL:
 		perm = SEM__READ;
 		break;
-	case SETVAL:
+ 	case SETVAL:
 	case SETALL:
 		perm = SEM__WRITE;
 		break;
@@ -2550,6 +2677,12 @@ sebsd_check_sysv_shmctl(struct ucred *cred, struct shmid_kernel *shmsegptr,
 	case IPC_SET:
 		perm = SHM__SETATTR;
 		break;
+#if 0
+	case SHM_LOCK:
+	case SHM_UNLOCK:
+		perm = SHM__LOCK;
+		break;
+#endif
 	case IPC_STAT:
 		perm = SHM__GETATTR | SHM__ASSOCIATE;
 		break;
@@ -2567,6 +2700,100 @@ sebsd_check_sysv_shmget(struct ucred *cred, struct shmid_kernel *shmsegptr,
 {
 
 	return (ipc_has_perm(cred, shmseglabel, SHM__ASSOCIATE));
+}
+
+static int
+sebsd_check_posix_sem_create(struct ucred *cred, const char *name)
+{
+	
+	struct task_security_struct *t;
+
+	t = SLOT(cred->cr_label);
+	return (avc_has_perm(t->sid, t->sid, SECCLASS_SEM, SEM__CREATE, NULL));
+}
+
+static int
+sebsd_check_posix_sem_open(struct ucred *cred, struct pseminfo *psem,
+    struct label *psemlabel)
+{
+
+	return (ipc_has_perm(cred, psemlabel, SEM__ASSOCIATE));
+}
+
+static int
+sebsd_check_posix_sem_post(struct ucred *cred, struct pseminfo *psem,
+    struct label *psemlabel)
+{
+
+	return (ipc_has_perm(cred, psemlabel, SEM__READ | SEM__WRITE));
+}
+
+static int
+sebsd_check_posix_sem_unlink(struct ucred *cred, struct pseminfo *psem,
+    struct label *psemlabel, const char *name)
+{
+
+	return (ipc_has_perm(cred, psemlabel, SEM__DESTROY));
+}
+
+static int
+sebsd_check_posix_sem_wait(struct ucred *cred, struct pseminfo *psem,
+    struct label *psemlabel)
+{
+
+	return (ipc_has_perm(cred, psemlabel, SEM__READ | SEM__WRITE));
+}
+
+static int
+sebsd_check_posix_shm_create(struct ucred *cred, const char *name)
+{
+	struct task_security_struct *t;
+	
+	t = SLOT(cred->cr_label);
+	return (avc_has_perm(t->sid, t->sid, SECCLASS_SHM, SHM__CREATE,
+	    NULL));
+}
+
+static int
+sebsd_check_posix_shm_mmap(struct ucred *cred, struct pshminfo *ps,
+    struct label *pshmlabel, int prot, int flags)
+{
+	
+	return(ipc_has_perm(cred, pshmlabel, SHM__READ | SHM__WRITE));
+}
+	
+
+static int
+sebsd_check_posix_shm_open(struct ucred *cred, struct pshminfo *pshm,
+    struct label *pshmlabel)
+{
+
+	return (ipc_has_perm(cred, pshmlabel, SHM__ASSOCIATE));
+}
+
+static int
+sebsd_check_posix_shm_stat(struct ucred *cred, struct pshminfo *pshm,
+    struct label *pshmlabel)
+{
+
+	return (ipc_has_perm(cred, pshmlabel, SHM__GETATTR));
+}
+
+static int
+sebsd_check_posix_shm_truncate(struct ucred *cred, struct pshminfo *pshm,
+    struct label *pshmlabel, size_t len)
+{
+	
+	/* XXX: The perm here is just a guess */
+	return (ipc_has_perm(cred, pshmlabel, SHM__SETATTR | SHM__WRITE));
+}
+
+static int
+sebsd_check_posix_shm_unlink(struct ucred *cred, struct pshminfo *pshm,
+    struct label *pshmlabel, const char *name)
+{
+
+	return (ipc_has_perm(cred, pshmlabel, SHM__DESTROY));
 }
 
 static struct mac_policy_ops sebsd_ops = {
@@ -2611,6 +2838,8 @@ static struct mac_policy_ops sebsd_ops = {
 	.mpo_create_task = sebsd_create_task,
 	.mpo_create_kernel_task = sebsd_create_kernel_task,
 	.mpo_create_devfs_device = sebsd_create_devfs_device,
+	.mpo_create_devfs_directory = sebsd_create_devfs_directory,
+	// .mpo_create_devfs_symlink = sebsd_create_devfs_symlink,
 	.mpo_create_proc0 = sebsd_create_proc0,
 	.mpo_create_proc1 = sebsd_create_proc1,
 	.mpo_create_vnode_extattr = sebsd_create_vnode_extattr,
@@ -2619,6 +2848,7 @@ static struct mac_policy_ops sebsd_ops = {
 	.mpo_associate_vnode_singlelabel = sebsd_associate_vnode_singlelabel,
 	.mpo_associate_vnode_extattr = sebsd_associate_vnode_extattr,
 	.mpo_associate_vnode_devfs = sebsd_associate_vnode_devfs,
+	.mpo_update_devfsdirent = sebsd_update_devfsdirent,
 
 	.mpo_request_object_label = sebsd_request_label,
 
@@ -2641,8 +2871,21 @@ static struct mac_policy_ops sebsd_ops = {
 	.mpo_check_port_hold_send = sebsd_check_port_hold_send,
 	.mpo_check_port_hold_send_once = sebsd_check_port_hold_send_once,
 	.mpo_check_port_hold_receive = sebsd_check_port_hold_recv,
+	.mpo_check_proc_debug = sebsd_check_proc_debug,
+	.mpo_check_proc_sched = sebsd_check_proc_sched,
 	.mpo_check_proc_setlcid = sebsd_check_proc_setlcid,
 	.mpo_check_proc_signal = sebsd_check_proc_signal,
+	.mpo_check_proc_wait = sebsd_check_proc_wait,
+	.mpo_check_system_acct = sebsd_check_system_acct,
+	.mpo_check_system_audit = sebsd_check_system_audit,
+	.mpo_check_system_auditctl = sebsd_check_system_auditctl,
+	.mpo_check_system_auditon = sebsd_check_system_auditon,
+	.mpo_check_system_nfsd = sebsd_check_system_nfsd,
+	.mpo_check_system_swapon = sebsd_check_system_swapon,
+	.mpo_check_system_swapoff = sebsd_check_system_swapon,
+	.mpo_check_system_reboot = sebsd_check_system_reboot,
+	.mpo_check_system_settime = sebsd_check_system_settime,
+
 	.mpo_check_vnode_access = sebsd_check_vnode_access,
 	.mpo_check_vnode_chdir = sebsd_check_vnode_chdir,
 	.mpo_check_vnode_chroot = sebsd_check_vnode_chroot,
@@ -2681,6 +2924,8 @@ static struct mac_policy_ops sebsd_ops = {
 	.mpo_check_vnode_stat = sebsd_check_vnode_stat,
 	.mpo_check_vnode_write = sebsd_check_vnode_write,
 
+
+
 	/* Mount Points */
 	.mpo_init_mount_label = sebsd_init_mount_label,
 	.mpo_init_mount_fs_label = sebsd_init_mount_fs_label,
@@ -2710,6 +2955,26 @@ static struct mac_policy_ops sebsd_ops = {
 	.mpo_check_sysv_shmget = sebsd_check_sysv_shmget,
 
 	.mpo_check_ipc_method = sebsd_check_ipc_method,
+
+	/* POSIX IPC Entry Points */
+	.mpo_init_posix_sem_label = sebsd_init_posix_label,
+	.mpo_create_posix_sem = sebsd_create_posix_sem,
+	.mpo_destroy_posix_sem_label = sebsd_destroy_label,
+	.mpo_check_posix_sem_create = sebsd_check_posix_sem_create,
+	.mpo_check_posix_sem_open = sebsd_check_posix_sem_open,
+	.mpo_check_posix_sem_post = sebsd_check_posix_sem_post,
+	.mpo_check_posix_sem_unlink = sebsd_check_posix_sem_unlink,
+	.mpo_check_posix_sem_wait = sebsd_check_posix_sem_wait,
+
+	.mpo_init_posix_shm_label = sebsd_init_posix_label,
+	.mpo_create_posix_shm = sebsd_create_posix_shm,
+	.mpo_destroy_posix_shm_label = sebsd_destroy_label,
+	.mpo_check_posix_shm_create = sebsd_check_posix_shm_create,
+	.mpo_check_posix_shm_open = sebsd_check_posix_shm_open,
+	.mpo_check_posix_shm_mmap = sebsd_check_posix_shm_mmap,
+	.mpo_check_posix_shm_stat = sebsd_check_posix_shm_stat,
+	.mpo_check_posix_shm_truncate = sebsd_check_posix_shm_truncate,
+	.mpo_check_posix_shm_unlink = sebsd_check_posix_shm_unlink,
 
 	.mpo_syscall = sebsd_syscall
 };
