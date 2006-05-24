@@ -16,8 +16,8 @@ EXPINC_SUBDIRS_PPC = ${EXPINC_SUBDIRS}
 EXPINC_SUBDIRS_I386 = ${EXPINC_SUBDIRS} 
 
 EXPORT_ONLY_FILES = \
-	mls.h security.h services.h policydb.h global.h context.h queue.h \
-        hashtab.h symtab.h avtab.h sidtab.h ebitmap.h mls_types.h constraint.h 
+	mls.h security.h services.h policydb.h global.h context.h hashtab.h \
+	symtab.h avtab.h sidtab.h ebitmap.h mls_types.h constraint.h 
 
 INSTALL_MI_LIST	= 
 
