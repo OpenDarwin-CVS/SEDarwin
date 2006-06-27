@@ -368,6 +368,8 @@ SYSCTL_NODE(_security_mac, OID_AUTO, sebsd, CTLFLAG_RW, 0,
 
 SYSCTL_INT(_security_mac_sebsd, OID_AUTO, verbose, CTLFLAG_RW,
     &sebsd_verbose, 0, " SEBSD Verbose Debug Stuff");
+SYSCTL_INT(_security_mac_sebsd, OID_AUTO, mls, CTLFLAG_RD,
+    &selinux_mls_enabled, 0, " SEBSD MLS enabled");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, sids, CTLTYPE_STRING|CTLFLAG_RD,
     NULL, 0, sysctl_list_sids, "A", "SEBSD SIDs");
 SYSCTL_PROC(_security_mac_sebsd, OID_AUTO, user_sids, CTLTYPE_STRING |
@@ -403,4 +405,5 @@ sebsd_register_sysctls()
 	sysctl_register_oid(&sysctl__security_mac_sebsd_auditing);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_enforcing);
 	sysctl_register_oid(&sysctl__security_mac_sebsd_policyvers);
+	sysctl_register_oid(&sysctl__security_mac_sebsd_mls);
 }
